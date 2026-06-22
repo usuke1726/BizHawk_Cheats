@@ -1,0 +1,8 @@
+
+.dev/
+.*.*
+_*.*
+memo.txt
+*.ibiz
+*.ilua
+tmp*.*
