@@ -1,0 +1,133 @@
+
+---イルーム処理を開始する
+---@param get_callback fun() : fun()?
+---@param timeout? int
+local function start_irume(get_callback, timeout) end
+---イルーム処理を停止(あるいは終了)する。(再開は`restart_irume`)
+---@param timeout? int
+local function stop_irume(timeout) end
+---イルーム処理を再開する。
+---@param timeout? int
+local function restart_irume(timeout) end
+
+
+---サウンドアドレスの先頭アドレスを指定する
+---@param addr int
+local function set_entry(addr) end
+
+---1トラックのバイトサイズを指定する
+---@param size int
+local function set_track_size(size) end
+
+---トラックのメモリ情報を追加する
+---@param id string
+---@param offset int
+local function register(id, offset) end
+---トラックのメモリ情報を削除する
+---@param id string
+local function unregister(id) end
+
+---@param entry_addr int サウンド領域の先頭アドレス
+---@param track_size int 1トラックのバイトサイズ
+---@param regs ([string, int])[] メモリ情報(`[id: string, offset: int]`)
+local function setup_track(entry_addr, track_size, regs) end
+
+---@alias CacheId int | string
+
+---@class TrackObj
+local TrackObj = {}
+
+---@param num int
+---@return TrackObj
+local function track(num) end
+---@param num_start int
+---@param num_end int
+---@param callback? fun(obj: TrackObj, i: int): TrackObj
+---@return TrackObj[]
+---@overload fun(nums: int[], callback?: fun(obj: TrackObj, i: int): TrackObj): TrackObj[]
+local function tracks(num_start, num_end, callback) end
+
+---トラック内の使用するメモリを登録する。
+---@param offset int
+---@param id CacheId
+---@return TrackObj self
+function TrackObj:use(offset, id) end
+
+---@param id string
+---@return AtObj
+function TrackObj:reg(id) end
+
+---@param id CacheId
+---@return AtObj
+function TrackObj:get_mem(id) end
+
+---登録済みのメモリをread
+---@param id CacheId
+---@return int
+function TrackObj:r8(id) end
+---登録済みのメモリを**Little Endianで**read
+---@param id CacheId
+---@return int
+function TrackObj:r16(id) end
+---登録済みのメモリを**Little Endianで**read
+---@param id CacheId
+---@return int
+function TrackObj:r32(id) end
+---登録済みのメモリにwrite
+---@param id CacheId
+---@param value int
+---@return TrackObj self
+function TrackObj:w8(id, value) end
+---登録済みのメモリに**Little Endianで**write
+---@param id CacheId
+---@param value int
+---@return TrackObj self
+function TrackObj:w16(id, value) end
+---登録済みのメモリに**Little Endianで**write
+---@param id CacheId
+---@param value int
+---@return TrackObj self
+function TrackObj:w32(id, value) end
+---登録済みのメモリにadd
+---@param id CacheId
+---@param value int
+---@param min_? int
+---@param max_? int
+---@return TrackObj self
+function TrackObj:add8(id, value, min_, max_) end
+---登録済みのメモリに**Little Endian**でadd
+---@param id CacheId
+---@param value int
+---@param min_? int
+---@param max_? int
+---@return TrackObj self
+function TrackObj:add16(id, value, min_, max_) end
+---登録済みのメモリに**Little Endian**でadd
+---@param id CacheId
+---@param value int
+---@param min_? int
+---@param max_? int
+---@return TrackObj self
+function TrackObj:add32(id, value, min_, max_) end
+---登録済みのメモリを先頭として与えられたバイト列を書き込む。
+---@param id CacheId
+---@param bytes int[]
+---@return TrackObj self
+function TrackObj:warr(id, bytes) end
+
+
+---@class IrumeLib
+local __irume = {
+    __update = _update,
+    set_entry = set_entry,
+    set_track_size = set_track_size,
+    register = register,
+    unregister = unregister,
+    setup_track = setup_track,
+    start = start_irume,
+    stop = stop_irume,
+    restart = restart_irume,
+    track = track,
+    tracks = tracks,
+}
+

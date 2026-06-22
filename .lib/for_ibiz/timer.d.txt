@@ -1,0 +1,151 @@
+
+
+---@class CounterObjBase
+---@field i int
+---@field n int
+---@field fired bool
+---@field active bool
+---@field callback fun(i: int)?
+---@field next fun(self: CounterObjBase): int, bool
+---@field N fun(self: CounterObjBase, n: int): CounterObjBase
+---@overload fun(): bool
+
+---@class CounterObj : CounterObjBase
+---@field i int
+---@field n int
+---@field fired bool
+---@field active bool
+---@overload fun(): bool
+local CounterObj = {}
+
+---@class CounterDoubleObj : CounterObj
+---@field i int
+---@field i0 int
+---@field n int
+---@field n0 int
+---@field fired bool
+---@field active bool
+---@overload fun(): bool
+local CounterDoubleObj = {}
+
+---@class CounterOnceObj : CounterObjBase
+---@field i int
+---@field n int
+---@field fired bool
+---@field active bool
+---@field protected _fired_once bool
+---@overload fun(): bool
+local CounterOnceObj = {}
+
+---@class TimerRelayObj : CounterObjBase
+---@field i int
+---@field n int
+---@field fired bool
+---@field active bool
+---@field protected _fired_once bool
+---@overload fun(): bool
+local TimerRelayObj = {}
+
+---@class RndCounterObj : CounterObjBase
+---@field i int
+---@field n int
+---@field fired bool
+---@field active bool
+---@overload fun(): bool
+local RndCounterObj = {}
+
+---@return bool fired
+function CounterObj:call() end
+---@return int i, bool fired
+function CounterObj:next() end
+---@param n int
+---@return CounterObj self
+function CounterObj:N(n) end
+---@return bool fired
+function CounterDoubleObj:call() end
+---@return int i, bool fired
+function CounterDoubleObj:next() end
+---@param n int
+---@return CounterDoubleObj self
+function CounterDoubleObj:N(n) end
+---@return bool fired
+function CounterOnceObj:call() end
+---@return int i, bool fired
+function CounterOnceObj:next() end
+---@param n int
+---@return CounterOnceObj self
+function CounterOnceObj:N(n) end
+---@param n? int
+function CounterOnceObj:restart(n) end
+---@return bool fired
+function TimerRelayObj:call() end
+---@return int i, bool fired
+function TimerRelayObj:next() end
+---@param n int
+---@return TimerRelayObj self
+function TimerRelayObj:N(n) end
+---@param n? int
+function TimerRelayObj:restart(n) end
+---@return bool fired
+function RndCounterObj:call() end
+---@return int i, bool fired
+function RndCounterObj:next() end
+---@param n int
+---@return RndCounterObj self
+function RndCounterObj:N(n) end
+
+---@param n int
+---@param n0 int
+---@param callback? fun()
+---@overload fun(n: int, callback?: fun()): CounterObj
+---@return CounterDoubleObj
+---0から`n-1`までの`n`個の整数を順番にループし、0に戻ったタイミングで発火するカウンタを作成する。
+---
+---ただし、引数先頭に数値を2つ指定した場合、1つ目を引数`n0`とし、\
+---`n0`カウントおきに上記のループを行うカウンタを生成する。
+function Cnt(n0, n, callback) end
+
+---`n`カウント後に1度きりだけ発火するカウンタを作成する。
+---@param n int
+---@param callback? fun()
+---@return CounterOnceObj
+function CntOnce(n, callback) end
+
+---`n`カウント後に発火し、以降ずっと発火し続けるリレーカウンタを作成する。
+---@param n int
+---@param callback? fun()
+---@return TimerRelayObj
+function RL(n, callback) end
+
+---1から`n`の整数をランダムにとり、1になったら発火するカウンタを作成
+---@param n int
+---@param callback? fun()
+---@return RndCounterObj
+function RC(n, callback) end
+
+---@param id int
+local function clearTimeout(id) end
+---@param id int
+local function clearInterval(id) end
+---@param time int
+---@param callback Callback
+---@return integer
+local function setTimeout(time, callback) end
+---@param timeout int
+---@param firstTimeoutOrCallback int
+---@param callback Callback
+---@return int
+---@overload fun(timeout: int, firstTimeoutOrCallback: Callback): int
+local function setInterval(timeout, firstTimeoutOrCallback, callback) end
+
+---@class TimerLib
+local __timer = {
+    setTimeout = setTimeout,
+    setInterval = setInterval,
+    clearTimeout = clearTimeout,
+    clearInterval = clearInterval,
+    Cnt = Cnt,
+    CntOnce = CntOnce,
+    RL = RL,
+    RC = RC,
+}

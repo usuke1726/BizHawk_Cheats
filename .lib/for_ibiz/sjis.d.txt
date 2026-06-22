@@ -1,0 +1,17 @@
+
+
+---@param code int
+---@return string
+local function to_char(code) end
+
+---@param begin int
+---@param inclusiveEnd int
+---@param domain string?
+local function print_range(begin, inclusiveEnd, domain) end
+
+---@class SJIS
+local __sjis = {
+    to_char = to_char,
+    print_range = print_range,
+}
+sjis = __sjis

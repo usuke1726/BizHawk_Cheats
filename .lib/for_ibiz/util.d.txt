@@ -1,0 +1,127 @@
+
+
+---`m`以上`n`以下の整数をランダムに取得する。
+---@param m int
+---@param n int
+---@return int
+function rand(m, n) end
+---@generic T
+---@param arr T[]
+---@return T
+function randelt(arr) end
+---@param v int
+---@param min int
+---@param max int
+---@return bool
+function within(v, min, max) end
+
+---@generic T : table
+---@param table T
+---@return T
+function table_copy(table) end
+array_copy = table_copy
+
+---@param v int
+---@param digits? int
+---@param no_prefix? bool
+function _HEX(v, digits, no_prefix) end
+---@param v int
+---@param digits? int
+---@param no_prefix? bool
+function _HEXP(v, digits, no_prefix) end
+
+---負値の可能性がある1バイト値`val`を非負にする。(負の場合は1byteオーバーフロー)
+---@param val int
+---@return int
+function stou8(val) end
+---負値の可能性がある2バイト値`val`を非負にする。(負の場合は2byteオーバーフロー)
+---@param val int
+---@return int
+function stou16(val) end
+---負値の可能性がある4バイト値`val`を非負にする。(負の場合は4byteオーバーフロー)
+---@param val int
+---@return int
+function stou32(val) end
+
+---@generic T
+---@generic U
+---@param arr T[]
+---@param func fun(value: T, key: int, arr: T[]): U
+---@return U[]
+function __map(arr, func) end
+
+---@generic T
+---@param arr T[]
+---@param func fun(value: T, key: int, arr: T[]): bool
+---@return T[]
+function __filter(arr, func) end
+
+---文字列で記述されたバイト列を配列に変換する。
+---@param bytes_str string
+---@return int[] bytes
+function htob(bytes_str) end
+
+---`value`を[`min_`, `max_`]の範囲に収める
+---@param value int
+---@param min_ int?
+---@param max_ int?
+---@return int
+function clamp(value, min_, max_) end
+
+---`value`を**signed**と解釈した上でclampする
+---@param value int
+---@param min_ int?
+---@param max_ int?
+---@return int
+function clamp8(value, min_, max_) end
+
+---`value`を**signed**と解釈した上でclampする
+---@param value int
+---@param min_ int?
+---@param max_ int?
+---@return int
+function clamp16(value, min_, max_) end
+
+---`value`を**signed**と解釈した上でclampする
+---@param value int
+---@param min_ int?
+---@param max_ int?
+---@return int
+function clamp32(value, min_, max_) end
+
+---@generic T
+---@class SetObj<T>
+---@field protected _tbl table<T, bool>
+local SetObj = {}
+
+---@generic T
+---@param self SetObj<T>
+---@return T[]
+function SetObj:arr() end
+---@generic T
+---@param self SetObj<T>
+---@param v T
+---@return bool
+function SetObj:has(v) end
+---@generic T
+---@param self SetObj<T>
+---@param v T
+---@return SetObj<T> self
+function SetObj:add(v) end
+---@generic T
+---@param self SetObj<T>
+---@param v T
+---@return SetObj<T> self
+function SetObj:remove(v) end
+
+---@generic T
+---@param arr T[]?
+---@return SetObj<T>
+function Set(arr) end
+
+---@param min int
+---@param max int
+---@param num int
+---@param allow_dup bool?
+---@return int[]
+function random_set(min, max, num, allow_dup) end

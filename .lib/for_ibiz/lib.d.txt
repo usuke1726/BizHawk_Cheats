@@ -1,0 +1,51 @@
+
+
+---@type fun()?
+loop = nil
+
+---@param id int
+---@param callback fun()
+function SET_LOOP(id, callback) end
+---@param id int
+---@param callback fun(): fun()
+function XSET_LOOP(id, callback) end
+---@param callback fun()
+---@return int
+function ADD_LOOP(callback) end
+---@param callback fun(): fun()
+---@return int
+function XADD_LOOP(callback) end
+---@param id int
+function DELETE_LOOP(id) end
+function CLEAR_LOOP() end
+
+---@class Lib
+lib = {
+    sjis = __sjis,
+    timer = __timer,
+    irume = __irume,
+    mfilter8 = mfilter8,
+    mfilter16 = mfilter16,
+    mfilter32 = mfilter32,
+    replace8 = replace8,
+    replace16 = replace16,
+    replace32 = replace32,
+    replace8r = replace8r,
+    replace16r = replace16r,
+    replace32r = replace32r,
+    find = find,
+    findr = findr,
+    find_all = find_all,
+    find_allr = find_allr,
+    fill_in_arr = fill_in_arr,
+    romfill_in_arr = romfill_in_arr,
+    warr = warr,
+    romwarr = romwarr,
+    rarr = rarr,
+    romrarr = romrarr,
+    htob = htob,
+    at = at,
+    romat = romat,
+    range = range,
+    romrange = romrange,
+}

@@ -1,0 +1,436 @@
+
+
+local _ROM_DOMAIN_NAME = "ROM"
+ROM_DOMAIN_NAME = _ROM_DOMAIN_NAME
+
+---@param addr int
+---@param domain string?
+---@return int
+function r8(addr, domain) end
+---@param addr int
+---@param value u8
+---@param domain string?
+function w8(addr, value, domain) end
+---指定したアドレス(補正付き)から**Little Endianで**2バイト読み込む。
+---@param addr int
+---@param domain string?
+---@return int
+function r16(addr, domain) end
+---指定したアドレス(補正付き)に**Little Endianで**2バイト書き込む。
+---@param addr int
+---@param value u16
+---@param domain string?
+function w16(addr, value, domain) end
+---指定したアドレス(補正付き)から**Little Endianで**4バイト読み込む。
+---@param addr int
+---@param domain string?
+---@return int
+function r32(addr, domain) end
+---指定したアドレス(補正付き)に**Little Endianで**4バイト書き込む。
+---@param addr int
+---@param value u32
+---@param domain string?
+function w32(addr, value, domain) end
+
+---ROM領域のアドレスから1バイト書き込む。
+---@param addr int
+---@return int
+function r8r(addr) end
+---ROM領域のアドレスに1バイト書き込む。
+---@param addr int
+---@param value u8
+function w8r(addr, value) end
+---ROM領域の指定したアドレス(補正付き)から**Little Endianで**2バイト読み込む。
+---@param addr int
+---@return int
+function r16r(addr) end
+---ROM領域の指定したアドレス(補正付き)に**Little Endianで**2バイト書き込む。
+---@param addr int
+---@param value u16
+function w16r(addr, value) end
+---ROM領域の指定したアドレス(補正付き)から**Little Endianで**4バイト読み込む。
+---@param addr int
+---@return int
+function r32r(addr) end
+---ROM領域の指定したアドレス(補正付き)に**Little Endianで**4バイト書き込む。
+---@param addr int
+---@param value u32
+function w32r(addr, value) end
+
+---先頭アドレス`begin`から`inclusiveEnd`までを、1バイト値`value`で埋め尽くす。
+---@param begin int
+---@param inclusiveEnd int
+---@param value? int (デフォルト値は`0`)
+---@param domain? string
+function fill_in(begin, inclusiveEnd, value, domain) end
+
+---ROM領域の先頭アドレス`begin`から`inclusiveEnd`までを、1バイト値`value`で埋め尽くす。
+---@param begin int
+---@param inclusiveEnd int
+---@param value? int (デフォルト値は`0`)
+function fill_inr(begin, inclusiveEnd, value) end
+
+---先頭アドレス`begin`から`inclusiveEnd`までを、バイト列`bytes`で(ループさせて)書き込む。
+---@param begin int
+---@param inclusiveEnd int
+---@param bytes int[]
+---@param domain string?
+local function fill_in_arr(begin, inclusiveEnd, bytes, domain) end
+
+---先頭アドレス`begin`から`inclusiveEnd`までを、バイト列`bytes`で(ループさせて)書き込む。
+---@param begin int
+---@param inclusiveEnd int
+---@param bytes int[]
+local function romfill_in_arr(begin, inclusiveEnd, bytes) end
+
+---先頭アドレス`begin`からバイト列`bytes`を書き込んでいく。
+---@param begin int
+---@param bytes int[]
+---@param domain string?
+local function warr(begin, bytes, domain) end
+
+---ROM領域の先頭アドレス`begin`からバイト列`bytes`を書き込んでいく。
+---@param begin int
+---@param bytes int[]
+local function romwarr(begin, bytes) end
+
+---与えられた範囲内の値を、関数 `func` に従い変更する。(返り値が`nil`の場合は変更しない)
+---@param begin int
+---@param inclusiveEnd int
+---@param func fun(v: int, i: int): int?
+---@param domain string?
+local function mfilter8(begin, inclusiveEnd, func, domain) end
+---与えられた範囲内の値を、関数 `func` に従い変更する。(返り値が`nil`の場合は変更しない)
+---@param begin int
+---@param inclusiveEnd int
+---@param func fun(v: int, i: int): int?
+---@param domain string?
+local function mfilter16(begin, inclusiveEnd, func, domain) end
+---与えられた範囲内の値を、関数 `func` に従い変更する。(返り値が`nil`の場合は変更しない)
+---@param begin int
+---@param inclusiveEnd int
+---@param func fun(v: int, i: int): int?
+---@param domain string?
+local function mfilter32(begin, inclusiveEnd, func, domain) end
+
+---与えられた範囲内のバイト `before` をすべて `after` に置換する。
+---@param begin int
+---@param inclusiveEnd int
+---@param before int
+---@param after int
+local function replace8(begin, inclusiveEnd, before, after) end
+---**ROM領域の**与えられた範囲内のバイト `before` をすべて `after` に置換する。
+---@param begin int
+---@param inclusiveEnd int
+---@param before int
+---@param after int
+local function replace8r(begin, inclusiveEnd, before, after) end
+---与えられた範囲内の値 `before` をすべて `after` に置換する。
+---@param begin int
+---@param inclusiveEnd int
+---@param before int
+---@param after int
+---@param domain string?
+local function replace16(begin, inclusiveEnd, before, after, domain) end
+---**ROM領域の**与えられた範囲内の値 `before` をすべて `after` に置換する。
+---@param begin int
+---@param inclusiveEnd int
+---@param before int
+---@param after int
+local function replace16r(begin, inclusiveEnd, before, after) end
+---与えられた範囲内の値 `before` をすべて `after` に置換する。
+---@param begin int
+---@param inclusiveEnd int
+---@param before int
+---@param after int
+---@param domain string?
+local function replace32(begin, inclusiveEnd, before, after, domain) end
+---**ROM領域の**与えられた範囲内の値 `before` をすべて `after` に置換する。
+---@param begin int
+---@param inclusiveEnd int
+---@param before int
+---@param after int
+local function replace32r(begin, inclusiveEnd, before, after) end
+
+
+---`arr`のバイト列を一つ検索する。
+---@param begin int
+---@param inclusiveEnd int
+---@param arr (int?)[] バイト列
+--- - `nil`を指定した場合は、その箇所は任意の値でよいことを意味するものとする。
+--- - `0xff`より大きい値を指定した場合は、その値と`0xff`とのbitwise andに相当する値以外の任意値を検索するものとする。
+---@param domain string?
+---@param silent? bool
+---@return bool found 検索バイト列が見つかったか否か
+---@return int address 見つかったアドレス
+local function find(begin, inclusiveEnd, arr, domain, silent) end
+
+---ROM領域から`arr`のバイト列を一つ検索する。
+---@param begin int
+---@param inclusiveEnd int
+---@param arr (int?)[] バイト列
+--- - `nil`を指定した場合は、その箇所は任意の値でよいことを意味するものとする。
+--- - `0xff`より大きい値を指定した場合は、その値と`0xff`とのbitwise andに相当する値以外の任意値を検索するものとする。
+---@param silent? bool
+---@return bool found 検索バイト列が見つかったか否か
+---@return int address 見つかったアドレス
+local function findr(begin, inclusiveEnd, arr, silent) end
+
+---`arr`のバイト列をすべて取得する。
+---@param begin int
+---@param inclusiveEnd int
+---@param arr (int?)[]
+---@param domain string?
+---@param silent? bool
+---@return bool found 検索バイト列が見つかったか否か
+---@return int[] addresses 見つかったアドレス
+local function find_all(begin, inclusiveEnd, arr, domain, silent) end
+
+---`arr`のバイト列をすべて取得する。
+---@param begin int
+---@param inclusiveEnd int
+---@param arr (int?)[]
+---@param silent? bool
+---@return bool found 検索バイト列が見つかったか否か
+---@return int[] addresses 見つかったアドレス
+local function find_allr(begin, inclusiveEnd, arr, silent) end
+
+__mfilter8 = mfilter8
+__mfilter16 = mfilter16
+__mfilter32 = mfilter32
+__replace8 = replace8
+__replace8r = replace8r
+__replace16 = replace16
+__replace16r = replace16r
+__replace32 = replace32
+__replace32r = replace32r
+__find = find
+__findr = findr
+__find_all = find_all
+__find_allr = find_allr
+
+
+---@class AtObj
+---@field domain string
+---@field addr int
+---@field protected _first_domain string
+---@field protected _first_addr int
+---@operator add(int): AtObj
+---@operator sub(int): AtObj
+---@overload fun(new_addr: int?): AtObj
+local AtObj = {}
+
+---登録されているアドレスに1バイト書き込む。
+---@param value int
+---@return AtObj
+function AtObj:w8(value) end
+---登録されているアドレス(補正付き)に**Little Endianで**2バイト書き込む。
+---@param value int
+---@return AtObj
+function AtObj:w16(value) end
+---登録されているアドレス(補正付き)に**Little Endianで**4バイト書き込む。
+---@param value int
+---@return AtObj
+function AtObj:w32(value) end
+---登録されているアドレスに1バイト書き込む。ただし`nil`の場合は書き込まない。
+---@param value? int
+---@return AtObj
+function AtObj:w8n(value) end
+---登録されているアドレス(補正付き)に**Little Endianで**2バイト書き込む。ただし`nil`の場合は書き込まない。
+---@param value? int
+---@return AtObj
+function AtObj:w16n(value) end
+---登録されているアドレス(補正付き)に**Little Endianで**4バイト書き込む。ただし`nil`の場合は書き込まない。
+---@param value? int
+---@return AtObj
+function AtObj:w32n(value) end
+---登録されているアドレスから1バイト読み込む。
+---@return int
+function AtObj:r8() end
+---登録されているアドレス(補正付き)から**Little Endianで**2バイト読み込む。
+---@return int
+function AtObj:r16() end
+---登録されているアドレス(補正付き)から**Little Endianで**4バイト読み込む。
+---@return int
+function AtObj:r32() end
+
+---@param value int
+---@param min_? int
+---@param max_? int
+---@return AtObj
+function AtObj:add8(value, min_, max_) end
+---@param value int
+---@param min_? int
+---@param max_? int
+---@return AtObj
+function AtObj:add16(value, min_, max_) end
+---@param value int
+---@param min_? int
+---@param max_? int
+---@return AtObj
+function AtObj:add32(value, min_, max_) end
+
+
+---`th`の値を超えていたら書き込む。
+---@param th int
+---@param value int
+---@return AtObj
+function AtObj:T8(th, value) end
+---`th`の値を超えていたら書き込む。
+---@param th int
+---@param value int
+---@return AtObj
+function AtObj:T16(th, value) end
+---`th`の値を超えていたら書き込む。
+---@param th int
+---@param value int
+---@return AtObj
+function AtObj:T32(th, value) end
+
+---`th`の値を下回っていたら書き込む。
+---@param th int
+---@param value int
+---@return AtObj
+function AtObj:B8(th, value) end
+---`th`の値を下回っていたら書き込む。
+---@param th int
+---@param value int
+---@return AtObj
+function AtObj:B16(th, value) end
+---`th`の値を下回っていたら書き込む。
+---@param th int
+---@param value int
+---@return AtObj
+function AtObj:B32(th, value) end
+
+---`th`の値を超えていたら加算する。
+---@param th int
+---@param value int
+---@param min_? int
+---@param max_? int
+---@return AtObj
+function AtObj:Tadd8(th, value, min_, max_) end
+---`th`の値を超えていたら加算する。
+---@param th int
+---@param value int
+---@param min_? int
+---@param max_? int
+---@return AtObj
+function AtObj:Tadd16(th, value, min_, max_) end
+---`th`の値を超えていたら加算する。
+---@param th int
+---@param value int
+---@param min_? int
+---@param max_? int
+---@return AtObj
+function AtObj:Tadd32(th, value, min_, max_) end
+
+---`th`の値を下回っていたら加算する。
+---@param th int
+---@param value int
+---@param min_? int
+---@param max_? int
+---@return AtObj
+function AtObj:Badd8(th, value, min_, max_) end
+---`th`の値を下回っていたら加算する。
+---@param th int
+---@param value int
+---@param min_? int
+---@param max_? int
+---@return AtObj
+function AtObj:Badd16(th, value, min_, max_) end
+---`th`の値を下回っていたら加算する。
+---@param th int
+---@param value int
+---@param min_? int
+---@param max_? int
+---@return AtObj
+function AtObj:Badd32(th, value, min_, max_) end
+
+---`func`の返り値が非`nil`なら返り値で書き込む。
+---@param func fun(v: int): int?
+---@return AtObj
+function AtObj:filter8(func) end
+---`func`の返り値が非`nil`なら返り値で書き込む。
+---@param func fun(v: int): int?
+---@return AtObj
+function AtObj:filter16(func) end
+---`func`の返り値が非`nil`なら返り値で書き込む。
+---@param func fun(v: int): int?
+---@return AtObj
+function AtObj:filter32(func) end
+
+---メモリアドレスを`i`だけずらす。
+---@param i? int
+---@return AtObj
+function AtObj:step(i) end
+---メモリアドレスを再設定する。(ただし**ドメインは変わらない**ことを想定する。ドメインも変える場合は`withd`を用いること。)
+---@param addr int
+---@return AtObj
+function AtObj:with(addr) end
+---メモリアドレスとドメインを再設定する。
+---@param addr int
+---@param domain string?
+---@return AtObj
+function AtObj:withd(addr, domain) end
+---オブジェクトを生成した初期の`domain`, `offset`に戻す。
+---@return AtObj
+function AtObj:reset() end
+---登録されているアドレスからバイト列`bytes`を書き込んでいく。
+---@param bytes int[]
+---@return AtObj
+function AtObj:warr(bytes) end
+
+---メモリ操作オブジェクトを取得する。
+---@param addr int
+---@param domain string?
+---@return AtObj
+local function at(addr, domain) end
+
+---ROM領域のメモリ操作オブジェクトを取得する。
+---@param addr int
+---@return AtObj
+local function romat(addr) end
+
+---指定した範囲のバイト列を読み込む。
+---@param begin int
+---@param inclusiveEnd int
+---@param domain string?
+---@return int[]
+local function rarr(begin, inclusiveEnd, domain) end
+
+---ROM領域の指定した範囲のバイト列を読み込む。
+---@param begin int
+---@param inclusiveEnd int
+---@return int[]
+local function romrarr(begin, inclusiveEnd) end
+
+---@class RangeObj
+---@field begin int
+---@field inclusiveEnd int
+---@field domain string
+---@field _cache u32[]
+---@field _saved bool
+local RangeObj = {}
+
+---現在のメモリデータを保存する。
+---@return RangeObj self
+function RangeObj:save() end
+---最後に保存したのメモリデータを復元する。
+function RangeObj:rollback() end
+---saveされたバイト列を丸ごと出力する。
+function RangeObj:print() end
+---最後に`save`したメモリデータと比較し、異なっている箇所を列挙する。
+---@param ignore? int[]
+function RangeObj:diff(ignore) end
+---メモリ範囲のステートロード・差分照会などを行うオブジェクトを生成する。
+---@param begin int
+---@param inclusiveEnd int
+---@param domain string?
+---@return RangeObj
+local function range(begin, inclusiveEnd, domain) end
+---ROM領域内のステートロード・差分照会などを行うオブジェクトを生成する。
+---@param begin int
+---@param inclusiveEnd int
+---@return RangeObj
+local function romrange(begin, inclusiveEnd) end
