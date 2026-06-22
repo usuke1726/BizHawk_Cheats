@@ -1,0 +1,143 @@
+{
+  "name": "vscode-bizhawk-server",
+  "displayName": "My Lua BizHawk Server",
+  "description": "BizHawkで対話型コード入力を行うための拡張機能",
+  "publisher": "usuke1726",
+  "private": true,
+  "license": "MIT",
+  "version": "0.0.2",
+  "main": "./dist/extension.js",
+  "engines": {
+    "vscode": "^1.125.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onLanguage:lua",
+    "onNotebook:bizhawk-server-notebook"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "lua",
+        "extensions": [
+          ".ilua"
+        ]
+      }
+    ],
+    "configuration": {
+      "type": "object",
+      "title": "BizHawk Server",
+      "properties": {
+        "BizHawkServer.port": {
+          "type": "integer",
+          "description": "サーバのポート番号",
+          "default": 8099
+        },
+        "BizHawkServer.IBizNotebookTemplates": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": ["string", "object", "array"],
+            "items": { "type": "string" },
+            "properties": {
+              "kind": { "enum": ["code", "markup"] },
+              "value": {
+                "type": ["string", "array"],
+                "items": { "type": "string" }
+              }
+            },
+            "required": ["kind", "value"],
+            "additionalProperties": false
+          }
+        },
+        "BizHawkServer.alwaysShowStatus": {
+          "type": "boolean",
+          "description": "ILuaファイル以外を開いている際でもステータスバーに表示しっぱなしにしておくか",
+          "default": false
+        },
+        "BizHawkServer.autoListen": {
+          "type": "boolean",
+          "description": "ILuaファイルを開いた時に自動的にサーバをリッスン状態にするか",
+          "default": false
+        },
+        "BizHawkServer.autoClose": {
+          "type": "boolean",
+          "description": "ILuaファイルをすべて閉じた時に自動的にサーバを停止させるか",
+          "default": true
+        }
+      }
+    },
+    "menus": {
+      "editor/title": [
+        {
+          "when": "editorLangId == 'lua' && resourceExtname =~ /\\.ilua/i",
+          "command": "extension.BizHawkServer.send",
+          "group": "navigation@0"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "command": "extension.BizHawkServer.send",
+        "key": "F5",
+        "when": "editorTextFocus && editorLangId == 'lua' && resourceExtname =~ /\\.ilua/i"
+      }
+    ],
+    "commands": [
+      {
+        "command": "extension.BizHawkServer.send",
+        "title": "実行する",
+        "category": "IBizHawk",
+        "icon": "$(play)"
+      },
+      {
+        "command": "extension.BizHawkNotebook.createNewIBizHawkNotebook",
+        "title": "IBizHawk ノートブックを新規作成する",
+        "category": "IBizHawk"
+      },
+      {
+        "command": "extension.BizHawkNotebook.insertNotebookTemplateOnTop",
+        "title": "IBizHawk テンプレートをノートブックの最上段に挿入",
+        "category": "IBizHawk"
+      },
+      {
+        "command": "extension.BizHawkServer.toggleActivity",
+        "title": "IBizHawk サーバーの ON/OFF を切り替える",
+        "category": "IBizHawk"
+      }
+    ],
+    "notebooks": [
+      {
+        "type": "bizhawk-server-notebook",
+        "displayName": "BizHawk Server Notebook",
+        "selector": [
+          {
+            "filenamePattern": "*.{ibiz}"
+          }
+        ]
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run package",
+    "compile": "webpack",
+    "watch": "webpack --watch",
+    "package": "webpack --mode production --devtool hidden-source-map",
+    "compile-tests": "tsc -p . --outDir out",
+    "watch-tests": "tsc -p . -w --outDir out",
+    "lint": "eslint src --ext ts"
+  },
+  "devDependencies": {
+    "@types/node": "^25.9.3",
+    "@types/vscode": "^1.125.0",
+    "@typescript-eslint/eslint-plugin": "^8.61.1",
+    "@typescript-eslint/parser": "^8.61.1",
+    "eslint": "^9.39.4",
+    "ts-loader": "^9.6.1",
+    "typescript": "^6.0.3",
+    "webpack": "^5.107.2",
+    "webpack-cli": "^7.0.3"
+  }
+}

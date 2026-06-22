@@ -1,0 +1,17 @@
+
+.vscode/**
+out/**
+node_modules/**
+src/**
+.gitignore
+build.ps1
+.yarnrc
+webpack.config.js
+**/tsconfig.json
+**/.eslintrc.json
+**/*.map
+**/*.ts
+.dev/**
+test/**
+samples/**
+docs/**
