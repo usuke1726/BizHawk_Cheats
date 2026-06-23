@@ -1,4 +1,6 @@
 
+---出力画面をクリアする
+function CLS() console.clear() end
 
 ---@param v int
 ---@param digits? int
