@@ -76,8 +76,18 @@ local function filter(arr, func)
     end
     return ret
 end
+---`arr`をコピーし、sortしたものを返却する。
+---@generic T
+---@param arr T[]
+---@param comp? fun(a: T, b: T): bool `a`が`b`より「小さい」か否かを返却
+local function _sort(arr, comp)
+    local ret = table_copy(arr)
+    table.sort(ret, comp)
+    return ret
+end
 __map = map
 __filter = map
+sort = _sort
 ---負値の可能性がある1バイト値`val`を非負にする。(負の場合は1byteオーバーフロー)
 ---@param val int
 ---@return int
@@ -292,6 +302,7 @@ __util = {
     hexp = print_hexstr,
     within = _within,
     table_copy = _table_copy,
+    sort = _sort,
     map = map,
     filter = filter,
     stou8 = _stou8,

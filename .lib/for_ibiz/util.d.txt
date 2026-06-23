@@ -45,6 +45,13 @@ function stou16(val) end
 ---@return int
 function stou32(val) end
 
+
+---`arr`をコピーし、sortしたものを返却する。
+---@generic T
+---@param arr T[]
+---@param comp? fun(a: T, b: T): bool `a`が`b`より「小さい」か否かを返却
+local function sort(arr, comp) end
+
 ---@generic T
 ---@generic U
 ---@param arr T[]
