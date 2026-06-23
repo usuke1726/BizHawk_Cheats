@@ -3,6 +3,11 @@
     "BizHawkServer.autoListen": false,
     "BizHawkServer.autoClose": false,
     "BizHawkServer.port": 8099,
+    "BizHawkServer.stopCommand": [
+        "lib.irume.stop()",
+        "loop = nil",
+        "CLEAR_LOOP()",
+    ],
     "BizHawkServer.IBizNotebookTemplates": [
         [
             "---@meta",
