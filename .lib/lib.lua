@@ -14,6 +14,7 @@ local repl = require "REPL"
 local timer = require "timer"
 local irume = require "irume"
 local _sjis = require "sjis"
+local ds_button = require "ds_button"
 
 ---@type fun()?
 loop = nil
@@ -85,7 +86,13 @@ local function main()
     end
 end
 
+local _ds = {
+    key = ds_button,
+}
+DS = _ds
+
 return {
+    ds = _ds,
     main = main,
     util = util,
     mem = mem,

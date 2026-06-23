@@ -1,0 +1,33 @@
+
+---@enum DS_Keys
+local button_keys = {
+    A = "A",
+    B = "B",
+    X = "X",
+    Y = "Y",
+    L = "L",
+    R = "R",
+    Up = "Up",
+    Down = "Down",
+    Left = "Left",
+    Right = "Right",
+    Start = "Start",
+    Select = "Select",
+}
+DS_KEYS = button_keys
+
+---@param key DS_Keys
+---@return bool
+local function ds_key_get(key) end
+
+---指定したキーの情報**のみ**の設定を上書きする。(他のキーの入力状態は変更しない)
+---@param key DS_Keys
+---@param on bool | int `int`値は非ゼロが`true`扱い
+---@overload fun(info: table<DS_Keys, bool | int>)
+local function ds_key_set(key, on) end
+
+local __ds_key_lib = {
+    key = button_keys,
+    get = ds_key_get,
+    set = ds_key_set,
+}

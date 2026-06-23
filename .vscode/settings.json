@@ -16,6 +16,7 @@
             "file:./.lib/for_ibiz/sjis.d.txt",
             "file:./.lib/for_ibiz/timer.d.txt",
             "file:./.lib/for_ibiz/irume.d.txt",
+            "file:./.lib/for_ibiz/ds_button.d.txt",
             "file:./.lib/for_ibiz/lib.d.txt",
         ],
         ""

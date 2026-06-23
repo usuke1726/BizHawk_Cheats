@@ -19,6 +19,10 @@ function XADD_LOOP(callback) end
 function DELETE_LOOP(id) end
 function CLEAR_LOOP() end
 
+DS = {
+    key = __ds_key_lib,
+}
+
 ---@class Lib
 lib = {
     sjis = __sjis,
@@ -37,6 +41,7 @@ lib = {
     findr = findr,
     find_all = find_all,
     find_allr = find_allr,
+    fill_in = fill_in,
     fill_in_arr = fill_in_arr,
     romfill_in_arr = romfill_in_arr,
     warr = warr,
