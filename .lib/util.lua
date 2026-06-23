@@ -218,13 +218,13 @@ function SetObj:has(v) return self._tbl[v] end
 ---@generic T
 ---@param self SetObj<T>
 ---@param v T
----@return SetObj<T> self
-function SetObj:add(v) self._tbl[v] = true return self end
+---@return bool changed
+function SetObj:add(v) local ret = not self._tbl[v] self._tbl[v] = true return ret end
 ---@generic T
 ---@param self SetObj<T>
 ---@param v T
----@return SetObj<T> self
-function SetObj:remove(v) self._tbl[v] = nil return self end
+---@return bool changed
+function SetObj:remove(v) local ret = self._tbl[v] self._tbl[v] = nil return ret end
 
 ---@generic T
 ---@param arr T[]?

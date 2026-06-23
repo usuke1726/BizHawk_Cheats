@@ -108,12 +108,12 @@ function SetObj:has(v) end
 ---@generic T
 ---@param self SetObj<T>
 ---@param v T
----@return SetObj<T> self
+---@return bool changed
 function SetObj:add(v) end
 ---@generic T
 ---@param self SetObj<T>
 ---@param v T
----@return SetObj<T> self
+---@return bool changed
 function SetObj:remove(v) end
 
 ---@generic T
