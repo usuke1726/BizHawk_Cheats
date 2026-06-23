@@ -224,7 +224,7 @@ function TrackObj:add32(id, value, min_, max_) self:get_mem(id):add32(value, min
 function TrackObj:warr(id, bytes) self:get_mem(id):warr(bytes) return self end
 
 
-return {
+__irume_lib = {
     __update = _update,
     set_entry = set_entry,
     set_track_size = set_track_size,
@@ -237,3 +237,4 @@ return {
     track = track,
     tracks = tracks,
 }
+return __irume_lib

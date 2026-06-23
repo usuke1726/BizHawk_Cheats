@@ -27,6 +27,12 @@ local commands = {
         else print("User Error: " .. err_mes)
         end
     end,
+    ["rst"] = function()
+        print("=== RST ===")
+        __irume_lib.stop()
+        loop = nil
+        CLEAR_LOOP()
+    end,
 }
 
 ---@param s string
