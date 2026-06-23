@@ -5,6 +5,7 @@ _irume_active = false
 _irume_func = nil
 
 local function _update()
+    if (not _irume_active) then return end
     if (not _irume_func) then return end
     _irume_func()
 end
