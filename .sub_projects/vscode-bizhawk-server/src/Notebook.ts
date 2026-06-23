@@ -1,7 +1,7 @@
 
 import * as vscode from 'vscode';
 import LogObject from './Log';
-import { formatCode, Notebook_ID as ID, onIBizHawkFileClosed, onFileFocusChanged } from './File';
+import { formatCode, Notebook_ID as ID, onIBizHawkFileClosed, onFileFocusChanged, STOP_PREFIX } from './File';
 import { ensureServerReady, isServerActive, send as sendToClient } from './Server';
 import Notify from './Notify';
 import { createTamplte } from './NotebookTemplate';
@@ -135,7 +135,12 @@ const insertTemplate = async () => {
 let stopCommandCache: string | null = null;
 const loadStopCommand = () => {
     const command = getConfig().stopCommand;
-    stopCommandCache = formatCode(typeof command === "string" ? command : command.join("\n"));
+    const str = typeof command === "string" ? command : command.join("\n");
+    if(str.length < 10 && ["RST:", "STOP:", "ST:"].includes(str.trim().toUpperCase())){
+        stopCommandCache = STOP_PREFIX;
+    }else{
+        stopCommandCache = formatCode(str);
+    }
     Log(`Loaded Stop Command:\n${stopCommandCache}`);
     return stopCommandCache;
 }

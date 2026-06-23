@@ -7,7 +7,8 @@ import LogObject from './Log';
 const { Log, Output } = LogObject.bind("File");
 
 export const Notebook_ID = "bizhawk-server-notebook";
-const EXECUTE_PREFIX = "do:"
+export const EXECUTE_PREFIX = "do:";
+export const STOP_PREFIX =  "rst:";
 
 const getExt = (filename: string) => filename.slice(filename.lastIndexOf(".")).toLowerCase();
 const isILuaExt = (filename: string) => getExt(filename) === ".ilua";

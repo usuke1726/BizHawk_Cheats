@@ -38,6 +38,7 @@
         "BizHawkServer.stopCommand": {
           "type": ["string", "array"],
           "default": "",
+          "markdownDescription": "内容を `RST:` (あるいは `STOP:`, `ST:`) のみとすると、doメッセージでなくrstメッセージを送信ことができる。(リセットの処理内容をlua側で書きたい場合に使うと良い)",
           "items": {
             "type": "string"
           }
