@@ -23,6 +23,7 @@ const isNotebookTemplates = (obj: any): obj is NotebookTemplates => {
 
 type Config = {
     port: number,
+    stopCommand: string | string[],
     IBizNotebookTemplates: NotebookTemplates,
     alwaysShowStatus: boolean,
     autoListen: boolean,
@@ -30,6 +31,7 @@ type Config = {
 }
 const defaultConfig: Config = {
     port: 8099,
+    stopCommand: "",
     IBizNotebookTemplates: [],
     alwaysShowStatus: false,
     autoListen: false,
@@ -38,6 +40,7 @@ const defaultConfig: Config = {
 type ConfigKey = keyof Config;
 const conditions: {[key in ConfigKey]: (val: unknown) => boolean} = {
     port: val => typeof val === "number",
+    stopCommand: val => typeof val === "string" || isStringArray(val),
     IBizNotebookTemplates: val => isNotebookTemplates(val),
     alwaysShowStatus: val => typeof val === "boolean",
     autoListen: val => typeof val === "boolean",
@@ -67,6 +70,7 @@ const loadConfig = (): Config => {
     if(!initted){
         initted = true;
         vscode.workspace.onDidChangeConfiguration(e => {
+            configCache = undefined;
             loadConfig();
         });
     }

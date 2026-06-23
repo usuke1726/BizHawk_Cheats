@@ -5,6 +5,7 @@ import { formatCode, Notebook_ID as ID, onIBizHawkFileClosed, onFileFocusChanged
 import { ensureServerReady, isServerActive, send as sendToClient } from './Server';
 import Notify from './Notify';
 import { createTamplte } from './NotebookTemplate';
+import getConfig from './config';
 const { Log, Output } = LogObject.bind("Notebook");
 
 
@@ -131,12 +132,41 @@ const insertTemplate = async () => {
     vscode.workspace.applyEdit(edit);
 };
 
+let stopCommandCache: string | null = null;
+const loadStopCommand = () => {
+    const command = getConfig().stopCommand;
+    stopCommandCache = formatCode(typeof command === "string" ? command : command.join("\n"));
+    Log(`Loaded Stop Command:\n${stopCommandCache}`);
+    return stopCommandCache;
+}
+const getStopCommand = () => stopCommandCache ??= loadStopCommand();
+
+const sendStopCommand = () => {
+    ensureServerReady();
+    if(!isServerActive()){
+        vscode.window.showErrorMessage("IBizHawkサーバが起動できていません");
+        return
+    }
+    try{
+        sendToClient(getStopCommand());
+    }catch(e){
+        const mes = (e instanceof Error) ? e.message : String(e);
+        vscode.window.showErrorMessage(`ストップコマンドの送信に失敗しました:\n${mes}`);
+    }
+}
 
 const setNotebookProviders = (context: vscode.ExtensionContext) => {
     Log("Notebook activated");
     context.subscriptions.push(vscode.workspace.registerNotebookSerializer(ID, new Serializer()));
     context.subscriptions.push(vscode.commands.registerCommand("extension.BizHawkNotebook.createNewIBizHawkNotebook", open));
     context.subscriptions.push(vscode.commands.registerCommand("extension.BizHawkNotebook.insertNotebookTemplateOnTop", insertTemplate));
+    context.subscriptions.push(vscode.commands.registerCommand("extension.BizHawkServer.stop", sendStopCommand));
+    vscode.workspace.onDidChangeConfiguration(e => {
+        if(e.affectsConfiguration("BizHawkServer.stopCommand")){
+            stopCommandCache = null;
+            setTimeout(loadStopCommand, 200);
+        }
+    });
     vscode.window.onDidChangeActiveNotebookEditor(e => {
         onFileFocusChanged();
     });

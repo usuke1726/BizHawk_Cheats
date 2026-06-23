@@ -118,7 +118,7 @@ export const setServerProviders = (context: vscode.ExtensionContext) => {
         if(!e.affectsConfiguration("BizHawkServer.port")) return;
         if(isServerActive()){
             Output("port changed: server restarted");
-            setTimeout(restartServer, 100);
+            setTimeout(restartServer, 200);
         }
     });
     context.subscriptions.push(vscode.commands.registerCommand("extension.BizHawkServer.toggleActivity", toggleActivity));

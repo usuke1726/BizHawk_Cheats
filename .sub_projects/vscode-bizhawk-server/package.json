@@ -5,7 +5,7 @@
   "publisher": "usuke1726",
   "private": true,
   "license": "MIT",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "main": "./dist/extension.js",
   "engines": {
     "vscode": "^1.125.0"
@@ -34,6 +34,13 @@
           "type": "integer",
           "description": "サーバのポート番号",
           "default": 8099
+        },
+        "BizHawkServer.stopCommand": {
+          "type": ["string", "array"],
+          "default": "",
+          "items": {
+            "type": "string"
+          }
         },
         "BizHawkServer.IBizNotebookTemplates": {
           "type": "array",
@@ -75,6 +82,18 @@
           "when": "editorLangId == 'lua' && resourceExtname =~ /\\.ilua/i",
           "command": "extension.BizHawkServer.send",
           "group": "navigation@0"
+        },
+        {
+          "when": "editorLangId == 'lua' && resourceExtname =~ /\\.ilua/i",
+          "command": "extension.BizHawkServer.stop",
+          "group": "navigation@1"
+        }
+      ],
+      "notebook/toolbar": [
+        {
+          "command": "extension.BizHawkServer.stop",
+          "when": "notebookType == 'bizhawk-server-notebook'",
+          "group": "navigation"
         }
       ]
     },
@@ -83,6 +102,11 @@
         "command": "extension.BizHawkServer.send",
         "key": "F5",
         "when": "editorTextFocus && editorLangId == 'lua' && resourceExtname =~ /\\.ilua/i"
+      },
+      {
+        "command": "extension.BizHawkServer.stop",
+        "key": "F4",
+        "when": "(editorTextFocus && editorLangId == 'lua' && resourceExtname =~ /\\.ilua/i) || (notebookEditorFocused && notebookType == 'bizhawk-server-notebook')"
       }
     ],
     "commands": [
@@ -91,6 +115,12 @@
         "title": "実行する",
         "category": "IBizHawk",
         "icon": "$(play)"
+      },
+      {
+        "command": "extension.BizHawkServer.stop",
+        "title": "ストップコマンドを送信する",
+        "category": "IBizHawk",
+        "icon": "$(stop)"
       },
       {
         "command": "extension.BizHawkNotebook.createNewIBizHawkNotebook",
