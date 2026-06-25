@@ -7,7 +7,8 @@ _irume_func = nil
 local function _update()
     if (not _irume_active) then return end
     if (not _irume_func) then return end
-    _irume_func()
+    success, mes = pcall(_irume_func)
+    if not success then print(mes) _irume_func = nil _irume_active = false end
 end
 ---イルーム処理を開始する
 ---@param get_callback fun() : fun()?
