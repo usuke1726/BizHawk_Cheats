@@ -552,7 +552,10 @@ function RangeObj:print()
     end
     for i = self.begin, self.inclusiveEnd, 4 do
         local v = self._cache[i]
-        s = s .. string.format("%08X", v)
+        -- endianをLEからBEに修正
+        local _v = 0
+        for j = 0, 3 do _v = (_v << 8) | ((v >> (8*j)) & 0xff) end
+        s = s .. string.format("%08X", _v)
     end
     print("\n" .. s .. "\n")
 end
