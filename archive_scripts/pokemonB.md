@@ -317,7 +317,7 @@ end)
 
 ```python
 def C(s):
-    return s.replace("\n", "\ufffe").encode(encoding="utf-16le").hex()
+    return s.replace("\n", "\ufffe").replace("…", "\u2026").encode(encoding="utf-16le").hex()
 
 C("チャンピオン") # この結果をコピペして、次のようにして検索する
 ```
@@ -356,3 +356,334 @@ State 7
 - ページ送りは 00f0 01be 0000
     - Aを押したら、そのまま次のアドレスを読み込む
     - つまり、テキスト改変で文字数が変動したら、その後ろもずらさないといけない
+- 1行送りは 00f0 00be 0000
+- …(3点)は 0x2620 (LE)
+
+
+帽子化 & テキストバグ
+
+```lua
+local arm9 = "ARM9 System Bus"
+
+CLS()
+
+local function MAIN()
+
+local block_width = 0x08
+local block_span = 0x40
+local blockline_span = 0x400
+local W = block_width * (blockline_span // block_span)
+assert(block_span % block_width == 0)
+assert(blockline_span % block_span == 0)
+
+-- 仮想座標から物理アドレスへ
+local function change_pos(x, y)
+    local a, b, c = block_span, blockline_span, block_width
+    local v = W*y + x
+    local v2, v3 = v % b, v // b
+    local A1, A2 = v2 % W, v2 // W
+    local C1, C2 = A1 % c, A1 // c
+    local V1 = A2*c + C2*a + C1
+    return (v3*b + V1) + 0x06183800
+end
+
+local vs = {}
+local _jj = -1
+local prev = ""
+local x, y = 0, 0
+for i = 0x6183800, 0x61897ff, 4 do
+    vs[change_pos(x, y)] = r32(change_pos(x, math.floor(y * 0.3)) + 0x800, arm9)
+    x = (x + 4) % W if x == 0 then y = y + 1 end
+end
+for i, v in pairs(vs) do w32(i, v, arm9) end
+end
+
+local function text1()
+-- ボクは　チョ～～～～～～ン！？
+lib.warr(0x0225B194, lib.htob("dc30af306f300030c130e7305eff5eff5eff5eff5eff5efff33001ff1fff"))
+
+-- だれにも　化けることのない 唯一の　ｳﾎ存在と　なり
+lib.warr(0x0225B1B8, lib.htob("60308c306b3082300030165351308b30533068306e306a304430feff2f55004e6e30003073ff8eff585b2857683000306a308a30"))
+
+-- すべてのキレーダナーに ポケ物を　解放させりゅ！
+lib.warr(0x0225B1F2, lib.htob("5930793066306e30ad30ec30fc30c030ca30fc306b30feffdd30b130697292300030e3893e6555305b308a30853001ff"))
+
+-- キミが　グヘヘポケモンと いつまでも　デブ
+lib.warr(0x0225B228, lib.htob("ad30df304c300030b030d830d830dd30b130e230f3306830feff443064307e30673082300030c730d630"))
+
+-- そう　ﾎｲむなら 各地の　ジバにゃ姫……♥
+lib.warr(0x0225B258, lib.htob("5d30463000308eff72ff80306a308930feff045430576e300030b830d0306b308330eb59262026206526"))
+
+-- ヌケモンリーりえ！　　　　
+lib.warr(0x0225B288, lib.htob("cc30b130e230f330ea30fc308a30483001ff0030003000300030"))
+
+-- そこで　ボクを　褒めてみせるんだ
+lib.warr(0x0225B2A8, lib.htob("5d30533067300030dc30af30923000301289813066307f305b308b3093306030"))
+end
+local function text2()
+-- それほどの 熱い　気持ちで　なければ
+lib.warr(0x0225B19C, lib.htob("5d308c307b3069306e30feffb17144300030176c01636130673000306a3051308c307030"))
+
+-- ボクは　ｳﾋ幸せです！
+lib.warr(0x225B1C6, lib.htob("dc30af306f30003073ff8bff785e5b306730593001ff"))
+end
+
+local text_trigger_mode = 0
+
+local function update_trigger()
+    if text_trigger_mode == 0 and r16(0x0225B19C) == 0x30c1 then
+        text1()
+        text_trigger_mode = 1
+    elseif text_trigger_mode == 1 and r16(0x0225B19C) == 0x305D then
+        text2()
+        text_trigger_mode = 2
+    end
+end
+
+
+local _i = 0
+local ts = {
+    360,
+    480,
+    540,
+}
+local do_time = 595
+
+local span = 10
+
+function loop()
+    update_trigger()
+    _i = _i + 1
+    if _i == do_time then MAIN() span = 30
+    elseif _i == do_time + 58 then
+        print("AUTO MODE END")
+        return
+    elseif _i > do_time then return
+    end
+    for _, t in pairs(ts) do
+        if _i == t then
+            DS.key.set("A", true) break
+        elseif _i == t + 10 then
+            DS.key.set("A", false) break
+        end
+    end
+end
+
+lib.irume.start(function()
+    local head = 0x03eba740
+    local as = {}
+    for i = 0, 16 do as[i] = head + 0x40*i end
+    local c = Cnt(8, 6)
+    return function()
+        c()
+        w8(as[0] + 0x7, 1)
+        for i = 0, 16 do
+            w8(as[i] + 0x0f, c.i*2)
+        end
+    end
+end)
+```
+
+デブ化？
+
+```lua
+
+local arm9 = "ARM9 System Bus"
+CLS()
+
+local function MAIN()
+
+local block_width = 0x08
+local block_span = 0x40
+local blockline_span = 0x400
+local W = block_width * (blockline_span // block_span)
+assert(block_span % block_width == 0)
+assert(blockline_span % block_span == 0)
+
+local function round(x)
+    return math.floor(x + 0.5)
+end
+
+local function lerp(x, w, b)
+    local _w = w * 0.5
+    local _bi = 1.0 / b
+    local v = round((x - _w) * (w * _bi) + _w)
+    if v < 0 then return 0
+    elseif v >= w then return w-1
+    else return v
+    end
+end
+
+-- 仮想座標から物理アドレスへ
+local function change_pos1(x, y)
+    local a, b, c = block_span, blockline_span, block_width
+    local v = W*y + x
+    local v2, v3 = v % b, v // b
+    local A1, A2 = v2 % W, v2 // W
+    local C1, C2 = A1 % c, A1 // c
+    local V1 = A2*c + C2*a + C1
+    return (v3*b + V1) + 0x06183800
+end
+-- 目の部分
+local function change_pos2(x, y)
+    x = x - 0x28
+    y = y - 0x40
+    -- local a, b, c = block_span, blockline_span, block_width
+    local a, b, c = 0x40, 0x180, 0x08
+    local _w = c * (b // a)
+    local v = _w*y + x
+    local v2, v3 = v % b, v // b
+    local A1, A2 = v2 % _w, v2 // _w
+    local C1, C2 = A1 % c, A1 // c
+    local V1 = A2*c + C2*a + C1
+    return (v3*b + V1) + 0x06189800
+end
+local function change_pos(x, y)
+    if within(y, 0x40, 0x4f) and within(x, 0x28, 0x57) then
+        return change_pos2(x, y)
+    else return change_pos1(x, y)
+    end
+end
+
+local vs = {}
+local _jj = -1
+local prev = ""
+local x, y = 0, 0
+for i = 0x6183800, 0x61897ff, 4 do
+    vs[change_pos(x, y)] = r32(change_pos(lerp(x, W, W*2.0), y) + 0x1400, arm9)
+    x = (x + 4) % W if x == 0 then y = y + 1 end
+end
+for i, v in pairs(vs) do w32(i, v, arm9) end
+
+end
+
+local _i = 0
+local ts = {
+    360,
+    480,
+    540,
+}
+local do_time = 595
+
+local span = 10
+
+function loop()
+    _i = _i + 1
+    if _i == do_time then MAIN() span = 30
+    elseif _i == do_time + 58 then
+        print("DONE")
+        return
+    elseif _i > do_time then return
+    end
+    for _, t in pairs(ts) do
+        if _i == t then
+            DS.key.set("A", true) break
+        elseif _i == t + 10 then
+            DS.key.set("A", false) break
+        end
+    end
+end
+
+lib.irume.start(function()
+    local head = 0x03eba740
+    local as = {}
+    local poses = {}
+    for i = 0, 18 do
+        as[i] = head + 0x40*i
+        poses[i] = -1
+    end
+    local pr = RC(90)
+    local pr2 = RC(60)
+    return function()
+        for i = 0, 18 do
+            if poses[i] < 0 or pr() then
+                poses[i] = r32(as[i] + 0x24)
+            end
+            if poses[i] > 0 and pr2() then
+                w32(as[i] + 0x24, poses[i])
+                w8(as[i] + 0x0f, stou8(rand(-4, 4)))
+            end
+        end
+    end
+end)
+```
+
+<details>
+<summary>video3のバグテキスト</summary>
+<div>
+
+
+```plaintext
+
+trigger: 0x0225B19C (30C1 1回目, 305D 2回目)
+
+0x0225B194
+ボクは　チャンピオンを　超える
+>
+ボクは　チョ～～～～～～ン！？
+dc30af306f300030c130e7305eff5eff5eff5eff5eff5efff33001ff1fff
+
+0x0225B1B8
+だれにも　負けることのない
+唯一無二の　存在と　なり
+>
+だれにも　化けることのない
+唯一の　ｳﾎ存在と　なり
+60308c306b3082300030165351308b30533068306e306a304430feff2f55004e6e30003073ff8eff585b2857683000306a308a30
+
+0x0225B1F2
+すべての　トレーナーに
+ポケモンを　解放させる！
+>
+すべてのキレーダナーに
+ポケ物を　解放させりゅ！
+5930793066306e30ad30ec30fc30c030ca30fc306b30feffdd30b130697292300030e3893e6555305b308a30853001ff
+
+0x0225B228
+キミが　ポケモンと
+いつまでも　一緒……！
+>
+キミが　グヘヘポケモンと
+いつまでも　デブ
+ad30df304c300030b030d830d830dd30b130e230f3306830feff443064307e30673082300030c730d630
+
+0x0225B258
+そう　望むなら
+各地の　ジムバッジを　集め
+>
+そう　ﾎｲむなら
+各地の　ジバにゃ姫……♥
+5d30463000308eff72ff80306a308930feff045430576e300030b830d0306b308330eb59202620266526
+0x0225B288
+ポケモンリーグに　向かえ！
+>
+ヌケモンリーりえ！　　　　
+cc30b130e230f330ea30fc308a30483001ff0030003000300030
+
+0x0225B2A8
+そこで　ボクを　とめてみせるんだ
+>
+そこで　ボクを　褒めてみせるんだ
+5d30533067300030dc30af30923000301289813066307f305b308b3093306030
+
+0x0225B19C
+それほどの
+強い　気持ちで　なければ
+>
+それほどの
+熱い　気持ちで　なければ
+5d308c307b3069306e30feffb17144300030176c01636130673000306a3051308c307030
+0x225B1C6
+ボクは　とめられないよ
+>
+ボクは　ｳﾋ幸せです！
+dc30af306f30003073ff8bff785e5b306730593001ff
+```
+
+</div>
+</details>
+
+
+---
+
+

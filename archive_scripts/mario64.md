@@ -403,3 +403,61 @@ lib.irume.start(function()
     end
 end)
 ```
+
+ホラーピーチにしき & 左右あらぶり
+
+```lua
+
+local tate = lib.at(0x022f657c)
+local yoko = lib.at(0x022f6580)
+local tate_c = RC(2)
+local yoko_c = RC(2)
+local m2 = lib.at(0x022f661c)
+local m3 = lib.at(0x022f6614)
+local c = Cnt(4)
+local V = 0
+local p1 = lib.at(0x022f678c)
+local rl = RL(330)
+function loop()
+    p1:w32(0x22222222)
+    V = math.min(V + 0x5000, 0xffffff)
+    if c:next() < 2 then m2:w32(V)
+    else m3:w32(V)
+    end
+    if rl() then
+        if tate_c() then tate:add32(rand(-0x2, 0x2) * 0x1000) end
+        if yoko_c() then yoko:add32(rand(-0x2, 0x2) * 0x1000) end
+    end
+end
+
+lib.irume.start(function()
+    local voice1 = 0x03e07e40
+    local voice2 = 0x03e07e80
+    local voice_p = 0xfd
+    local voice_p_c = Cnt(120)
+    local head = 0x03e07d40
+    local as = {}
+    local idxes = {0,1,2,3, 6, 7,8,9,10,11,12,13,14,15,16}
+    local rl = RL(600)
+    local not_yet = true
+    for _, i in pairs(idxes) do as[i] = head + 0x40*i end
+    return function()
+        if voice_p_c() then
+            voice_p = voice_p - 4
+        end
+        w16(voice1 + 0x0e, 0x7f7f)
+        w16(voice2 + 0x0e, 0x7f7f)
+        w8(voice1 + 0x17, voice_p)
+        w8(voice2 + 0x17, voice_p)
+        if rl() then
+            if not_yet then
+                not_yet = false
+                print("DODO")
+            end
+            for _, a in pairs(as) do
+                w8(a + 0x17, stou8(rand(-1, 0)))
+            end
+        end
+    end
+end)
+```
