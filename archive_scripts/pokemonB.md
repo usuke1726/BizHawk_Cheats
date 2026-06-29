@@ -687,3 +687,282 @@ dc30af306f30003073ff8bff785e5b306730593001ff
 ---
 
 
+カッパ顔？
+
+```lua
+
+local arm9 = "ARM9 System Bus"
+CLS()
+
+local function MAIN()
+
+local block_width = 0x08
+local block_span = 0x40
+local blockline_span = 0x400
+local W = block_width * (blockline_span // block_span)
+assert(block_span % block_width == 0)
+assert(blockline_span % block_span == 0)
+
+local function round(x)
+    return math.floor(x + 0.5)
+end
+
+local function lerp(x, w, b)
+    local _w = w * 0.5
+    local _bi = 1.0 / b
+    local v = round((x - _w) * (w * _bi) + _w)
+    if v < 0 then return 0
+    elseif v >= w then return w-1
+    else return v
+    end
+end
+
+-- 仮想座標から物理アドレスへ
+local function change_pos1(x, y)
+    local a, b, c = block_span, blockline_span, block_width
+    local v = W*y + x
+    local v2, v3 = v % b, v // b
+    local A1, A2 = v2 % W, v2 // W
+    local C1, C2 = A1 % c, A1 // c
+    local V1 = A2*c + C2*a + C1
+    return (v3*b + V1) + 0x06183800
+end
+-- 目の部分
+local function change_pos2(x, y)
+    x = x - 0x28
+    y = y - 0x40
+    -- local a, b, c = block_span, blockline_span, block_width
+    local a, b, c = 0x40, 0x180, 0x08
+    local _w = c * (b // a)
+    local v = _w*y + x
+    local v2, v3 = v % b, v // b
+    local A1, A2 = v2 % _w, v2 // _w
+    local C1, C2 = A1 % c, A1 // c
+    local V1 = A2*c + C2*a + C1
+    return (v3*b + V1) + 0x06189800
+end
+local function change_pos(x, y)
+    if within(y, 0x40, 0x4f) and within(x, 0x28, 0x57) then
+        return change_pos2(x, y)
+    else return change_pos1(x, y)
+    end
+end
+
+local ys = 0x5c
+local ye = 0x70
+local _y_b = ye - ys
+assert(_y_b % 2 == 0)
+local _hy_b = _y_b >> 1
+local function y_scale(y)
+    if y < _hy_b then
+        return -2*y + _y_b
+    else
+        return 2*y - _y_b
+    end
+end
+
+local vs = {}
+local _jj = -1
+local prev = ""
+local x, y = 0, 0
+for i = 0x6183800, 0x61897ff, 4 do
+    if within(x, 0x28, 0x57) and within(y, ys, ye) then
+    vs[change_pos(x, y)] = r32(change_pos(x, y_scale(y-ys) + ys), arm9)
+    end
+    x = (x + 4) % W if x == 0 then y = y + 1 end
+end
+for i, v in pairs(vs) do w32(i, v, arm9) end
+
+end
+
+
+local _i = 0
+local ts = {
+    360,
+    480,
+    540,
+}
+local do_time = 595
+
+local span = 10
+
+function loop()
+    _i = _i + 1
+    if _i == do_time then MAIN() span = 30
+    elseif _i == do_time + 58 then
+        -- 強制フリーズ
+        lib.fill_in(0x02210000, 0x0221ffff)
+        print("DONE")
+        return
+    elseif _i > do_time then return
+    end
+    for _, t in pairs(ts) do
+        if _i == t then
+            DS.key.set("A", true) break
+        elseif _i == t + 10 then
+            DS.key.set("A", false) break
+        end
+    end
+end
+
+lib.irume.start(function()
+    local head = 0x03eba740
+    local as = {}
+    for i = 0, 16 do as[i] = head + 0x40*i end
+    local c = Cnt(8, 6)
+    local m = lib.at(head)
+    return function()
+        c()
+        for i = 0, 16 do
+            m:with(as[i] + 0x1c):Tadd8(1, rand(-9, -1), 1)
+            w8(as[i] + 0x0f, c.i*2)
+        end
+    end
+end)
+
+
+```
+
+video4のやつ(ガリガリ & ムスッとした顔)
+
+```lua
+
+
+local arm9 = "ARM9 System Bus"
+CLS()
+
+local function MAIN()
+
+local block_width = 0x08
+local block_span = 0x40
+local blockline_span = 0x400
+local W = block_width * (blockline_span // block_span)
+assert(block_span % block_width == 0)
+assert(blockline_span % block_span == 0)
+
+local function round(x)
+    return math.floor(x + 0.5)
+end
+
+local function lerp(x, w, b)
+    local _w = w * 0.5
+    local _bi = 1.0 / b
+    local v = round((x - _w) * (w * _bi) + _w)
+    if v < 0 then return 0
+    elseif v >= w then return w-1
+    else return v
+    end
+end
+
+-- 仮想座標から物理アドレスへ
+local function change_pos1(x, y)
+    local a, b, c = block_span, blockline_span, block_width
+    local v = W*y + x
+    local v2, v3 = v % b, v // b
+    local A1, A2 = v2 % W, v2 // W
+    local C1, C2 = A1 % c, A1 // c
+    local V1 = A2*c + C2*a + C1
+    return (v3*b + V1) + 0x06183800
+end
+-- 目の部分
+local function change_pos2(x, y)
+    x = x - 0x28
+    y = y - 0x40
+    -- local a, b, c = block_span, blockline_span, block_width
+    local a, b, c = 0x40, 0x180, 0x08
+    local _w = c * (b // a)
+    local v = _w*y + x
+    local v2, v3 = v % b, v // b
+    local A1, A2 = v2 % _w, v2 // _w
+    local C1, C2 = A1 % c, A1 // c
+    local V1 = A2*c + C2*a + C1
+    return (v3*b + V1) + 0x06189800
+end
+local function change_pos(x, y)
+    if within(y, 0x40, 0x4f) and within(x, 0x28, 0x57) then
+        return change_pos2(x, y)
+    else return change_pos1(x, y)
+    end
+end
+
+local xs = 0x20
+-- local xs = 0x28
+local xe = 0x57
+local ys = 0x5c
+local ye = 0x70
+local _y_b = ye - ys
+local _x_b = xe - xs
+local slope = (_y_b / _x_b)
+local function y_scale(x)
+    if x < _x_b * 0.5 then
+        return round(-2*slope*x + _y_b)
+    else
+        return round(2*slope*x - _y_b)
+    end
+end
+
+local vs = {}
+local _jj = -1
+local prev = ""
+local x, y = 0, 0
+for i = 0x6183800, 0x61897ff, 4 do
+    if within(x, xs, xe) and within(y, ys, ye) then
+    vs[change_pos(x, y)] = r32(change_pos(lerp(x-xs, 0x30, 0x80)+xs, y_scale(x-xs) + y), arm9)
+    end
+    if y >= 0x75 then
+        vs[change_pos(x, y)] = r32(change_pos(lerp(x, W, 0.4*W) + W, y))
+    end
+    x = (x + 4) % W if x == 0 then y = y + 1 end
+end
+for i, v in pairs(vs) do w32(i, v, arm9) end
+
+end
+
+
+local _i = 0
+local ts = {
+    360,
+    480,
+    540,
+}
+local do_time = 595
+
+local span = 10
+
+function loop()
+    _i = _i + 1
+    if _i == do_time then MAIN() span = 30
+    elseif _i == do_time + 58 then
+        -- 強制フリーズ
+        lib.fill_in(0x02210000, 0x0221ffff)
+        print("DONE")
+        return
+    elseif _i > do_time then return
+    end
+    for _, t in pairs(ts) do
+        if _i == t then
+            DS.key.set("A", true) break
+        elseif _i == t + 10 then
+            DS.key.set("A", false) break
+        end
+    end
+end
+
+lib.irume.start(function()
+    local head = 0x03eba730
+    local as = {}
+    for i = 0, 10 do as[i] = head + 0x40*i end
+    local tones = {}
+    for i, addr in pairs(as) do tones[i] = r32(addr + 0x0c) end
+    local r = RC(30)
+    local r2 = RC(60)
+    return function()
+        for i, a in pairs(as) do
+            if r() then
+                w32(a + 0x0c, tones[rand(0, 10)])
+            end
+        end
+    end
+end)
+
+```
