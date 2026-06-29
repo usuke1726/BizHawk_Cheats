@@ -29,6 +29,26 @@ const existsOpenedILuaFile = () => {
 }
 export const existsOpenedIBizHawkFile = () => existsOpenedILuaFile() || existsOpenedIBizHawkNotebook();
 
+const patternUnicodeInString = /"([^"]|\\")*[^\x00-\x7F]([^"]|\\")*"/ug;
+const patternOtherUnicode = /[^\x00-\x7F]/ug;
+
+const escapeNonAsciiChars = (line: string): string => {
+    if(!/[^\x00-\x7F]/.test(line)) return line;
+    // 文字列中の非ascii文字はきちんとそれとして出力されるようにする
+    line = line.replaceAll(patternUnicodeInString, s => {
+        const _s = s.slice(1, -1);
+        const body = [..._s]
+            .map(c => c.codePointAt(0))
+            .filter(c => c !== undefined)
+            .map(c => `0x${c.toString(16)}`)
+            .join(",")
+        return `utf8.char(${body})`;
+    });
+    // それ以外の非ascii文字はコメント中の文字と解釈し、構文エラーが生じないようにだけしておく
+    line = line.replaceAll(patternOtherUnicode, "");
+    return line;
+}
+
 export const formatCode = (code: string): string => {
     return EXECUTE_PREFIX + code.replaceAll("\r", "")
     .trim().split("\n")
@@ -39,6 +59,9 @@ export const formatCode = (code: string): string => {
         if(line.startsWith("--") && !line.startsWith("--[[")) return false;
         return true;
     })
+    // 確実に消してよい行末尾のコメントアウトを削除する
+    .map(line => line.replace(/ *--[^"]*$/, ""))
+    .map(escapeNonAsciiChars)
     .join("\n");
 }
 
