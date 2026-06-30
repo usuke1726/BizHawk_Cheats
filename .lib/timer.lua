@@ -338,6 +338,9 @@ local function update()
         timer:_update()
     end
 end
+local function clearAllTimers()
+    timers = {}
+end
 local function clearTimeout(id)
     timers[id] = nil
 end
@@ -386,6 +389,7 @@ __timer = {
     setInterval = setInterval,
     clearTimeout = clearTimeout,
     clearInterval = clearInterval,
+    clearAllTimers = clearAllTimers,
     Cnt = _CntMain,
     CntOnce = _CntOnce,
     RL = _RL,

@@ -32,6 +32,7 @@ local commands = {
         __irume_lib.stop()
         loop = nil
         CLEAR_LOOP()
+        __timer.clearAllTimers()
     end,
 }
 
