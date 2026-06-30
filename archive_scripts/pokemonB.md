@@ -966,3 +966,564 @@ lib.irume.start(function()
 end)
 
 ```
+
+
+<details>
+<summary>video5のバグテキスト</summary>
+<div>
+
+```plaintext
+
+0x0225B1B0
+きみが　強い　理由は
+ポケモンとの　信頼関係かもしれない
+>
+君が　強い　理由は\nポケモンとの　信頼関係かもしれないな
+
+0x0225B1EE
+だけど　問題ない
+ぼくだって　チャオブーたちから
+>
+でも　問題ない\n僕だって　ぶぅ…チャオブー達から
+
+0x0225B224
+もっと　強さを　ひきだせるよ
+>
+もっと　強さを　引き出せるよ
+
+
+ハーイ！ <= 変更しない
+
+0x02277ABE
+ムユルン！
+ちょっと　つきあってくれない？
+>
+(全部"…"に変える)
+
+ここでテキストデータが更新
+
+0x02277A84
+アララギ博士
+なにか　ご用ですか
+>
+(全部"…"に変える)
+
+0x02277BD8
+……ベルは　呼び出しに
+気づいて　いないのよねー
+>
+(全部"…"に変える)
+
+0x02277C0E
+何に　夢中なのかしら？
+>
+(全部"…"に変える)
+
+0x02277C2A
+あとで　別に
+連絡するしか　ないわねー
+>
+(全部"…"に変える)
+
+0x02277C56
+じゃ！　おふたりさん
+>
+(全部"…"に変える)
+
+0x02277C70
+ライモンシティの　手前の
+ゲートで　待ってるわね！
+>
+(全部"…"に変える)
+
+0x02277A64
+……あ　あの！？
+>
+(全部"…"に変える)
+
+0x0225B194
+チェレン『……だって
+>
+チェレ助『……………
+
+0x0225B1AE
+ライモンシティの　ゲートなら
+この　4番道路を
+>
+(全部"…"に変える)
+
+0x0225B1E2
+まっすぐ　進むだけさ
+>
+(全部"…"に変える)
+```
+
+</div>
+</details>
+
+---
+
+ライブキャスターでにしきがお
+
+```lua
+
+-- lib.fill_in(0x06400000, 0x064fffff)
+-- アララギ口
+-- 2500から0x100ずつ
+-- lib.fill_in(0x06402600, 0x064027ff)
+
+local arm9 = "ARM9 System Bus"
+
+local head = 0x06006800
+
+local orig = {}
+
+local mode_offsets = {
+    -- 0,
+    0x40,
+    0x42,
+}
+
+
+---@param on bool
+---@param mode int
+local function swap_person(on, mode)
+    local vs = {}
+    local o = mode_offsets[mode] or 0
+    for i = 0x0, 0x2ff, 2 do
+        local a = head + i
+        local a2 = a ~ 0x20
+        local is_left = a & 0x20 == 0
+        if on then
+            vs[a] = orig[a2 + (is_left and o or -o)] or orig[a]
+        else vs[a] = orig[a]
+        end
+    end
+    for a, v in pairs(vs) do w16(a, v) end
+end
+local function setup_swapping()
+    for i = 0x0, 0x2ff, 2 do
+        local a = head + i
+        orig[a] = r16(a)
+    end
+    local cnt = Cnt(2)
+    local mode = 2
+    local is_first = true
+    local on = false
+    lib.timer.setInterval(30, function()
+        on = not on
+        if is_first then is_first = false
+        elseif cnt() then mode = rand(1, #mode_offsets)
+        end
+        swap_person(on, mode)
+    end)
+end
+
+---@param bound int
+---@param from_addrs int[]
+---@param target_addrs? int[]
+---@param get_idx? fun(): int, bool
+---@param get_n0? fun(): int
+local function araburi_base(bound, from_addrs, target_addrs, get_idx, get_n0)
+    target_addrs = target_addrs or from_addrs
+    local mouses = {}
+    for _, a in pairs(from_addrs) do
+        local v = {}
+        for i = 0, bound - 1, 4 do
+            v[i] = r32(a + i, arm9)
+        end
+        mouses[#mouses+1] = v
+    end
+    local cnt = Cnt(2, #mouses)
+    if not get_idx then
+        get_idx = function()
+            local fired = cnt()
+            return cnt.i + 1, fired
+        end
+    end
+    return function()
+        local idx, fired = get_idx()
+        if fired then
+            if get_n0 then cnt.n0 = get_n0() end
+        end
+        local m = mouses[idx]
+        for _, a in pairs(target_addrs) do
+            for i = 0, bound - 1, 4 do
+                w32(a + i, m[i], arm9)
+            end
+        end
+    end
+end
+
+local function Araragi_mouse()
+    return araburi_base(0x100, {
+        0x06402500,
+        0x06402600,
+        0x06402700,
+    })
+end
+
+local function Tyeren_mouse()
+    return araburi_base(0x80, {
+        0x06402c80,
+        0x06402d80,
+    }, {
+        0x06402c80,
+        0x06402d00,
+        0x06402d80,
+    })
+end
+
+local araragi_eye_cnt = Cnt(3, 2)
+local araragi_eye_update_n0 = RC(60)
+
+local araragi_eye
+local araragi_mouse
+local tyeren_eye
+local tyeren_mouse
+local function setup_funcs()
+
+araragi_eye = araburi_base(0x280, {
+    0x06401d80,
+    0x06402000,
+    0x06402280,
+}, nil, function()
+    araragi_eye_cnt()
+    if araragi_eye_update_n0() then araragi_eye_cnt.n0 = rand(2, 5) end
+    return araragi_eye_cnt.i * 2 + 1, false
+end)
+
+tyeren_eye = araburi_base(0x180, {
+0x06402800,
+0x06402980,
+0x06402b00,
+})
+
+araragi_mouse = Araragi_mouse()
+tyeren_mouse = Tyeren_mouse()
+end
+
+local _i = 0
+local ts = {
+    10,
+    240,
+    360,
+    450,
+    540,
+    690,
+    780,
+    870,
+    960,
+    1050,
+    1210, -- 通話切れるタイミング
+    1300,
+    1350,
+    1440,
+    1530,
+    1620,
+    1710,
+    1800,
+    1890,
+}
+
+local go_time = 50
+
+ADD_LOOP(function()
+    _i = _i + 1
+    for _, t in pairs(ts) do
+        if _i == t then
+            print(tostring(_i))
+            DS.key.set("A", true) break
+        elseif _i == t + 10 then
+            DS.key.set("A", false) break
+        end
+    end
+    if _i < go_time then return end
+    if _i == go_time then
+        setup_swapping()
+        setup_funcs()
+    end
+    araragi_mouse()
+    araragi_eye()
+    tyeren_mouse()
+    tyeren_eye()
+
+    -- 主人公の口をいじる
+    for i = 0, 0x7f, 4 do
+        if not within(i, 0x28, 0x3b) then
+            w32(0x060241c0 + i, 0x08080808)
+            w32(0x060181c0 + i, 0x08080808)
+        end
+    end
+end)
+
+
+-- 2c80から0x80ずつ
+-- lib.fill_in(0x06402c80, 0x06402d7f)
+
+```
+
+ライブキャスターでテキスト&イルーム
+
+```lua
+-- チェレン会話変更
+
+CLS()
+
+-- 君が　強い　理由は\nポケモンとの　信頼関係かもしれないな
+lib.warr(0x0225B1B0, lib.htob("1b544c300030375f44300030067431756f30feffdd30b130e230f33068306e300030e14f3c98a295c24f4b30823057308c306a3044306a30"))
+
+-- でも　問題ない\n僕だって　ぶぅ…チャオブー達から
+lib.warr(0x0225B1EE, lib.htob("6730823000304f554c986a304430feffd5506030633066300030763045302620c130e330aa30d630fc3054904b308930"))
+
+-- もっと　強さを　引き出せるよ
+lib.warr(0x0225B224, lib.htob("8230633068300030375f553092300030155f4d30fa515b308b308830"))
+
+local state = 0
+
+local function change_text1()
+    lib.warr(0x02277ABE, lib.htob("26202620262026202620feff262026202620262026202620262026202620262026202620262026202620"))
+end
+local function change_text2()
+lib.warr(0x02277A84, lib.htob("262026202620262026202620feff262026202620262026202620262026202620"))
+end
+local function change_text3()
+lib.warr(0x02277BD8, lib.htob("26202620262026202620262026202620262026202620feff262026202620262026202620262026202620262026202620"))
+lib.warr(0x02277C0E, lib.htob("26202620262026202620262026202620262026202620"))
+lib.warr(0x02277C2A, lib.htob("262026202620262026202620feff262026202620262026202620262026202620262026202620"))
+lib.warr(0x02277C56, lib.htob("2620262026202620262026202620262026202620"))
+lib.warr(0x02277C70, lib.htob("262026202620262026202620262026202620262026202620feff262026202620262026202620262026202620262026202620"))
+end
+local function change_text4()
+lib.warr(0x02277A64, lib.htob("26202620262026202620262026202620"))
+end
+local function change_text5()
+-- チェレ助『……………
+lib.warr(0x0225B194, lib.htob("c130a730ec30a9520e3026202620262026202620"))
+-- ……………………………………\n……………………
+lib.warr(0x0225B1AE, lib.htob("26202620262026202620262026202620262026202620262026202620feff26202620262026202620262026202620"))
+-- …………………………
+lib.warr(0x0225B1E2, lib.htob("2620262026202620262026202620262026202620"))
+end
+
+ADD_LOOP(function()
+    if state == 0 and r16(0x02277ABE) == 0x30e0 then
+        print("TEXT1")
+        state = 1
+        change_text1()
+    elseif state == 1 and r16(0x02277A84) == 0x30A2 then
+        print("TEXT2")
+        state = 2
+        change_text2()
+    elseif state == 2 and r16(0x02277BD8) == 0x2026 then
+        print("TEXT3")
+        state = 3
+        change_text3()
+    elseif state == 3 and r16(0x02277A64) == 0x2026 then
+        print("TEXT4")
+        state = 4
+        change_text4()
+    elseif state == 4 and r16(0x0225B194) == 0x30C1 then
+        print("TEXT5")
+        state = 5
+        change_text5()
+    end
+end)
+
+
+
+lib.irume.start(function()
+    local head = 0x03eba730
+    local as = {}
+    for i = 0, 10 do as[i] = head + 0x40*i end
+    local hat = {}
+    for i, _ in pairs(as) do hat[i] = false end
+    local c = Cnt(15)
+    local r = RC(120)
+    local m = lib.at(head)
+    return function()
+        c()
+        for i, a in pairs(as) do
+            m:with(a + 0x2c):add8(rand(0, 3), 1, 0x20)
+            if r() then
+                hat[i] = not hat[i]
+            end
+            if hat[i] then
+                m:with(a + 0x24):w32(0x11111100)
+                m:with(a + 0x17):w8(0x03)
+            else
+                m:with(a + 0x24):w32(0x11001100)
+                m:with(a + 0x17):w8(0x00)
+            end
+        end
+        for i = 11, 16 do
+            local a = 0x03eba730 + 0x40 * i
+            m:with(a + 0x24):w32(0x11111100)
+            m:with(a + 0x17):w8(0x03)
+        end
+    end
+end)
+```
+
+video 5 Nにしきがお
+
+```lua
+local arm9 = "ARM9 System Bus"
+CLS()
+
+local function MAIN()
+
+local block_width = 0x08
+local block_span = 0x40
+local blockline_span = 0x400
+local W = block_width * (blockline_span // block_span)
+assert(block_span % block_width == 0)
+assert(blockline_span % block_span == 0)
+
+local function round(x)
+    return math.floor(x + 0.5)
+end
+
+local function lerp(x, w, b)
+    local _w = w * 0.5
+    local _bi = 1.0 / b
+    local v = round((x - _w) * (w * _bi) + _w)
+    if v < 0 then return 0
+    elseif v >= w then return w-1
+    else return v
+    end
+end
+
+-- 仮想座標から物理アドレスへ
+local function change_pos1(x, y)
+    local a, b, c = block_span, blockline_span, block_width
+    local v = W*y + x
+    local v2, v3 = v % b, v // b
+    local A1, A2 = v2 % W, v2 // W
+    local C1, C2 = A1 % c, A1 // c
+    local V1 = A2*c + C2*a + C1
+    return (v3*b + V1) + 0x06183800
+end
+-- 目の部分
+local function change_pos2(x, y)
+    x = x - 0x28
+    y = y - 0x40
+    -- local a, b, c = block_span, blockline_span, block_width
+    local a, b, c = 0x40, 0x180, 0x08
+    local _w = c * (b // a)
+    local v = _w*y + x
+    local v2, v3 = v % b, v // b
+    local A1, A2 = v2 % _w, v2 // _w
+    local C1, C2 = A1 % c, A1 // c
+    local V1 = A2*c + C2*a + C1
+    return (v3*b + V1) + 0x06189800
+end
+local function change_pos(x, y)
+    if within(y, 0x40, 0x4f) and within(x, 0x28, 0x57) then
+        return change_pos2(x, y)
+    else return change_pos1(x, y)
+    end
+end
+
+local xs = 0x20
+-- local xs = 0x28
+local xe = 0x57
+local ys = 0x50
+local ys2 = 0x2c
+local ye = 0x67
+local _y_b = ye - ys
+local _x_b = xe - xs
+local slope = (_y_b / _x_b)
+local function y_scale(x)
+    if x < _x_b * 0.5 then
+        return round(-2*slope*x + _y_b)
+    else
+        return round(2*slope*x - _y_b)
+    end
+end
+
+local vs = {}
+local _jj = -1
+local prev = ""
+local x, y = 0, 0
+for i = 0x6183800, 0x61897ff, 4 do
+    if y < ys then
+    vs[change_pos(x, y)] = r32(change_pos(x, ys2 - 0x06 - math.floor((ys2 - y)*0.7)), arm9)
+    end
+    if within(y, ys, ye) then
+    vs[change_pos(x, y)] = r32(change_pos(x, ye - math.floor((ye - y)*2.0)), arm9)
+    end
+    if y >= 0x75 then
+        vs[change_pos(x, y)] = r32(change_pos(lerp(x, W, 1.4*W) + W, y))
+    end
+    x = (x + 4) % W if x == 0 then y = y + 1 end
+end
+for i, v in pairs(vs) do w32(i, v, arm9) end
+
+end
+
+
+local _i = 0
+local ts = {
+    360,
+    480,
+    540,
+}
+local do_time = 595
+
+local span = 10
+
+function loop()
+    _i = _i + 1
+    if _i == do_time then MAIN() span = 30
+    elseif _i == do_time + 58 then
+        -- 強制フリーズ
+        lib.fill_in(0x02210000, 0x0221ffff)
+        print("DONE")
+        return
+    elseif _i > do_time then return
+    end
+    for _, t in pairs(ts) do
+        if _i == t then
+            DS.key.set("A", true) break
+        elseif _i == t + 10 then
+            DS.key.set("A", false) break
+        end
+    end
+end
+
+-- MAIN()
+-- loop = nil
+
+
+lib.irume.start(function()
+    local head = 0x03eba730
+    local as = {}
+    for i = 0, 10 do as[i] = head + 0x40*i end
+    local hat = {}
+    for i, _ in pairs(as) do hat[i] = false end
+    local c = Cnt(15)
+    local r = RC(120)
+    local m = lib.at(head)
+    local count = 0
+    return function()
+        c()
+        if count > 0 then
+            count = count - 1
+        elseif r() then count = rand(30, 90)
+        end
+        for i, a in pairs(as) do
+            m:with(a + 0x2c):Tadd8(1, rand(-4, -1), 1)
+            m:with(a + 0x1f):w8(stou8(rand(-24, -12)))
+            if count > 0 then
+                m:with(a + 0x16):w8(0x80)
+                m:with(a + 0x24):w32(0x03818100)
+            else
+                m:with(a + 0x16):w8(0)
+                m:with(a + 0x24):w32(0x12001000)
+            end
+        end
+    end
+end)
+```
+

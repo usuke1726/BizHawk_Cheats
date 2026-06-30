@@ -327,3 +327,383 @@ end
 
 </div>
 </details>
+
+
+video5 音声にビブラートを試みる
+
+```lua
+local kyoku_broken_head = 0x020E1660
+local kyoku_broken_width = 0xa00
+local kyoku_broken_scale = 2
+assert(kyoku_broken_width % kyoku_broken_scale == 0)
+local kyoku_broken_hwidth = kyoku_broken_width // kyoku_broken_scale
+
+local function round(x) return math.floor(x + 0.5) end
+
+local function kyoku_broken1(scale)
+    -- for i = 0, kyoku_broken_width-1, 4 do
+    --     local _i = kyoku_broken_head + (round(i * scale) % kyoku_broken_width)
+    --     w32(kyoku_broken_head + i, r32(_i))
+    -- end
+    for i = 0, kyoku_broken_width-1, 2 do
+        local _i = kyoku_broken_head + (round(i * scale) % kyoku_broken_width)
+        w16(kyoku_broken_head + i, r16(_i))
+    end
+end
+
+-- local max_scale = 1.5
+local max_scale = 1.5
+local min_scale = 1.0
+local c = Cnt(60)
+local function get_scale()
+    return min_scale + c:next() * (max_scale - min_scale) / c.n
+end
+local function get_scale2()
+    return (math.sin(c:next() * 2 * math.pi / c.n) + 1.0) * (max_scale - min_scale) + min_scale
+end
+
+local key_e = Cnt(2, 2)
+local key_e2 = Cnt(2, 2)
+local prev = false
+local prev2 = false
+local first = true
+function loop()
+    kyoku_broken1(get_scale2())
+    if DS.key.get("Select") then
+        key_e()
+        if first then first = false
+        else key_e2() end
+        local f = key_e.i == 1
+        if prev ~= f then
+            prev = f
+            -- 連射機能
+        DS.key.set({
+            [DS_KEYS.A] = f,
+            [DS_KEYS.B] = f,
+            [DS_KEYS.X] = not f,
+            [DS_KEYS.Y] = not f,
+            [DS_KEYS.Up] = f,
+            -- [DS_KEYS.Select] = true,
+        })
+        end
+        f = key_e2.i == 1
+        if prev2 ~= f then
+            prev2 = f
+        DS.key.set({
+            [DS_KEYS.Down] = f,
+            [DS_KEYS.Left] = not f,
+            [DS_KEYS.Right] = not f,
+            [DS_KEYS.L] = f,
+            [DS_KEYS.R] = not f,
+            -- [DS_KEYS.Select] = true,
+        })
+        end
+    end
+end
+```
+
+video5 本番用
+
+```lua
+CLS()
+
+
+local kyoku_broken_head = 0x020E1660
+local kyoku_broken_width = 0xa00
+local kyoku_broken_scale = 2
+assert(kyoku_broken_width % kyoku_broken_scale == 0)
+local kyoku_broken_hwidth = kyoku_broken_width // kyoku_broken_scale
+
+local function round(x) return math.floor(x + 0.5) end
+
+local function kyoku_broken1(scale)
+    -- for i = 0, kyoku_broken_width-1, 4 do
+    --     local _i = kyoku_broken_head + (round(i * scale) % kyoku_broken_width)
+    --     w32(kyoku_broken_head + i, r32(_i))
+    -- end
+    for i = 0, kyoku_broken_width-1, 2 do
+        local _i = kyoku_broken_head + (round(i * scale) % kyoku_broken_width)
+        w16(kyoku_broken_head + i, r16(_i))
+    end
+end
+
+-- local max_scale = 1.5
+local max_scale = 1.5
+local min_scale = 1.0
+local c = Cnt(60)
+local function get_scale()
+    return min_scale + c:next() * (max_scale - min_scale) / c.n
+end
+local function get_scale2()
+    return (math.sin(c:next() * 2 * math.pi / c.n) + 1.0) * (max_scale - min_scale) + min_scale
+end
+
+local function irume1()
+    kyoku_broken1(get_scale2())
+end
+local mode = RC(2)
+local irume2_r = RC(120)
+local function irume2()
+    if irume2_r() then
+        mode()
+        min_scale = rand(100, 110) * 0.01
+        max_scale = min_scale + rand(10, 20) * 0.01
+        c:N(rand(10, 120))
+    end
+    local i = mode.i
+    local scale = get_scale2()
+    -- if i == 0 then scale = get_scale2()
+    -- else scale = get_scale()
+    -- end
+    kyoku_broken1(scale)
+end
+
+
+local rensha_key_e = Cnt(2, 2)
+local rensha_key_e2 = Cnt(2, 2)
+local rensha_prev = false
+local rensha_prev2 = false
+local rensha_first = true
+local function rensha()
+    if DS.key.get("Select") then
+        rensha_key_e()
+        if rensha_first then rensha_first = false
+        else rensha_key_e2() end
+        local f = rensha_key_e.i == 1
+        if rensha_prev ~= f then
+            rensha_prev = f
+            DS.key.set({
+                [DS_KEYS.A] = f,
+                [DS_KEYS.B] = f,
+                [DS_KEYS.X] = not f,
+                [DS_KEYS.Y] = not f,
+                [DS_KEYS.Up] = f,
+                -- [DS_KEYS.Select] = true,
+            })
+        end
+        f = rensha_key_e2.i == 1
+        if rensha_prev2 ~= f then
+            rensha_prev2 = f
+            DS.key.set({
+                [DS_KEYS.Down] = f,
+                [DS_KEYS.Left] = not f,
+                [DS_KEYS.Right] = not f,
+                [DS_KEYS.L] = f,
+                [DS_KEYS.R] = not f,
+                -- [DS_KEYS.Select] = true,
+            })
+        end
+    end
+end
+
+
+
+local function change_pos1(x, y)
+    local y1 = y // 8
+    local y2 = y % 8
+    local head = 0x06601980
+    local x1 = x // 4
+    local x2 = x % 4
+    return head + y1 * 0x80
+        + y2 * 4
+        + x1 * 32
+        + x2
+end
+local function change_pos2(x, y)
+    x = 0x1f - (x - 0x10)
+    local y1 = y // 8
+    local y2 = y % 8
+    local x1 = x // 4
+    local x2 = x % 4
+    local head = 0x06600300
+    return head + y1 * 0x100
+        + y2 * 4
+        + x1 * 32
+        + (3-x2)
+end
+
+-- x: 中心からの座標
+local function change_pos(x, y)
+    if within(x, 0, 0xf) then
+        return change_pos1(x, y)
+    elseif within(x, 0x10, 0x2f) then return change_pos2(x, y)
+    else error("out of bound")
+    end
+end
+local orig = {}
+local function taiko_setup()
+    for i = 0x06600300, 0x066017ff do
+        -- orig[i] = r8(i)
+        local _i = i % 4
+        orig[i] = r8((i & 0xfffffffc) + (3-_i))
+    end
+    for i = 0x06601900, 0x066023ff do
+        orig[i] = r8(i)
+        -- local _i = i % 4
+        -- orig[i] = r8((i & 0xfffffffc) + (3-_i))
+    end
+end
+
+local function MAIN(sc, scy, signy)
+
+local vs = {}
+for x = 0, 0x2f do
+    for y = 0, 0xa7 do
+        local _x = math.floor(x*sc)
+        local _y = signy >= 0 and y or (0xa7 - y)
+        local _y = math.floor(_y*scy)
+        if _x < 0 then _x = 0
+        elseif _x > 0x2f then _x = 0x2f
+        end
+        if _y < 0 then _y = 0
+        elseif _y > 0xa7 then _y = 0xa7
+        end
+        -- local _x = x
+        vs[change_pos(x, y)] = orig[change_pos(_x, _y)] or 0
+    end
+end
+for i = 0x06601900, 0x066023ff, 4 do
+    local _v = 0
+    local V = r32(i)
+    for j = 3, 0, -1 do
+        _v = (_v << 8) | (vs[i + j] or ((V >> (j*8)) & 0xff))
+    end
+    w32(i, _v)
+end
+for i = 0x06600300, 0x066017ff, 4 do
+    local _v = 0
+    local V = r32(i)
+    for j = 0, 3 do
+        _v = (_v << 8) | (vs[i + j] or ((V >> ((3-j)*8)) & 0xff))
+    end
+    w32(i, _v)
+end
+end
+
+local cnt = Cnt(60)
+local d = 0.7
+local cnty = Cnt(60)
+local dy = 0.7
+local signy = 1
+local update_sign = RC(60)
+local update_x = RC(90)
+local update_y = RC(90)
+
+-- [0, 1]の区間を返す
+local scale_funcs = {
+    function(i, n)
+        return math.sin(i * math.pi / (n * 2))
+    end,
+    function(i, n)
+        return i / n
+    end,
+    function(i, n)
+        local x = i / n
+        return x + math.sin(8 * math.pi * x) / 8.0
+    end,
+    function(i, n)
+        local x = i / n
+        x = x * x
+        x = x * x
+        x = x * x
+        return x
+    end,
+    function(i, n)
+        local x = i / n
+        return math.floor(x * 4) / 4
+    end,
+}
+local scale_func_i = 1
+local update_scale_func = RC(90)
+local update_taiko_ready = false
+
+local function update_taiko()
+    if not update_taiko_ready then return end
+    if update_x() then
+        d = rand(4, 10) * 0.1
+        cnt:N(rand(5, 90))
+    end
+    if update_y() then
+        dy = rand(4, 10) * 0.1
+        cnty:N(rand(5, 90))
+    end
+    if update_sign() then
+        signy = -signy
+    end
+    if update_scale_func() then
+        scale_func_i = rand(1, #scale_funcs)
+    end
+    cnt() cnty()
+    local f = scale_funcs[scale_func_i]
+    local sc = f(cnt.i, cnt.n) * d + 1.0
+    local scy = f(cnty.i, cnty.n) * dy + 1.0
+    MAIN(sc, scy, signy)
+end
+
+
+
+
+
+
+local setup_c = CntOnce(330)
+local function setup()
+    print("SETUP")
+    w16(0x022B1180, 0x0120) -- 大ドンで 524160 になる(52149に近い)
+
+    -- 良などを消す
+    for i = 0, 7 do
+    w32(0x022B0FF0 + 0x18*i, 0x022DAFA0)
+    end
+
+    update_taiko_ready = true
+    taiko_setup()
+end
+
+
+
+local _i = 0
+local ts = {
+    60,
+}
+
+local irume1_time = 1290
+local irume2_time = 1680
+local irume_mode = 0
+local taiko_mute = CntOnce(490)
+local taiko_unmute = CntOnce(5090)
+
+function loop()
+    if setup_c() then setup() end
+    update_taiko()
+    if taiko_mute() then
+    w32(0x0208ed68, 0xffffffff) -- 太鼓の音を消す
+    end
+    if taiko_unmute() then
+        print("UNMUTE")
+    w32(0x0208ed68, 0xE3A00000) -- 太鼓の音を消す
+    end
+    rensha()
+    _i = _i + 1
+    if _i == irume1_time then
+        irume_mode = 1
+        print("IRUME1")
+    elseif _i == irume2_time then
+        irume_mode = 2
+        print("IRUME2")
+    end
+    if irume_mode == 1 then
+        irume1()
+    elseif irume_mode == 2 then
+        irume2()
+    end
+    for _, t in pairs(ts) do
+        if _i == t then
+            DS.key.set("A", true) break
+        elseif _i == t + 10 then
+            DS.key.set("A", false) break
+        end
+    end
+end
+```
+
+
