@@ -706,4 +706,136 @@ function loop()
 end
 ```
 
+SELECT押した間の曲データを取得してテキストファイルに書き込む
 
+```lua
+local span = 60
+
+CLS()
+
+local kyoku_broken_head2 = 0x020DF9C8
+local kyoku_broken_width2 = 0x780
+
+local kyoku_broken_head = 0x020E1660
+local kyoku_broken_width = 0xa00
+
+local _i = 0
+local cache = {}
+local cache2 = {}
+
+local pitch = 0x80
+local recording = false
+local finished = false
+
+function loop()
+    if finished then return end
+    if recording then
+        _i = _i + 1
+        if not DS.key.get("Select") then
+            print("RECORD FINISH")
+            finished = true
+            local file = io.open(--[[ <ファイルの絶対パス> ]], "w")
+            local text = "local DATA = {\n" .. table.concat(cache, "\n") .. "\n}"
+            file:write(text)
+            file:flush()
+            file:close()
+        else
+            local d = {}
+            for i = 0, kyoku_broken_width-1 do
+                d[i+1] = string.format("%02X", r8(kyoku_broken_head + i))
+            end
+            local s = table.concat(d, "")
+            cache[_i] = "lib.htob(\"" .. s .. "\"),"
+        end
+    elseif DS.key.get("Select") then
+        print("RECORD START")
+        recording = true
+    end
+end
+```
+
+くじけそうになった(音MAD的なヤツ) & 上画面崩壊
+(※データ部分は膨大なため省略)
+
+```lua
+local kyoku_broken_head = 0x020E1660
+local kyoku_broken_width = 0xa00
+
+CLS()
+
+local _i = 0
+local actions = {
+    {250, 1},
+    -- {280, 0},
+    -- {300, 1},
+    {460, 0},
+    -- {140, 0},
+    {600, 2},
+    {755, 3},
+    {1020, -1},
+}
+local actions_i = 1
+local tone_k = 0
+local tone_i = 0
+
+local function get_tone(i)
+    if i == 1 then return DATA_AAAAAAAA
+    elseif i == 2 then return DATA_kujikesou
+    else return DATA_last
+    end
+end
+
+local humen_ichi_addr = 0x022AF3D4
+local _vv2 = 0x83
+local _vv2_r = RC(1)
+local _vv1 = 0x83
+local _vv1_r = RC(1)
+local vs1 = {0x8b, 0x80, 0x9b}
+local vs2 = {0x83, 0x80}
+
+local function update_gra(i)
+    if i <= 260 then return end
+    if i > 1000 then
+        w16(0x04000240, 0)
+        return
+    end
+    if _vv2_r() then _vv2 = vs2[rand(1, #vs2)] end
+    w8(0x04000241, _vv2)
+    if i > 550 then
+        if _vv1_r() then _vv1 = vs1[rand(1, #vs1)] end
+        w8(0x04000240, _vv1)
+    end
+end
+
+function loop()
+    _i = _i + 1
+    update_gra(_i)
+    if _i > 1100 then
+        w32(humen_ichi_addr, 0x3000)
+    elseif _i > 260 then
+        w32(humen_ichi_addr, rand(0x0d30, 0x0d60))
+        -- w32(humen_ichi_addr, rand(0x80, 0x1160))
+    end
+    if actions_i <= #actions then
+        local a = actions[actions_i]
+        if _i >= a[1] then
+            actions_i = actions_i + 1
+            tone_k = a[2]
+            tone_i = 0
+        end
+    end
+    if tone_k == 0 then return end
+    if tone_k < 0 then
+        for i = 0, kyoku_broken_width-1, 4 do
+            w32(kyoku_broken_head + i, 0)
+        end
+        return
+    end
+    local tone = get_tone(tone_k)
+    tone_i = (tone_i % #tone) + 1
+    local d = tone[tone_i]
+    for i = 0, kyoku_broken_width-1 do
+        w8(kyoku_broken_head + i, d[i + 1])
+    end
+end
+```

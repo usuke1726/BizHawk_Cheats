@@ -1527,3 +1527,164 @@ lib.irume.start(function()
 end)
 ```
 
+video6 にしきがお
+
+```lua
+local arm9 = "ARM9 System Bus"
+CLS()
+
+local function MAIN()
+
+local block_width = 0x08
+local block_span = 0x40
+local blockline_span = 0x400
+local W = block_width * (blockline_span // block_span)
+assert(block_span % block_width == 0)
+assert(blockline_span % block_span == 0)
+
+local function round(x)
+    return math.floor(x + 0.5)
+end
+
+local function lerp(x, w, b)
+    local _w = w * 0.5
+    local _bi = 1.0 / b
+    local v = round((x - _w) * (w * _bi) + _w)
+    if v < 0 then return 0
+    elseif v >= w then return w-1
+    else return v
+    end
+end
+
+-- 仮想座標から物理アドレスへ
+local function change_pos1(x, y)
+    local a, b, c = block_span, blockline_span, block_width
+    local v = W*y + x
+    local v2, v3 = v % b, v // b
+    local A1, A2 = v2 % W, v2 // W
+    local C1, C2 = A1 % c, A1 // c
+    local V1 = A2*c + C2*a + C1
+    return (v3*b + V1) + 0x06183800
+end
+-- 目の部分
+local function change_pos2(x, y)
+    x = x - 0x28
+    y = y - 0x40
+    -- local a, b, c = block_span, blockline_span, block_width
+    local a, b, c = 0x40, 0x180, 0x08
+    local _w = c * (b // a)
+    local v = _w*y + x
+    local v2, v3 = v % b, v // b
+    local A1, A2 = v2 % _w, v2 // _w
+    local C1, C2 = A1 % c, A1 // c
+    local V1 = A2*c + C2*a + C1
+    return (v3*b + V1) + 0x06189800
+end
+local function change_pos(x, y)
+    if within(y, 0x40, 0x4f) and within(x, 0x28, 0x57) then
+        return change_pos2(x, y)
+    else return change_pos1(x, y)
+    end
+end
+
+local xs = 0x20
+-- local xs = 0x28
+local xe = 0x57
+local ys = 0x50
+local ys2 = 0x2c
+local ye = 0x67
+local _y_b = ye - ys
+local _x_b = xe - xs
+local slope = (_y_b / _x_b)
+local function y_scale(x)
+    if x < _x_b * 0.5 then
+        return round(-2*slope*x + _y_b)
+    else
+        return round(2*slope*x - _y_b)
+    end
+end
+
+local vs = {}
+local _jj = -1
+local prev = ""
+local x, y = 0, 0
+for i = 0x6183800, 0x61897ff, 1 do
+    if within(y, 0x40, 0x70) then
+        local __x = (x - W*0.5) * 2 / W
+        local __sign = __x < 0 and -1 or 1
+        __x = W*0.5 + __sign * __x * __x * W*0.5
+        __x = math.max(math.min(__x, W-1), 0)
+        vs[change_pos(x, y)] = r8(change_pos(__x, y))
+    elseif y >= 0x75 then
+        local _h = 0x10
+        local center = {W*0.5, 0x75 + _h}
+        local __x = (x - center[1]) * 2 / W
+        local __sign = __x < 0 and -1 or 1
+        __x = center[1] + __sign * __x * __x * W*0.5
+        __x = math.max(math.min(__x, W-1), 0)
+        -- local __y = (y - center[2]) / _h
+        -- __y = center[2] + __y * __y * _h
+        vs[change_pos(x, y)] = r8(change_pos(__x, y))
+    end
+    x = (x + 1) % W if x == 0 then y = y + 1 end
+end
+-- for i, v in pairs(vs) do w32(i, v, arm9) end
+
+for i = 0x6183800, 0x61897ff, 4 do
+    local v = 0
+    for j = 0, 3, 1 do
+        local _i = i + 3 - j
+        v = (v << 8) | (vs[_i] or r8(i))
+        -- v = (v << 8) | r8(_i)
+    end
+    w32(i, v)
+end
+
+end
+
+
+local _i = 0
+local ts = {
+    360,
+    480,
+    540,
+}
+local do_time = 595
+
+local span = 10
+
+function loop()
+    _i = _i + 1
+    if _i == do_time then MAIN() span = 30
+    elseif _i == do_time + 58 then
+        -- 強制フリーズ
+        lib.fill_in(0x02210000, 0x0221ffff)
+        print("DONE")
+        return
+    elseif _i > do_time then return
+    end
+    for _, t in pairs(ts) do
+        if _i == t then
+            DS.key.set("A", true) break
+        elseif _i == t + 10 then
+            DS.key.set("A", false) break
+        end
+    end
+end
+
+-- MAIN()
+-- loop = nil
+
+lib.irume.start(function()
+    local head = 0x03eba730
+    local as = {}
+    for i = 0, 18 do as[i] = head + 0x40*i end
+    local m = lib.at(head)
+    return function()
+        for i, a in pairs(as) do
+            m:with(a + 0x21):w8(0x22)
+            m:with(a + 0x23):w8(0x22)
+        end
+    end
+end)
+```
