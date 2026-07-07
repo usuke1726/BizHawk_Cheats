@@ -138,6 +138,23 @@ local function setTimeout(time, callback) end
 ---@overload fun(timeout: int, firstTimeoutOrCallback: Callback): int
 local function setInterval(timeout, firstTimeoutOrCallback, callback) end
 
+---@class TimerActionsObj
+---@field active bool
+---@field protected _actions TimerActionsValues[]
+---@overload fun()
+local TimerActionsObj = {}
+
+function TimerActionsObj:update() end
+
+---@param counter CounterObjBase
+---@param action TimerActionsAction
+---@return TimerActionsObj self
+function TimerActionsObj:set(counter, action) end
+
+---発火時間と実行アクションをまとめて管理するオブジェクトを生成する。
+---@return TimerActionsObj
+local function timerActions() end
+
 ---@class TimerLib
 local __timer = {
     setTimeout = setTimeout,
@@ -148,4 +165,5 @@ local __timer = {
     CntOnce = CntOnce,
     RL = RL,
     RC = RC,
+    actions = timerActions,
 }

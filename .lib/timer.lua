@@ -384,6 +384,52 @@ local function setInterval(timeout, firstTimeoutOrCallback, callback)
     end
 end
 
+
+---@alias TimerActionsAction fun(counter: CounterObjBase): bool?
+---@alias TimerActionsValues { counter: CounterObjBase, action: TimerActionsAction }
+
+---@class TimerActionsObj
+---@field active bool
+---@field protected _actions TimerActionsValues[]
+---@overload fun()
+local TimerActionsObj = {}
+
+function TimerActionsObj:update()
+    if not self.active then return end
+    for _, v in pairs(self._actions) do
+        if v.counter() then
+            local f = v.action(v.counter)
+        end
+    end
+end
+
+---@param counter CounterObjBase
+---@param action TimerActionsAction
+---@return TimerActionsObj self
+function TimerActionsObj:set(counter, action)
+    self._actions[#self._actions+1] = {
+        counter = counter,
+        action = action,
+    }
+    return self
+end
+
+---発火時間と実行アクションをまとめて管理するオブジェクトを生成する。
+---@return TimerActionsObj
+local function timerActions()
+    return setmetatable({
+        active = true,
+        _i = 0,
+        _actions = {},
+    }, {
+        __index = TimerActionsObj,
+        ---@param self TimerActionsObj
+        __call = function(self)
+            self:update()
+        end,
+    })
+end
+
 __timer = {
     setTimeout = setTimeout,
     setInterval = setInterval,
@@ -394,6 +440,7 @@ __timer = {
     CntOnce = _CntOnce,
     RL = _RL,
     RC = _RC,
+    actions = timerActions,
     __update = update,
 }
 return __timer
