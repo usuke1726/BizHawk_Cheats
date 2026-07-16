@@ -28,6 +28,7 @@ lib = {
     sjis = __sjis,
     timer = __timer,
     irume = __irume,
+    recorder = __recorder,
     path = __path_lib,
     mfilter8 = mfilter8,
     mfilter16 = mfilter16,

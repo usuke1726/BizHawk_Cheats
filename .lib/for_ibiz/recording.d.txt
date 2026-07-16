@@ -1,0 +1,41 @@
+
+---@class RecorderObj
+---@field head int
+---@field bound int
+---@field key DS_Keys
+---@field finished_just_now bool
+---@overload fun(): bool
+local RecorderObj = {}
+
+---@param i int
+---@return int[]
+function RecorderObj:bytes(i) end
+
+---@return bool
+function RecorderObj:update() end
+
+---@param filename? string
+---@param silent? bool
+---@return RecorderObj
+function RecorderObj:file(filename, silent) end
+
+---@param filename? string
+function RecorderObj:save(filename) end
+
+---@param val bool?
+---@return RecorderObj
+function RecorderObj:scan_each_byte(val) end
+
+---@return bool
+function RecorderObj:finished() end
+
+---@param head int
+---@param bound int
+---@param key DS_Keys
+---@return RecorderObj
+function Recorder(head, bound, key) end
+
+---@class RecorderLib
+local __recorder = {
+    new = Recorder,
+}
