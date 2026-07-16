@@ -1263,6 +1263,43 @@ end)
 
 ```
 
+## ライブキャスター部分の雑多メモ
+
+```lua
+CLS()
+
+local head = 0x06006800
+
+local orig = {}
+for i = 0x0, 0x2ff, 2 do
+    local a = head + i
+    orig[a] = r16(a)
+end
+
+-- 博士とチェレンの立ち絵
+-- lib.fill_in(0x06006800, 0x06006aff)
+-- lib.fill_in(0x06006800, 0x0600681f)
+local vs = {}
+for i = 0x0, 0x2ff, 2 do
+    local a = head + i
+    local a2 = a ~ 0x20
+    local is_left = a & 0x20 == 0
+    vs[a] = orig[a2 + (is_left and 0x40 or -0x40)] or orig[a]
+    vs[a] = orig[a2 + (is_left and 0x42 or -0x42)] or orig[a]
+end
+for a, v in pairs(vs) do w16(a, v) end
+-- w16(0x06006840, 0x11)
+
+-- 6800から、0x20ずつ、博士、チェレン、博士、チェレン、...と交互に配置されている
+
+-- 6800 <=> 6820 (**** **** **0* **** <=> **** **** **1* ****)
+-- 6840 <=> 6860 (**** **** *10* **** <=> **** **** *11* ****)
+
+-- 口など動く部分
+-- lib.fill_in(0x06400000, 0x064fffff)
+```
+
+
 ## ライブキャスターでテキスト&イルーム
 
 ```lua
@@ -1365,7 +1402,7 @@ lib.irume.start(function()
 end)
 ```
 
-video 5 Nにしきがお
+## video 5 Nにしきがお
 
 ```lua
 local arm9 = "ARM9 System Bus"

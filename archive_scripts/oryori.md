@@ -171,6 +171,71 @@ end
 
 -- sjis.print_range(0x003a2e41, 0x003a6d9d, ROM_DOMAIN_NAME)
 -- sjis.print_range(0x003a6cd0, 0x003a6d3d, ROM_DOMAIN_NAME)
+
+
+--- ==================================
+--- ==================================
+--- ==================================
+
+local cache = {}
+
+local i = 0
+local is_replaying = false
+local r = RC(45)
+local r2 = RC(20)
+
+local function is_speak_end()
+    return r32(0x023C0620) == 0xffffffff
+end
+
+local prev = {}
+
+local function diff_data(arr)
+    if #prev ~= #arr then return true end
+    local n = #prev
+    for i = 1, n do
+        if prev[i] ~= arr[i] then return true end
+    end
+    return false
+end
+
+function loop()
+    if r() then
+        is_replaying = not is_replaying
+        if is_speak_end() then
+            is_replaying = true
+        end
+        i = 0
+    end
+    i = i + 1
+    if is_replaying then
+        if cache[i] then
+            lib.warr(0x023C0620, cache[i])
+            if r2() then i = 0 end
+        else
+            i = 0
+        end
+    else
+        if not is_speak_end() then
+            local tmp = lib.rarr(0x023C0620, 0x023C18DF)
+            if diff_data(tmp) then
+                cache[i] = tmp
+                prev = table_copy(tmp)
+            end
+        end
+    end
+    -- lib.fill_in(0x023C0620, 0x023C18DF)
+end
+```
+
+
+```plaintext
+23C05A0
+
+0x023C05A9 => 21
+0x023C05F8 => 00
+
+0x023C0620 -- 0x023C18DF
 ```
 
 

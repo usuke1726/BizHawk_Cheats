@@ -194,3 +194,30 @@ lib.range(0x06608f80, 0x0660bb7f):save():print() -- smile
 
 23800F4を違う値に設定すると、いちいち立ち絵がスライドインする
 
+
+雑多メモ
+
+```lua
+-- a-train
+-- local mes = lib.htob("8e9f82cd81418351815b83808fee95f1")
+-- local mes = lib.htob("216b6f300130b230fc30e030c5603158")
+-- local mes = lib.htob("216b6f300130b230fc30")
+-- local mes = lib.htob("423089305f30")
+local mes = lib.htob("1a4f3e796e30c78cd1914c30")
+-- local mes = lib.htob("6b21306f300130b230fc30e060c55831")
+lib.find_all(0x02000000, 0x024fffff, mes)
+
+-- 213AF54
+-- 234756C <= 最初以外ならいじれる
+-- 2347850
+-- 253af54
+
+-- 274756c
+-- 2B4756c
+-- 2F4756C
+
+-- CA4E6F30DE30C330D73078909E6257304B3067304D307E305B3093304C30013044305A308C30
+
+-- あらためましての会話は、0x0237F190から
+-- 資金が底をついたの会話は、 0x021C8644から
+```
