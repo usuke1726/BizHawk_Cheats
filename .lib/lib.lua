@@ -17,6 +17,7 @@ local irume = require "irume"
 local _sjis = require "sjis"
 local ds_button = require "ds_button"
 local recorder = require "recording"
+local image_lib = require "image"
 
 ---@type fun()?
 loop = nil
@@ -105,6 +106,7 @@ return {
     timer = timer,
     irume = irume,
     sjis = _sjis,
+    image = image_lib,
     recorder = recorder,
     fill_in = mem.fill_in,
     fill_in_arr = mem.fill_in_arr,

@@ -1,0 +1,30 @@
+
+---@class ImageFilterObj
+---@field _vs int[]
+---@field _width int?
+---@field _height int?
+---@field _addr_bound int?
+---@field protected _ready bool
+local ImageFilterObj = {}
+
+---@param width int
+---@return ImageFilterObj
+function ImageFilterObj:width(width) end
+---@param bound int
+---@return ImageFilterObj
+function ImageFilterObj:bound(bound) end
+---@param height int
+---@return ImageFilterObj
+function ImageFilterObj:height(height) end
+
+---@param filter_func fun(x: int, y: int): int?, int?
+---@return ImageFilterObj
+function ImageFilterObj:go(filter_func) end
+
+---@return ImageFilterObj
+local function filterObj() end
+
+---@class ImageLib
+local __image_lib = {
+    filterObj = filterObj,
+}
