@@ -4,6 +4,7 @@
 ---@field bound int
 ---@field key DS_Keys
 ---@field finished_just_now bool
+---@field protected _auto_save bool
 ---@field protected filepath? string
 ---@field protected recorded bool
 ---@field protected recording bool
@@ -92,6 +93,9 @@ function RecorderObj:update()
         self.recording = true
     end
     self.finished_just_now = self.recorded
+    if self._auto_save and self.finished_just_now then
+        self:save()
+    end
     return self.finished_just_now
 end
 
@@ -139,6 +143,14 @@ function RecorderObj:scan_each_byte(val)
     return self
 end
 
+---@param val bool?
+---@return RecorderObj
+function RecorderObj:auto_save(val)
+    if val == nil then val = true end
+    self._auto_save = val
+    return self
+end
+
 ---@return bool
 function RecorderObj:finished()
     return self.recorded
@@ -162,6 +174,7 @@ local function _Recorder(head, bound, key)
         recorded = false,
         recording = false,
         finished_just_now = false,
+        _auto_save = false,
         _scan_each_byte = _seb,
         data = {},
         data_i = 0,

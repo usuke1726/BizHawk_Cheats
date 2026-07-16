@@ -26,6 +26,10 @@ function RecorderObj:save(filename) end
 ---@return RecorderObj
 function RecorderObj:scan_each_byte(val) end
 
+---@param val bool?
+---@return RecorderObj
+function RecorderObj:auto_save(val) end
+
 ---@return bool
 function RecorderObj:finished() end
 
