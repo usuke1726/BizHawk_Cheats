@@ -205,6 +205,34 @@ clamp8 = _clamp8
 clamp16 = _clamp16
 clamp32 = _clamp32
 
+---整数に丸める。
+---@param v number
+---@return int
+local function _round(v)
+    return math.floor(v + 0.5)
+end
+math.round = _round
+round = _round
+
+---線形補間を行う。
+---@param value number
+---@param target number
+---@param t number
+---@return number
+local function _lerp(value, target, t)
+    return value + (target - value) * t
+end
+---整数の線形補間を行う。
+---@param value int
+---@param target int
+---@param t number
+---@return int
+local function _ilerp(value, target, t)
+    return round(_lerp(value, target, t))
+end
+lerp = _lerp
+ilerp = _ilerp
+
 ---@generic T
 ---@class SetObj<T>
 ---@field protected _tbl table<T, bool>
