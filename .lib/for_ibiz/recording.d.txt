@@ -33,6 +33,13 @@ function RecorderObj:auto_save(val) end
 ---@return bool
 function RecorderObj:finished() end
 
+---波形データを記録してテキストファイルに書き込むオブジェクトを生成
+---
+---使用例:
+--- ```lua
+--- local recorder = Recorder(0x02131220, 0x800, "Select"):file():auto_save()
+--- function loop() recorder() end
+--- ```
 ---@param head int
 ---@param bound int
 ---@param key DS_Keys

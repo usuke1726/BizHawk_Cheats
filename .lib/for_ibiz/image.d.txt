@@ -21,6 +21,21 @@ function ImageFilterObj:height(height) end
 ---@return ImageFilterObj
 function ImageFilterObj:go(filter_func) end
 
+---VRAM上などのピクセルデータにフィルタリングをかけるオブジェクトを生成する。
+---
+---使用例：
+--- ```lua
+--- local W = 0x80
+--- local function pos(x, y)
+---     return lib.pos.Morton(x, y, 0x04, 0x20, 0x400) + 0x06214000
+--- end
+--- lib.image.filterObj()
+--- :width(W):bound(0x6000)
+--- :go(function(x, y)
+---     local _x = math.round(x * 0.3) + (W // 2)
+---     return pos(x, y), r8(pos(_x, y))
+--- end)
+--- ```
 ---@return ImageFilterObj
 local function filterObj() end
 
