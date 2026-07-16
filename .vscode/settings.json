@@ -9,12 +9,15 @@
     "BizHawkServer.IBizNotebookTemplates": [
         [
             "---@meta",
+            "file:./.lib/for_ibiz/path.d.txt",
             "file:./.lib/for_ibiz/mem.d.txt",
             "file:./.lib/for_ibiz/util.d.txt",
             "file:./.lib/for_ibiz/sjis.d.txt",
             "file:./.lib/for_ibiz/timer.d.txt",
             "file:./.lib/for_ibiz/irume.d.txt",
             "file:./.lib/for_ibiz/ds_button.d.txt",
+            "file:./.lib/for_ibiz/recording.d.txt",
+            "file:./.lib/for_ibiz/image.d.txt",
             "file:./.lib/for_ibiz/lib.d.txt",
         ],
         ""
