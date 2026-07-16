@@ -8,6 +8,7 @@
 ---@alias s16 int
 ---@alias s32 int
 
+local pathlib = require "path"
 local mem = require "mem"
 local util = require "util"
 local repl = require "REPL"
@@ -95,6 +96,7 @@ local _ds = {
 DS = _ds
 
 return {
+    path = pathlib,
     ds = _ds,
     main = main,
     util = util,

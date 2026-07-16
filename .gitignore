@@ -6,3 +6,4 @@ memo.txt
 *.ibiz
 *.ilua
 tmp*.*
+/_out
