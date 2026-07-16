@@ -3,10 +3,10 @@
 ---@type fun()?
 loop = nil
 
----@param id int
+---@param id int | string
 ---@param callback fun()
 function SET_LOOP(id, callback) end
----@param id int
+---@param id int | string
 ---@param callback fun(): fun()
 function XSET_LOOP(id, callback) end
 ---@param callback fun()
@@ -15,7 +15,7 @@ function ADD_LOOP(callback) end
 ---@param callback fun(): fun()
 ---@return int
 function XADD_LOOP(callback) end
----@param id int
+---@param id int | string
 function DELETE_LOOP(id) end
 function CLEAR_LOOP() end
 

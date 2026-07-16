@@ -19,15 +19,16 @@ local ds_button = require "ds_button"
 ---@type fun()?
 loop = nil
 
----@type table<int, fun()>
+---@type table<int | string, fun()>
 local loop_callbacks = {}
+local loop_callbacks_last_id = 0
 
----@param id int
+---@param id int | string
 ---@param callback fun()
 local function _set_loop(id, callback)
     loop_callbacks[id] = callback
 end
----@param id int
+---@param id int | string
 ---@param callback fun(): fun()
 local function _xset_loop(id, callback)
     loop_callbacks[id] = callback()
@@ -35,11 +36,13 @@ end
 SET_LOOP = _set_loop
 XSET_LOOP = _xset_loop
 
+---@return int
 local function _find_id()
-    local id = #loop_callbacks
+    local id = loop_callbacks_last_id
     while true do
         id = id + 1
         if not loop_callbacks[id] then
+            loop_callbacks_last_id = id
             return id
         end
     end
@@ -60,7 +63,7 @@ local function _xadd_loop(callback)
     return id
 end
 XADD_LOOP = _xadd_loop
----@param id int
+---@param id int | string
 local function _delete_loop(id)
     loop_callbacks[id] = nil
 end
