@@ -461,3 +461,327 @@ lib.irume.start(function()
     end
 end)
 ```
+
+## video7 首を長くしたり色々
+
+```lua
+-- 首: 2A98110 (4byte)
+-- 回転 8125
+
+local m = lib.range(0x02480000, 0x02487FFF):save()
+local r = RC(60)
+
+function loop()
+    if r() then m:rollback() end
+    -- 顔がバグる?
+    for i = 0x2481500, 0x24815ff, 4 do
+
+    -- for i = 0x2483000, 0x2484fff, 4 do
+        if r() then w32(i, rand(0, 0xffffffff)) end
+    end
+end
+
+lib.irume.start(function()
+    local head = 0x03e07d40
+    local as = {}
+    for i = 0, 16 do
+        as[i] = head + 0x40*i
+    end
+    -- local tone = 0x7F7F0040
+    local tone = {0x40, 0x00, 0x7f, 0x7f}
+    return function()
+        w8(as[1] + 0x17, 24)
+        w8(as[2] + 0x17, 24)
+        for i = 4, 16 do
+            lib.warr(as[i] + 0x06, tone)
+            w8(as[i] + 0x17, stou8(-12))
+        end
+    end
+end)
+
+ADD_LOOP((function()
+    local m = lib.at(0x02a98110)
+    local v = 0x446D
+    local target = 0x446D
+    local r = RC(40)
+    return function()
+        if r() then
+            target = rand(0x0, 0xFF) << 8
+        end
+        v = ilerp(v, target, 0.1)
+        m:w16(v)
+    end
+end)())
+```
+
+## video9 タイトルのマリオをいじる
+
+```lua
+-- 候補1(結局使わなかった)
+-- lib.fill_in(0x02aef000, 0x02afc6ff, 0x62)
+
+
+lib.fill_in(0x02aee800, 0x02afc6ff, 0x02)
+
+-- 以下、調査のためのコード。動画としてはボツ
+
+
+-- lib.fill_in(0x02af4eb5, 0x02af8fff, rand(0, 0xff))
+-- lib.fill_in(0x02af9000, 0x02afbfff, rand(0, 0xff))
+
+local v = rand(0, 0xff)
+-- _HEXP(v, 2)
+-- 0x62, 0x37
+lib.fill_in(0x02afc000, 0x02afc6ff, 0x62)
+
+local vals = {0x62, 0x37}
+
+local c = Cnt(2)
+
+local f = false
+function loop()
+    local mouse_pos = input.getmouse()
+    local _x = clamp(mouse_pos["X"], 0, 255)
+    local _f = _x < 128
+    CLS()
+    print(tostring(_x))
+    if f ~= _f then
+        f = not f
+        lib.fill_in(0x02afc000, 0x02afc6ff, vals[c:next() + 1])
+    end
+end
+
+
+lib.irume.start(function()
+    local head = 0x03e07d40
+    local as = {}
+    for i = 0, 16 do
+        as[i] = head + 0x40*i
+    end
+    return function()
+        for i = 0, 16 do
+            if i == 1 or i == 11 then
+                w16(as[i] + 0x1e, 0x1010)
+                w8(as[i] + 0x1d, 0x10)
+                w8(as[i] + 0x17, stou8(-6))
+                w32(as[i] + 0x0c, 0x77777777)
+                -- w32(as[i] + 0x0c, 0x11111111)
+            else
+                w8(as[i] + 0x17, stou8(rand(-12, 12)))
+                w16(as[i] + 0x1e, 0x3010)
+                w8(as[i] + 0x1d, 1)
+            end
+        end
+    end
+end)
+```
+
+
+## 花占い関係のメモ
+
+```plaintext
+
+-- 217D470あたり、花びらが勝手に消える(11で上書き)
+-- 228B8E8: 50, 80, dd, 65, 66, 81(def)
+-- 228B8Ea: c0, 1f(def)
+-- 228B8E2: a0, 22, 43, c3(def)
+
+-- ヨッシー崩壊
+lib.fill_in(0x02480400, 0x024804ff, 0x11)
+
+2481485 (2byte LE signed)
+2481487 (2byte LE signed)
+
+
+カメラの距離?
+2480486 (2byte LR)
+
+カメラの回転?
+2480484 (2byte LR)
+
+カメラの距離2?
+2480750 (2byte)
+2480752 (2byte)
+
+2480730 (4byte)ヨッシーから謎の緑色の物体
+```
+
+## ヨッシー高速ズーム & 花暴走 &  高速マリオ風BGM(エンツ)
+
+```lua
+
+local update_zooming = (function()
+    -- ここら辺のアドレスはピーチバグにも使えそう！
+    local m = lib.at(0x02480752)
+    local m2 = lib.at(0x02480484)
+    local c = Cnt(60)
+    local min1 = 1
+    local max1 = 0x70ff
+    local min2 = 0
+    local max2 = 0x0a00
+    local c2 = Cnt(120)
+    local fired = false
+    return function()
+        local x = c:next() / c.n
+        if c2() then
+            fired = true
+            c2.active = false
+        end
+        if c.fired and fired then
+            fired = false
+            c:N(math.max(math.floor(c.n * 0.9), 5))
+            c2:N(math.max(math.round(c2.n * 0.9), 5))
+            c2.active = true
+            c2.i = 0
+        end
+        local v
+        v = math.round(x*x*(max1 - min1)) + min1
+        m:w16(v)
+
+        v = math.round(x*(max2 - min2)) + min2
+        m2:w16(v)
+    end
+end)()
+
+local update_leaf = (function()
+    local as = {}
+    local vs = {}
+    local xs = {}
+    local ys = {}
+    local _n = 11
+    local add_n = 4
+    local n = _n + add_n
+    for i = 0, n-1 do
+        as[i] = 0x0217D49C + 0x20*i
+        vs[i] = {0x80000, 0x80000, 0x800}
+    end
+    local copy_data = lib.htob("0100000050DA0A00701205000000000000000000000000000000000032B30000")
+    for i = 0, add_n-1 do
+        local a = 0x0217D5D8 + 0x20*i
+        lib.warr(a, copy_data)
+    end
+    local m = lib.at(0x02000000)
+    local xmax = 0x117000
+    local xmin = -0x18100
+    local ymax = 0x0d0000
+    local ymin = -0x12100
+    local x_r = RC(60)
+    local y_r = RC(60)
+    local r_r = RC(60)
+
+    -- local ready = RL(90)
+    -- local ready2 = RL(340)
+    local ready = RL(40)
+    local ready2 = RL(90)
+    return function()
+        if not ready() then return end
+        ready2()
+        for i = 0, n-1 do
+            local xa = as[i]
+            local ya = as[i] + 4
+            local ra = as[i] + 0x18
+            if not xs[i] then xs[i] = r32(xa) end
+            if not ys[i] then ys[i] = r32(ya) end
+            if r_r() then
+                vs[i][3] = rand(-0x40, 0x40) * 0x100
+            end
+            m:with(ra):add16(vs[i][3])
+            if ready2.fired then
+                if x_r() then
+                    vs[i][1] = rand(-0x40, 0x40) * 0x800
+                end
+                if y_r() then
+                    vs[i][2] = rand(-0x40, 0x40) * 0x800
+                end
+            end
+            xs[i] = (xs[i] + vs[i][1]) % (xmax - xmin)
+            m:with(xa):w32(stou32(xs[i] + xmin))
+            ys[i] = (ys[i] + vs[i][2]) % (ymax - ymin)
+            m:with(ya):w32(stou32(ys[i] + ymin))
+        end
+    end
+end)()
+
+function loop()
+    update_zooming()
+    update_leaf()
+end
+
+
+lib.irume.start(function()
+    local head = 0x03e07d40
+    local as = {}
+    local cache = {}
+    for i = 0, 16 do
+        as[i] = head + 0x40*i
+        cache[i] = 0
+    end
+    local c = Cnt(2)
+    local m = lib.at(0x03000000)
+    return function()
+        c()
+        for i, a in pairs(as) do
+            if c.fired then
+                cache[i] = -20
+            end
+            if cache[i] ~= 0 then
+                m:with(a + 0x24)
+                local v = m:r8()
+                local d = math.max(cache[i], -v+1)
+                cache[i] = cache[i] - d
+                m:add8(d)
+            end
+        end
+    end
+end)
+
+```
+
+## video9 オープニング
+
+```lua
+local m2 = lib.at(0x02480486)
+local min2 = 0x0e00
+local max2 = 0x1f00
+local c = Cnt(60)
+zoom_done = false
+function loop()
+    if zoom_done then
+        m2:w16(0x1500)
+        return
+    end
+    local v
+    local x = c:next() / c.n
+    if c.fired then
+        c:N(ilerp(c.n, 30, 0.2))
+    end
+    v = math.round(x*x*(max2 - min2)) + min2
+    m2:w16(v)
+end
+
+lib.irume.start(function()
+    local head = 0x03e07d40
+    local prev = 0
+    local as = {}
+    local cache = {}
+    for i = 0, 19 do
+        as[i] = head + 0x40*i
+    end
+    return function()
+        local t = r8(as[0] + 0x24)
+        if prev < t then
+            t = 0x10
+            for i, a in pairs(as) do
+                w8(a + 0x17, stou8(rand(-6, 6)))
+            end
+        end
+        for i, a in pairs(as) do
+            w8(a + 0x24, t)
+        end
+        prev = t
+    end
+end)
+
+```
+
+

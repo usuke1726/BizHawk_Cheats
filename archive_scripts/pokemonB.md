@@ -1,7 +1,7 @@
 
 # ポケモン ブラック
 
-上画面を崩壊させる(VRAM領域をいじる)
+## 上画面を崩壊させる(VRAM領域をいじる)
 
 ```lua
 local arm9 = "ARM9 System Bus"
@@ -14,7 +14,7 @@ for i = 0x6180000, 0x618ffff, 4 do
 end
 ```
 
-イルームも追加で
+### イルームも追加で
 
 ```lua
 lib.irume.start(function()
@@ -55,7 +55,7 @@ for i = 0x6180000, 0x618ffff, 4 do
 end
 ```
 
-違うバリエーションのイルーム
+### 違うバリエーションのイルーム
 
 ```lua
 lib.irume.start(function()
@@ -86,7 +86,7 @@ for i, v in pairs(vs) do w32(i, v) end
 ```
 
 
-アゴ化
+## アゴ化
 
 ```lua
 local arm9 = "ARM9 System Bus"
@@ -174,7 +174,7 @@ end)
 print("DONE " .. tostring(rand(0, 9999)))
 ```
 
-アゴ part2 (座標変換を実装して、もっときれいなアゴにした)
+## アゴ part2 (座標変換を実装して、もっときれいなアゴにした)
 
 ```lua
 
@@ -268,7 +268,7 @@ lib.irume.start(function()
 end)
 ```
 
-ホドモエのおまけイルーム
+## ホドモエのおまけイルーム
 
 ```lua
 lib.irume.start(function()
@@ -360,7 +360,7 @@ State 7
 - …(3点)は 0x2620 (LE)
 
 
-帽子化 & テキストバグ
+## 帽子化 & テキストバグ
 
 ```lua
 local arm9 = "ARM9 System Bus"
@@ -484,7 +484,7 @@ lib.irume.start(function()
 end)
 ```
 
-デブ化？
+## デブ化？
 
 ```lua
 
@@ -687,7 +687,7 @@ dc30af306f30003073ff8bff785e5b306730593001ff
 ---
 
 
-カッパ顔？
+## カッパ顔？
 
 ```lua
 
@@ -823,7 +823,7 @@ end)
 
 ```
 
-video4のやつ(ガリガリ & ムスッとした顔)
+## video4のやつ(ガリガリ & ムスッとした顔)
 
 ```lua
 
@@ -1063,7 +1063,7 @@ end)
 
 ---
 
-ライブキャスターでにしきがお
+## ライブキャスターでにしきがお
 
 ```lua
 
@@ -1263,7 +1263,7 @@ end)
 
 ```
 
-ライブキャスターでテキスト&イルーム
+## ライブキャスターでテキスト&イルーム
 
 ```lua
 -- チェレン会話変更
@@ -1527,7 +1527,7 @@ lib.irume.start(function()
 end)
 ```
 
-video6 にしきがお
+## video6 にしきがお
 
 ```lua
 local arm9 = "ARM9 System Bus"
@@ -1687,4 +1687,463 @@ lib.irume.start(function()
         end
     end
 end)
+```
+
+## video7 にしきがお
+
+```lua
+local arm9 = "ARM9 System Bus"
+CLS()
+
+local function MAIN()
+
+local block_width = 0x08
+local block_span = 0x40
+local blockline_span = 0x400
+local W = block_width * (blockline_span // block_span)
+assert(block_span % block_width == 0)
+assert(blockline_span % block_span == 0)
+
+local function round(x)
+    return math.floor(x + 0.5)
+end
+
+local function lerp(x, w, b)
+    local _w = w * 0.5
+    local _bi = 1.0 / b
+    local v = round((x - _w) * (w * _bi) + _w)
+    if v < 0 then return 0
+    elseif v >= w then return w-1
+    else return v
+    end
+end
+
+-- 仮想座標から物理アドレスへ
+local function change_pos1(x, y)
+    local a, b, c = block_span, blockline_span, block_width
+    local v = W*y + x
+    local v2, v3 = v % b, v // b
+    local A1, A2 = v2 % W, v2 // W
+    local C1, C2 = A1 % c, A1 // c
+    local V1 = A2*c + C2*a + C1
+    return (v3*b + V1) + 0x06183800
+end
+-- 目の部分
+local function change_pos2(x, y)
+    x = x - 0x28
+    y = y - 0x40
+    -- local a, b, c = block_span, blockline_span, block_width
+    local a, b, c = 0x40, 0x180, 0x08
+    local _w = c * (b // a)
+    local v = _w*y + x
+    local v2, v3 = v % b, v // b
+    local A1, A2 = v2 % _w, v2 // _w
+    local C1, C2 = A1 % c, A1 // c
+    local V1 = A2*c + C2*a + C1
+    return (v3*b + V1) + 0x06189800
+end
+local function change_pos(x, y)
+    if within(y, 0x40, 0x4f) and within(x, 0x28, 0x57) then
+        return change_pos2(x, y)
+    else return change_pos1(x, y)
+    end
+end
+
+local xs = 0x20
+-- local xs = 0x28
+local xe = 0x57
+local ys = 0x50
+local ys2 = 0x2c
+local ye = 0x67
+local _y_b = ye - ys
+local _x_b = xe - xs
+local slope = (_y_b / _x_b)
+local function y_scale(x)
+    if x < _x_b * 0.5 then
+        return round(-2*slope*x + _y_b)
+    else
+        return round(2*slope*x - _y_b)
+    end
+end
+
+local vs = {}
+local _jj = -1
+local prev = ""
+local x, y = 0, 0
+
+local xs = 0x10
+local xe = 0x6f
+local x2s = 0x30
+local x2e = 0x3f
+local ys = 0x10
+local ye = 0x6f
+local y2s = 0xb0
+local y2e = 0xbf
+
+for i = 0x6183800, 0x61897ff, 1 do
+    if within(y, ys, ye) and within(x, xs, xe) then
+        local _x = math.floor((x - xs) * (x2e - x2s) / (xe - xs)) + x2s
+        local _y = math.floor((y - ys) * (y2e - y2s) / (ye - ys)) + y2s
+        vs[change_pos(x, y)] = r8(change_pos(_x, _y))
+    elseif within(y, 0xb0, 0xbf) and within(x, 0x30, 0x3f) then
+        vs[change_pos(x, y)] = 0
+    end
+    x = (x + 1) % W if x == 0 then y = y + 1 end
+end
+
+for i = 0x6183800, 0x61897ff, 4 do
+    local v = 0
+    for j = 0, 3, 1 do
+        local _i = i + 3 - j
+        v = (v << 8) | (vs[_i] or r8(_i))
+    end
+    w32(i, v)
+end
+
+for i = 0x6189800, 0x6189fff, 4 do
+    local v = 0
+    for j = 0, 3, 1 do
+        local _i = i + 3 - j
+        v = (v << 8) | (vs[_i] or r8(_i))
+    end
+    w32(i, v)
+end
+
+end
+
+
+local _i = 0
+local ts = {
+    360,
+    480,
+    540,
+}
+local do_time = 595
+
+local span = 10
+
+function loop()
+    _i = _i + 1
+    if _i == do_time then MAIN() span = 30
+    elseif _i == do_time + 58 then
+        -- 強制フリーズ
+        lib.fill_in(0x02210000, 0x0221ffff)
+        print("DONE")
+        return
+    elseif _i > do_time then return
+    end
+    for _, t in pairs(ts) do
+        if _i == t then
+            DS.key.set("A", true) break
+        elseif _i == t + 10 then
+            DS.key.set("A", false) break
+        end
+    end
+end
+
+
+
+
+lib.irume.start(function()
+    local head = 0x03eba730
+    local as = {}
+    for i = 0, 16 do as[i] = head + 0x40*i end
+    local r = RC(40)
+    return function()
+        for i, a in pairs(as) do
+            if i <= 8 then
+                w16(a + 0x1a, 0)
+                w16(a + 0x1c, 0)
+            else
+                local v = 0x60
+                -- local v = 0x20
+                w8(a + 0x17, v)
+                w8(a + 0x18, v)
+                w8(a + 0x1f, stou8(rand(-1, 24)))
+                if r() then
+                    if r8(a + 0x26) == 0 then
+                        w16(a + 0x26, 0x3030)
+                    else
+                        w16(a + 0x26, 0)
+                    end
+                end
+            end
+        end
+    end
+end)
+
+```
+
+## video9 笑顔N(ver1) & 高音ビブラートイルーム
+
+```lua
+CLS()
+
+local function change_pos(x, y)
+    if within(y, 0x40, 0x4f) and within(x, 0x28, 0x57) then
+        return lib.pos.Morton(x - 0x28, y - 0x40, 0x08, 0x40, 0x180) + 0x06189800
+    else return lib.pos.Morton(x, y, 0x08, 0x40, 0x400) + 0x06183800
+    end
+end
+
+local function MAIN()
+
+local W = 0x80
+local hW = W // 2
+
+lib.image.filterObj()
+:width(W)
+:bound(0x6000)
+
+-- ver1
+:go(function(x, y)
+    local _x = clamp(0x08 + hW + math.abs(x - hW), 0, 0x80)
+    return change_pos(x, y), r8(change_pos(_x, y))
+end)
+end
+
+local _i = 0
+local ts = {
+    360,
+    480,
+    540,
+}
+local do_time = 595
+
+local span = 10
+
+function loop()
+    _i = _i + 1
+    if _i == do_time then MAIN() span = 30
+    elseif _i == do_time + 58 then
+        -- 強制フリーズ
+        lib.fill_in(0x02210000, 0x0221ffff)
+        print("DONE")
+        return
+    elseif _i > do_time then return
+    end
+    for _, t in pairs(ts) do
+        if _i == t then
+            DS.key.set("A", true) break
+        elseif _i == t + 10 then
+            DS.key.set("A", false) break
+        end
+    end
+end
+
+
+lib.irume.start(function()
+    local head = 0x03eba730
+    local as = {}
+    local prevs = {}
+    for i = 0, 16 do
+        as[i] = head + 0x40*i
+        prevs[i] = 0
+    end
+    local __v = 0x3
+    return function()
+        for i, a in pairs(as) do
+            local _a = a + 0x2c
+            local t = r8(_a)
+            if prevs[i] < t then
+                t = rand(0x15, 0x2f)
+                w8(a + 0x1f, stou8(rand(25, 50)))
+                w8(a + 0x26, rand(0, 0x10))
+                w8(a + 0x27, rand(0, 0x70))
+            end
+            w8(_a, t)
+            prevs[i] = t
+        end
+    end
+end)
+```
+
+## video9 ムスッと顔 & 爆音
+
+```lua
+CLS()
+
+local function change_pos(x, y)
+    if within(y, 0x40, 0x4f) and within(x, 0x28, 0x57) then
+        return lib.pos.Morton(x - 0x28, y - 0x40, 0x08, 0x40, 0x180) + 0x06189800
+    else return lib.pos.Morton(x, y, 0x08, 0x40, 0x400) + 0x06183800
+    end
+end
+
+local function MAIN()
+
+local W = 0x80
+local hW = W // 2
+
+lib.image.filterObj()
+:width(W)
+:bound(0x6000)
+
+-- ver2
+:go(function(x, y)
+    if within(y, 0x10, 0x2f) and (within(x, 0x10, 0x1f)) then return change_pos(x, y), 0 end
+    local _x = clamp(-0x08 + hW - math.abs(x - hW), 0, W-1)
+    return change_pos(x, y), r8(change_pos(_x, y))
+end)
+
+end
+
+local _i = 0
+local ts = {
+    360,
+    480,
+    540,
+}
+local do_time = 595
+
+local span = 10
+
+function loop()
+    _i = _i + 1
+    if _i == do_time then MAIN() span = 30
+    elseif _i == do_time + 58 then
+        -- 強制フリーズ
+        lib.fill_in(0x02210000, 0x0221ffff)
+        print("DONE")
+        return
+    elseif _i > do_time then return
+    end
+    for _, t in pairs(ts) do
+        if _i == t then
+            DS.key.set("A", true) break
+        elseif _i == t + 10 then
+            DS.key.set("A", false) break
+        end
+    end
+end
+
+
+
+lib.irume.start(function()
+    local head = 0x03eba730
+    local as = {}
+    for i = 0, 16 do
+        as[i] = head + 0x40*i
+    end
+    local __v = 0x3
+    local r = RC(20)
+    return function()
+        for i, a in pairs(as) do
+            local _a = a + 0x2c
+            local t = r8(_a)
+            if r() then
+                w8(a + 0x1f, stou8(rand(-2, 2)))
+            end
+            w16(a + 0x16, 0x1000)
+            w8(a + 0x25, 0x3)
+            w8(a + 0x26, 0x1)
+            w8(a + 0x27, 0x70)
+            w8(_a, t)
+        end
+    end
+end)
+
+```
+
+
+## video9 モリゾー的N(ver3) & 愉快なBGM
+
+```lua
+
+CLS()
+
+local function change_pos(x, y)
+    if within(y, 0x40, 0x4f) and within(x, 0x28, 0x57) then
+        return lib.pos.Morton(x - 0x28, y - 0x40, 0x08, 0x40, 0x180) + 0x06189800
+    else return lib.pos.Morton(x, y, 0x08, 0x40, 0x400) + 0x06183800
+    end
+end
+
+local function MAIN()
+
+local W = 0x80
+local hW = W // 2
+
+lib.image.filterObj()
+:width(W)
+:bound(0x6000)
+
+-- ver3
+:go(function(x, y)
+    if within(y, 0x10, 0x2f) and (within(x, 0x20, 0x2f) or within(x, 0x50, 0x60)) then return change_pos(x, y), 0 end
+    local _x = clamp(-0x18 + hW - math.abs(x - hW), 0, W-1)
+    return change_pos(x, y), r8(change_pos(_x, y))
+end)
+:go(function(x, y)
+    local _x = clamp(hW - math.abs(x - hW) // 2, 0, W-1)
+    return change_pos(x, y), r8(change_pos(_x, y))
+end)
+
+end
+
+local _i = 0
+local ts = {
+    360,
+    480,
+    540,
+}
+local do_time = 595
+
+local span = 10
+
+function loop()
+    _i = _i + 1
+    if _i == do_time then MAIN() span = 30
+    elseif _i == do_time + 58 then
+        -- 強制フリーズ
+        lib.fill_in(0x02210000, 0x0221ffff)
+        print("DONE")
+        return
+    elseif _i > do_time then return
+    end
+    for _, t in pairs(ts) do
+        if _i == t then
+            DS.key.set("A", true) break
+        elseif _i == t + 10 then
+            DS.key.set("A", false) break
+        end
+    end
+end
+
+
+
+
+lib.irume.start(function()
+    local head = 0x03eba730
+    local as = {}
+    local prevs = 0
+    local ps = {
+        20,20,20,20,20,
+        20,20,20,20,20,
+        20,20,20,20,20,20,20,20,0
+    }
+    for i = 0, 16 do
+        as[i] = head + 0x40*i
+    end
+    local r = RC(40)
+    local c = Cnt(2)
+    local __v = 0x10
+    return function()
+        local _a = as[0] + 0x2c
+        local t = r8(_a)
+        if prevs < t then
+            c()
+            t = c.i == 0 and __v or __v*2
+            for i, a in pairs(as) do
+                w8(a + 0x1f, stou8(ps[i+1] + rand(-5, 10)))
+            end
+        end
+        for i, a in pairs(as) do
+            w8(a + 0x2c, t)
+        end
+        prevs = t
+    end
+end)
+
+
 ```
