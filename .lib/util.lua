@@ -325,6 +325,67 @@ local function _random_set(min, max, num, allow_dup)
 end
 random_set = _random_set
 
+---2次元座標をモートン順序に基づき1次元配列の座標に変換する。
+---
+--- - `W`: ブロック幅("W"idth, ブロック内の次の行に移行するまでの距離)
+--- - `N`: 次のブロックに移行するまでの距離(つまりブロックのピクセル総数)
+---     - ("N"eighbor, "N"ext block, "N"umber of pixels per block)
+--- - `L`: 次のブロック行("L"ine)に移行するまでの距離
+--- 
+--- #### 注意
+--- 
+--- - `W | N | L`、つまり`N`は`W`の倍数、`L`は`N`の倍数でなければならない。
+---
+--- #### 図解 (`W = 4, N = 8, L = 16`)
+--- 
+--- ```plaintext
+---             N
+---      |-- -- -- ---|
+---      |<-- W -->|  v  
+---   -- 00 01 02 03 08 09 10 11
+--- L |  04 05 06 07 12 13 14 15
+---   -> 16 17 18 19 24 25 26 27
+---      20 21 22 23 28 29 30 31
+--- ```
+---@param x int
+---@param y int
+---@param W int
+---@param N int
+---@param L int
+---@return int
+local function pos_Morton(x, y, W, N, L)
+    local block_lines = N // W
+    local a1, a2 = y // block_lines, y % block_lines
+    local b1, b2 = x // W, x % W
+    return (
+        a1 * L
+        + b1 * N
+        + a2 * W
+        + b2
+    )
+end
+
+-- 他には、ヒルベルト曲線による走査や、ジグザグスキャンがある
+
+---2次元座標をラスタスキャンの順序で1次元配列の座標に変換する。
+---
+--- #### 図解 (`W = 8`)
+--- 
+--- ```plaintext
+--- |<--       W       -->|
+--- 00 01 02 03 04 05 06 07
+--- 08 09 10 11 12 13 14 15
+--- 16 17 18 19 20 21 22 23
+--- 24 25 26 27 28 29 30 31
+--- ```
+---@param x int
+---@param y int
+---@param W int
+---@return int
+local function pos_Raster(x, y, W)
+    return y*W + x
+end
+
 __util = {
     hex = to_hexstr,
     hexp = print_hexstr,
@@ -344,5 +405,7 @@ __util = {
     clamp32 = _clamp32,
     random_set = _random_set,
     Set = _Set,
+    pos_Morton = pos_Morton,
+    pos_Raster = pos_Raster,
 }
 return __util

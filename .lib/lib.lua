@@ -131,4 +131,8 @@ return {
     romat = mem.romat,
     range = mem.range,
     romrange = mem.romrange,
+    pos = {
+        Morton = util.pos_Morton,
+        Raster = util.pos_Raster,
+    },
 }

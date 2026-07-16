@@ -53,4 +53,5 @@ lib = {
     romat = romat,
     range = range,
     romrange = romrange,
+    pos = __pos_lib,
 }
