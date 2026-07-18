@@ -1104,3 +1104,35 @@ end)
 ```
 
 
+- `2289ABD`: 千秋のおじぎモーションの速度を早める(ただし想定のindexを超えるとフリーズする)
+- `2289C0C`: 胴が横に伸びる
+- `2289C0A`: 胴が縦に伸びる
+- `2289C10`: 胴が後ろに伸びる
+- `2289C38`: 首が縦に伸びる
+- `2289C3C`: 首が横に伸びる
+- `2289C40`: 首が後ろに伸びる
+
+
+## video10 おじぎ中の千秋の首をミルみたく回転させる
+
+```lua
+local m1 = lib.at(0x02289C38)
+local m2 = lib.at(0x02289C3C)
+local m3 = lib.at(0x02289C40)
+local i = 0
+local max1 = 0x040000
+local min1 = -0x10000
+
+local span = 60
+
+local scale = 0x40000
+
+function loop()
+    local v
+    i = (i + 1) % span
+    v = math.cos(i * 2 * math.pi / span) * scale
+    m2:w32(stou32(v))
+    v = math.sin(i * 2 * math.pi / span) * scale
+    m3:w32(stou32(v))
+end
+```
