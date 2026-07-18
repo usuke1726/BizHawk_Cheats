@@ -32,6 +32,25 @@ function r32(addr, domain) end
 ---@param domain string?
 function w32(addr, value, domain) end
 
+---@param addr int
+---@param value int
+---@param min_? int
+---@param max_? int
+---@param domain string?
+function add8(addr, value, min_, max_, domain) end
+---@param addr int
+---@param value int
+---@param min_? int
+---@param max_? int
+---@param domain string?
+function add16(addr, value, min_, max_, domain) end
+---@param addr int
+---@param value int
+---@param min_? int
+---@param max_? int
+---@param domain string?
+function add32(addr, value, min_, max_, domain) end
+
 ---ROM領域のアドレスから1バイト書き込む。
 ---@param addr int
 ---@return int

@@ -57,6 +57,37 @@ w8 = _w8
 w16 = _w16
 w32 = _w32
 
+---@param addr int
+---@param value int
+---@param min_? int
+---@param max_? int
+---@param domain string?
+local function _add8(addr, value, min_, max_, domain)
+    domain = domain or get_domain(addr)
+    _w8(addr, __util.stou8(__util.clamp8(_r8(addr, domain) + value, min_, max_)), domain)
+end
+---@param addr int
+---@param value int
+---@param min_? int
+---@param max_? int
+---@param domain string?
+local function _add16(addr, value, min_, max_, domain)
+    domain = domain or get_domain(addr)
+    _w16(addr, __util.stou16(__util.clamp16(_r16(addr, domain) + value, min_, max_)), domain)
+end
+---@param addr int
+---@param value int
+---@param min_? int
+---@param max_? int
+---@param domain string?
+local function _add32(addr, value, min_, max_, domain)
+    domain = domain or get_domain(addr)
+    _w32(addr, __util.stou32(__util.clamp32(_r32(addr, domain) + value, min_, max_)), domain)
+end
+add8 = _add8
+add16 = _add16
+add32 = _add32
+
 local _ROM_DOMAIN_NAME = "ROM"
 ROM_DOMAIN_NAME = _ROM_DOMAIN_NAME
 
@@ -151,15 +182,15 @@ function AtObj:r32() return _r32(self.addr, self.domain) end
 ---@param value int
 ---@param min_? int
 ---@param max_? int
-function AtObj:add8(value, min_, max_) return self:w8(__util.stou8(__util.clamp8(self:r8() + value, min_, max_))) end
+function AtObj:add8(value, min_, max_) _add8(self.addr, value, min_, max_, self.domain) return self end
 ---@param value int
 ---@param min_? int
 ---@param max_? int
-function AtObj:add16(value, min_, max_) return self:w16(__util.stou16(__util.clamp16(self:r16() + value, min_, max_))) end
+function AtObj:add16(value, min_, max_) _add16(self.addr, value, min_, max_, self.domain) return self end
 ---@param value int
 ---@param min_? int
 ---@param max_? int
-function AtObj:add32(value, min_, max_) return self:w32(__util.stou32(__util.clamp32(self:r32() + value, min_, max_))) end
+function AtObj:add32(value, min_, max_) _add32(self.addr, value, min_, max_, self.domain) return self end
 
 
 ---`th`の値を超えていたら書き込む。
@@ -869,6 +900,9 @@ __mem_lib = {
     w8 = _w8,
     w16 = _w16,
     w32 = _w32,
+    add8 = _add8,
+    add16 = _add16,
+    add32 = _add32,
     romr8 = _rom_r8,
     romr16 = _rom_r16,
     romr32 = _rom_r32,
