@@ -26,8 +26,84 @@ local function ds_key_get(key) end
 ---@overload fun(info: table<DS_Keys, bool | int>)
 local function ds_key_set(key, on) end
 
+
+---@class ButtonLisObj
+---@field key DS_Keys
+---@overload fun(): bool | nil
+local ButtonLisObj = {}
+
+--- キーを離した瞬間か否か
+--- 
+--- ※`update`をしてから呼び出すこと。
+---@return bool
+function ButtonLisObj:keyup() end
+
+--- キーを押しているか否か(押した瞬間は含まれない)
+--- 
+--- ※`update`をしてから呼び出すこと。
+---@return bool
+function ButtonLisObj:holding() end
+
+--- キーを離しているか否か(押した瞬間は含まれない)
+--- 
+--- ※`update`をしてから呼び出すこと。
+---@return bool
+function ButtonLisObj:released() end
+
+--- キーを押した瞬間か否か
+--- 
+--- ※`update`をしてから呼び出すこと。
+---@return bool
+function ButtonLisObj:keydown() end
+
+---`update`した際に自動で実行する処理を登録する
+---@param event "up" | "down"
+---@param callback fun()
+---@return ButtonLisObj
+function ButtonLisObj:on(event, callback) end
+
+--- `holding`, `released` 状態に移行するまでの遅延フレーム数を設定する。
+---@param delay int
+---@return ButtonLisObj
+function ButtonLisObj:delay(delay) end
+
+---状態を更新する。(`__call`メタメソッドと同等)
+---@return boolean|nil `nil`: 変化なし, `true/false`: `down/up`
+function ButtonLisObj:update() end
+
+--- ボタン入力の状態を管理するオブジェクトを生成する
+--- 
+--- 使用例1：
+--- ```lua
+--- local L = ButtonLis("L"):delay(60)
+--- function loop()
+---     if L() then
+---         print("pressed now!")
+---     end
+---     if L:holding() then
+---         print("holding")
+---     end
+--- end
+--- ```
+--- 
+--- ---
+--- 使用例2：
+--- 
+--- ```lua
+--- local L = ButtonLis("L")
+--- :on("down", function()
+---     -- do something
+--- end)
+--- function loop() L() end
+--- ```
+---@param key DS_Keys
+---@return ButtonLisObj
+local function _ButtonLis(key) end
+ButtonLis = _ButtonLis
+
 local __ds_key_lib = {
     key = button_keys,
     get = ds_key_get,
     set = ds_key_set,
+    lis = _ButtonLis,
 }
