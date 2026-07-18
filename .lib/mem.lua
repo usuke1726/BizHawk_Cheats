@@ -371,6 +371,22 @@ local function _print_time_at_fill_in()
     return (print_time_at_fill_in or __print_fill_in or __print_warr) and (not __warr_silent)
 end
 
+---アドレスを昇順に並べ替えるとともに、範囲が広すぎないかチェックする。
+---@param begin int
+---@param inclusiveEnd int
+---@return int begin
+---@return int inclusiveEnd
+local function _check_range(begin, inclusiveEnd)
+    if begin > inclusiveEnd then
+        begin, inclusiveEnd = inclusiveEnd, begin
+    end
+    if inclusiveEnd - begin >= 0x01000000 then
+        error("アドレス範囲が広すぎます。")
+    end
+    return begin, inclusiveEnd
+end
+checkAddressRange = _check_range
+
 ---先頭アドレス`begin`から`inclusiveEnd`までを、1バイト値`value`で埋め尽くす。
 ---@param begin int
 ---@param inclusiveEnd int
@@ -379,12 +395,7 @@ end
 local function _fill_in(begin, inclusiveEnd, value, domain)
     domain = domain or get_domain(begin)
     value = (value or 0x00) & 0xff
-    if begin > inclusiveEnd then
-        begin, inclusiveEnd = inclusiveEnd, begin
-    end
-    if inclusiveEnd - begin > 0xffffff then
-        print("Too wide range")
-    end
+    begin, inclusiveEnd = _check_range(begin, inclusiveEnd)
     local t1 = 0
     if _print_time_at_fill_in() then
         t1 = os.clock()
@@ -416,12 +427,7 @@ fill_inr = _fill_inr
 ---@param domain string?
 local function fill_in_arr(begin, inclusiveEnd, bytes, domain)
     domain = domain or get_domain(begin)
-    if begin > inclusiveEnd then
-        begin, inclusiveEnd = inclusiveEnd, begin
-    end
-    if inclusiveEnd - begin > 0xffffff then
-        print("Too wide range")
-    end
+    begin, inclusiveEnd = _check_range(begin, inclusiveEnd)
     local n = #bytes
     if n == 0 then print("empty bytes") return
     elseif n <= 8 then
@@ -501,9 +507,7 @@ end
 ---@param domain string?
 ---@return int[]
 local function rarr(begin, inclusiveEnd, domain)
-    if begin > inclusiveEnd then
-        begin, inclusiveEnd = inclusiveEnd, begin
-    end
+    begin, inclusiveEnd = _check_range(begin, inclusiveEnd)
     domain = domain or get_domain(begin)
     local out = {}
     local base_begin = begin & 0xfffffffc
@@ -534,6 +538,7 @@ end
 local function romrarr(begin, inclusiveEnd) return rarr(begin, inclusiveEnd, ROM_DOMAIN_NAME) end
 
 local function _print_range(begin, inclusiveEnd)
+    begin, inclusiveEnd = _check_range(begin, inclusiveEnd)
     local arr = {}
     local idx = 1
     for i = begin, inclusiveEnd do
@@ -642,6 +647,7 @@ end
 ---@param domain string?
 ---@return RangeObj
 local function range(begin, inclusiveEnd, domain)
+    begin, inclusiveEnd = _check_range(begin, inclusiveEnd)
     return setmetatable({
         _cache = {},
         _saved = false,
@@ -669,6 +675,7 @@ end
 ---@param func fun(v: int, i: int): int?
 ---@param domain string?
 local function mfilter8(begin, inclusiveEnd, func, domain)
+    begin, inclusiveEnd = _check_range(begin, inclusiveEnd)
     domain = domain or get_domain(begin)
     local v
     for i = begin, inclusiveEnd do
@@ -682,6 +689,7 @@ end
 ---@param func fun(v: int, i: int): int?
 ---@param domain string?
 local function mfilter16(begin, inclusiveEnd, func, domain)
+    begin, inclusiveEnd = _check_range(begin, inclusiveEnd)
     domain = domain or get_domain(begin)
     begin = begin & 0xfffffffe
     inclusiveEnd = inclusiveEnd | 1
@@ -697,6 +705,7 @@ end
 ---@param func fun(v: int, i: int): int?
 ---@param domain string?
 local function mfilter32(begin, inclusiveEnd, func, domain)
+    begin, inclusiveEnd = _check_range(begin, inclusiveEnd)
     domain = domain or get_domain(begin)
     begin = begin & 0xfffffffc
     inclusiveEnd = inclusiveEnd | 3
@@ -780,6 +789,7 @@ end
 ---@return bool found 検索バイト列が見つかったか否か
 ---@return int address 見つかったアドレス
 local function find(begin, inclusiveEnd, arr, domain, silent)
+    begin, inclusiveEnd = _check_range(begin, inclusiveEnd)
     domain = domain or get_domain(begin)
     local n = #arr
     if n == 0 then
@@ -841,6 +851,7 @@ end
 ---@return bool found 検索バイト列が見つかったか否か
 ---@return int[] addresses 見つかったアドレス
 local function find_all(begin, inclusiveEnd, arr, domain, silent)
+    begin, inclusiveEnd = _check_range(begin, inclusiveEnd)
     domain = domain or get_domain(begin)
     local res = {}
     local addr = begin

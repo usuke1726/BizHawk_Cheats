@@ -76,6 +76,13 @@ function r32r(addr) end
 ---@param value u32
 function w32r(addr, value) end
 
+---アドレスを昇順に並べ替えるとともに、範囲が広すぎないかチェックする。
+---@param begin int
+---@param inclusiveEnd int
+---@return int begin
+---@return int inclusiveEnd
+function checkAddressRange(begin, inclusiveEnd) end
+
 ---先頭アドレス`begin`から`inclusiveEnd`までを、1バイト値`value`で埋め尽くす。
 ---@param begin int
 ---@param inclusiveEnd int
