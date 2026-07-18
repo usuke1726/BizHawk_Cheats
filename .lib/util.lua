@@ -386,6 +386,131 @@ local function pos_Raster(x, y, W)
     return y*W + x
 end
 
+local __RandomCheating_DefaultConf = {
+    delay = 10,
+    reset_time = 60,
+    print_maxlines = 10,
+    enable_key_reseting = true,
+    reset_key = "L",
+    do_reset = nil,
+    get_addr = function()
+        return rand(0x02200000, 0x02dfffff)
+    end,
+    get_bound = function()
+        return rand(0x1000, 0x10000)
+    end,
+    get_val = function()
+        return rand(0, 0xff)
+    end,
+}
+
+---@class RandomCheatingConf
+---@field delay int state読み込みをしてメモリ書き込みをするまでの遅延 (Default: `10`)
+---@field reset_time int state読み込みをするインターバル (Default: `60`)
+---@field print_maxlines int メモリ書き込み情報を表示する行数 (Default: `10`)
+---@field get_addr fun(i: int): int 書き込む先頭アドレスを与える関数 (Default: `rand(0x02200000, 0x02dfffff)`)
+---@field get_bound fun(i: int): int 書き込む範囲を与える関数 (Default: `rand(0x1000, 0x10000)`)
+---@field get_val fun(i: int): int 書き込む値を与える関数 (Default: `rand(0, 0xff)`)
+---@field enable_key_reseting bool インターバルを待たずともキー入力でstate読み込みをするか否か 
+---@field reset_key DS_Keys インターバルを待たずにリセットするためのキー (Default: `"L"`)
+---@field do_reset? fun(i: int): bool インターバルやキー入力以外の特殊リセットトリガー処理
+__RandomCheating_Conf = {}
+
+---@class RandomCheatingConfArgs
+---@field delay? int state読み込みをしてメモリ書き込みをするまでの遅延 (Default: `10`)
+---@field reset_time? int state読み込みをするインターバル (Default: `60`)
+---@field print_maxlines? int メモリ書き込み情報を表示する行数 (Default: `10`)
+---@field get_addr? fun(i: int): int 書き込む先頭アドレスを与える関数 (Default: `rand(0x02200000, 0x02dfffff)`)
+---@field get_bound? fun(i: int): int 書き込む範囲を与える関数 (Default: `rand(0x1000, 0x10000)`)
+---@field get_val? fun(i: int): int 書き込む値を与える関数 (Default: `rand(0, 0xff)`)
+---@field enable_key_reseting? bool インターバルを待たずともキー入力でstate読み込みをするか否か 
+---@field reset_key? DS_Keys インターバルを待たずにリセットするためのキー (Default: `"L"`)
+---@field do_reset? (fun(i: int): bool) | "nil" インターバルやキー入力以外の特殊リセットトリガー処理
+
+local function __setDefaultRandomCheatingConf()
+    __RandomCheating_Conf.delay = __RandomCheating_DefaultConf.delay
+    __RandomCheating_Conf.reset_time = __RandomCheating_DefaultConf.reset_time
+    __RandomCheating_Conf.print_maxlines = __RandomCheating_DefaultConf.print_maxlines
+    __RandomCheating_Conf.enable_key_reseting = __RandomCheating_DefaultConf.enable_key_reseting
+    __RandomCheating_Conf.reset_key = __RandomCheating_DefaultConf.reset_key
+    __RandomCheating_Conf.do_reset = __RandomCheating_DefaultConf.do_reset
+    __RandomCheating_Conf.get_addr = __RandomCheating_DefaultConf.get_addr
+    __RandomCheating_Conf.get_bound = __RandomCheating_DefaultConf.get_bound
+    __RandomCheating_Conf.get_val = __RandomCheating_DefaultConf.get_val
+end
+__setDefaultRandomCheatingConf()
+
+--- RandomCheatingテストを開始する。
+---
+--- - RandomCheatingテスト: 一定間隔ごとにload stateしつつ、ランダムアドレス範囲にランダム値を書き込んでいって、どのアドレス範囲がゲームの挙動に影響しうるかを大雑把に調べるテスト。
+--- - 設定項目は、引数 `options` に渡すか、あるいはこの関数を呼び出した後に変数 `__RandomCheating_Conf` に直接書き込めば良い。
+---
+--- ※この関数を呼び出す前に `__RandomCheating_Conf` に施した変更はすべてリセットされるので注意！
+---@param saveslot 0|1|2|3|4|5|6|7|8|9
+---@param options RandomCheatingConfArgs?
+local function _setRandomCheating(saveslot, options)
+    __setDefaultRandomCheatingConf()
+    if options then
+        for k, v in pairs(options) do
+            if k == "do_reset" and v == "nil" then
+                v = nil
+            end
+            __RandomCheating_Conf[k] = v
+        end
+    end
+    local i = 0
+    local prev_key = false
+    local addr, bound, val
+    local meses = {}
+    local reset = function()
+        i = 0
+        savestate.loadslot(saveslot)
+    end
+    SET_LOOP("__RandomCheating", function()
+        did_reset = false
+        i = i + 1
+        if __RandomCheating_Conf.enable_key_reseting then
+            local k = DS.key.get(__RandomCheating_Conf.reset_key)
+            if not k then prev_key = false
+            elseif not prev_key then
+                prev_key = true
+                reset()
+                return
+            end
+        end
+        if i == __RandomCheating_Conf.reset_time then
+            reset()
+            return
+        end
+        local f = __RandomCheating_Conf.do_reset
+        if f and f(i) then
+            reset()
+            return
+        end
+        local delay = __RandomCheating_Conf.delay
+        if i == delay then
+            addr = __RandomCheating_Conf.get_addr(i)
+            bound = __RandomCheating_Conf.get_bound(i) - 1
+            val = __RandomCheating_Conf.get_val(i)
+            meses[#meses+1] = string.format("0x%08X -- 0x%08X (0x%02x)", addr, addr + bound, val)
+            local maxlines = __RandomCheating_Conf.print_maxlines
+            if #meses > maxlines then
+                local new_tbl = {}
+                for j = 1, maxlines do
+                    new_tbl[j] = meses[j+1]
+                end
+                meses = new_tbl
+            end
+            CLS()
+            print(table.concat(meses, "\n"))
+        end
+        if i >= delay then
+            lib.fill_in(addr, addr + bound, val)
+        end
+    end)
+end
+setRandomCheating = _setRandomCheating
+
 __util = {
     hex = to_hexstr,
     hexp = print_hexstr,
