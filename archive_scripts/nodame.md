@@ -1136,3 +1136,123 @@ function loop()
     m3:w32(stou32(v))
 end
 ```
+
+## video11 千秋ぐにぐに
+
+
+```lua
+-- 試行錯誤 その1
+CLS()
+
+local begin = 0x0228AF90
+local inclusiveEnd = 0x02291Bff
+
+local function found(v)
+    return v & 0xffffff == 0x3a38 and within((v >> 24) & 0xff, 0, 0x2f)
+end
+local addrs = {}
+
+local first = true
+
+local span = 33
+local is_guni_r = RC(30)
+local is_guni = false
+local scale = 0x300
+local scale_r = RC(90)
+
+local flags = {}
+
+local _i = 0
+local prev_key = false
+
+function loop()
+    if is_guni_r() then is_guni = not is_guni end
+    if scale_r() then scale = rand(1,9) * 0x100 end
+    _i = (_i + 1) % span
+    scale = 0x900
+    local __v = math.round(math.cos(_i*2*math.pi / span) * scale)
+    local i = begin
+    while i <= inclusiveEnd do
+        local v = r32(i)
+        i = i + 4
+        if found(v) then
+            if first then addrs[#addrs+1] = i-4 end
+            for j = 1, 4 do
+                -- if not flags[i+j] then
+                --     flags[i+j] = rand(1,2) == 1
+                -- end
+                -- if is_guni_r() then
+                --     flags[i+j] = not flags[i+j]
+                -- end
+                -- local _f = flags[i+j] and 1 or -1
+                -- add32(i, __v * _f + rand(-2, 2)*0x100)
+                local _f = within(i & 0xff, 0x40, 0x7f) and 1 or -1
+
+                if j == 2 then
+                    add32(i, __v * 8 * _f)
+                end
+                i = i + 4
+            end
+        end
+    end
+    if first then
+        _HEXP(addrs[1])
+        _HEXP(addrs[#addrs])
+    end
+    first = false
+end
+```
+
+```lua
+-- 試行錯誤 その2
+CLS()
+
+local begin = 0x0228AF90
+local inclusiveEnd = 0x02291Bff
+
+local function found(v)
+    return v & 0xffffff == 0x3a38 and within((v >> 24) & 0xff, 0, 0x2f)
+end
+local addrs = {}
+
+local first = true
+
+local span = 33
+local is_guni_r = RC(10)
+local is_guni = false
+local scale = 0x300
+local scale_r = RC(90)
+
+local flags = {}
+
+local _i = 0
+local prev_key = false
+
+local backup = lib.range(begin, inclusiveEnd):save()
+
+function loop()
+    if is_guni_r() then backup:rollback() end
+    if scale_r() then scale = rand(1,9) * 0x100 end
+    _i = (_i + 1) % span
+    scale = 0x900
+    local __v = math.round(math.cos(_i*2*math.pi / span) * scale)
+    local i = begin
+    while i <= inclusiveEnd do
+        local v = r32(i)
+        i = i + 4
+        if found(v) then
+            if first then addrs[#addrs+1] = i-4 end
+            for j = 1, 3 do
+                add32(i, rand(-3, 3) * 0x800)
+                i = i + 4
+            end
+        end
+    end
+    if first then
+        _HEXP(addrs[1])
+        _HEXP(addrs[#addrs])
+    end
+    first = false
+end
+```
+

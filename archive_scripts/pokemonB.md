@@ -2184,3 +2184,537 @@ end)
 
 
 ```
+
+
+## リュウラセンイベント
+
+```plaintext
+26C459C: ゼクロムX座標(4byte signed LE)
+26C45A8: ゼクロムZ座標(4byte signed LE)
+26C45B4: ゼクロム上半身Y座標(4byte signed LE)
+回転?: 0x026C486C
+yscale: 0x026C486E (2byte)
+x軸回転: 0x026C4870 (2byte)
+右腕: 26C46F8
+顔Y座標: 26C4688
+顔Z座標: 26C468C
+顔X座標: 26C4690
+
+左足 26C4784
+=> 38 3A/3B 00 <index> が目印?
+
+アニメーション時間: 26CA984
+```
+
+## video11 ゼクロムを楽しそうにダンスさせる
+
+```lua
+local update_zek = (function()
+    local function found(v)
+        local v1 = (v >> 0) & 0xff
+        local v2 = (v >> 8) & 0xff
+        local v3 = (v >> 16) & 0xff
+        local v4 = (v >> 24) & 0xff
+        return (
+            v1 == 0x38
+        ) and (
+            v2 == 0x3A or v2 == 0x3B
+        ) and (
+            v3 == 0
+        ) and within(v4, 1, 0x20)
+    end
+
+    local begin = 0x026C45A8
+    local inclusiveEnd = 0x026C486F
+
+    local _i = 0
+    local ready = false
+    local ready_m = lib.at(0x026C45A2)
+    return function()
+        if not ready then
+            if ready_m:r8() ~= 0 then
+                print("READY")
+                ready = true
+            end
+            return
+        end
+        _i = (_i + 1) % 30
+        -- local _v = math.round(math.cos(_i*2*math.pi/30) * 0x1000)
+        local _v = math.round(math.cos(_i*2*math.pi/30) * 0x600)
+        -- w32(0x02278424, 0xd2000)
+        local i = begin
+        while i <= inclusiveEnd do
+            local v = r32(i)
+            i = i + 4
+            if found(v) then
+                for j = 1, 3 do
+                    -- add32(i, rand(-1, 1) * 0x400)
+                    add32(i, _v)
+                    i = i + 4
+                end
+            end
+        end
+    end
+end)()
+
+
+lib.irume.start(function()
+    local head = 0x03eba730
+    local as = {}
+    local prevs = {}
+    local ps = {
+        20,20,20,20,20,
+        20,20,20,20,20,
+        20,20,20,20,20,20,20,20,0
+    }
+    for i = 0, 16 do
+        as[i] = head + 0x40*i
+        prevs[i] = 0
+    end
+    local r = RC(40)
+    local c = Cnt(2)
+    local __v = 0x2
+    return function()
+        for i, a in pairs(as) do
+            w8(a + 0x2c, math.min(r8(a+0x2c), 1))
+            w32(a + 0x24, 0x80100100)
+            -- local t = r8(a + 0x2c)
+            -- if prevs[i] < t then
+            --     t = rand(1, 5)
+                w8(a + 0x1f, stou8(ps[i+1] + rand(-5, 10)))
+            -- end
+            -- w8(a + 0x2c, t)
+            -- prevs[i] = t
+        end
+    end
+end)
+
+function loop()
+    update_zek()
+end
+```
+
+## video11 ゼクロムを回転させつつ胴の伸び縮みさせる
+
+```lua
+local i = 0
+local span = 45
+local scalex = 0x8000
+local scalez = 0x40000
+local iy = 0
+local spany = 63
+function loop()
+    local v
+    i = (i + 1) % span
+    iy = (iy + 1) % spany
+    v = math.round(math.cos(i * 2 * math.pi / span) * scalex) + 0x89D8
+    w32(0x026C459C, v)
+    v = math.round(math.sin(i * 2 * math.pi / span) * scalez) - 0x8A6C3
+    w32(0x026C45A8, v)
+    v = math.round(math.sin(iy * 2 * math.pi / spany) * 0x10000) + 0x7B24
+    w32(0x026C45B4, v)
+    w32(0x02278424, 0xc2000)
+end
+```
+
+## video11 ゲーチスBGMバグ
+
+```lua
+-- ge
+-- C17F6400
+-- chis
+-- C17F6600
+
+lib.irume.start(function()
+    local head = 0x03eba730
+    local as = {}
+    for i = 0, 19 do as[i] = head + 0x40*i end
+    local __p = 12
+    local ps = {
+        __p, __p, __p, __p, __p, __p, __p, __p,
+        __p, __p, __p, __p, __p, __p, __p, __p,
+        __p, __p, __p, __p, __p, __p, __p, __p,
+    }
+    local chis = {}
+    local chis2 = {}
+    for i, addr in pairs(as) do chis[i] = false chis2[i] = rand(0, 1) == 1 end
+    local r = RC(60)
+    local r2 = RC(60)
+    return function()
+        for i, a in pairs(as) do
+            if r() then
+                chis[i] = not chis[i]
+                chis2[i] = rand(0, 1) == 1
+            end
+            if r2() then
+                w8(a + 0x1f, stou8(ps[i+1] + rand(0, 1)*12))
+            end
+            w32(a + 0x0c, chis[i] and 0x00647FC1 or 0x00667FC1)
+            w16(a + 0x17, 0x0060)
+        end
+    end
+end)
+```
+
+## video11 ゲーチス戦闘開始画面で固定 & ゲーチス立ち絵伸び縮み
+
+```lua
+--[[
+-- 雑メモ
+local addrs = {
+0x023553F4, -- 黒背景&ゲーチスのanimation time
+0x02355478, -- 電撃のanimation time
+0x023554E8, -- hata to name no animation time & 画面遷移もこれでブロックできる
+0x023556E8, -- 中心の青帯のanimation time & 画面遷移ブロック
+-- 5480 -> 電撃がかいめつ
+}
+
+local r = RC(30)
+local c = Cnt(60)
+function loop()
+    -- if c() then
+    --     savestate.loadslot(5)
+    -- end
+    c()
+    for _, a in pairs(addrs) do
+        if r() or c.fired then
+        w32(a, rand(16, 16) * 0x4000)
+        end
+        -- if r() then
+        --     w32(a, rand(0, 0xffffffff))
+        -- end
+    end
+end
+
+-- 2353154 ゲーチスの名前のX座標
+-- 2353158 ゲーチスの名前のY座標
+
+-- 2353186 -> 01で立ち絵、見切れ部分も表示
+-- 2353188 影の位置?
+-- 2348E74付近 -> ゲーチスがゆがむ
+]]
+
+local update_timers = (function()
+    local a1 = 0x023553F4 -- 黒背景&ゲーチスのanimation time
+    local a2 = 0x02355478 -- 電撃のanimation time
+    local a3 = 0x023554E8 -- hata to name no animation time & 画面遷移もこれでブロックできる
+    local a4 = 0x023556E8 -- 中心の青帯のanimation time & 画面遷移ブロック
+    local r = RC(30)
+    local c = Cnt(60)
+    return function()
+        c()
+        if r() or c.fired then
+            w32(a1, 16 * 0x4000)
+        end
+        if r() or c.fired then
+            w32(a2, 16 * 0x4000)
+        end
+        if r() or c.fired then
+            w32(a3, 18 * 0x4000)
+        end
+        if r() or c.fired then
+            w32(a4, rand(0, 18) * 0x4000)
+        end
+    end
+end)()
+
+
+local update_name_pos = (function()
+    -- local xmin = -0x37800
+    local xmin = -0x5f800
+    local xmax = 0x5F080
+    local ymin = -0x33400
+    local ymax = 0x32400
+    local xspeed = 0x1000
+    local X = ValueUpdater(1, xmin, xmax)
+    :init(-0x12000)
+    :calc(function(obj)
+        return obj.v - xspeed
+    end)
+    :write(function(v) w32(0x02353154, v) end)
+    local Y = ValueUpdater()
+    :init(-0x14800)
+    :calc(function() return rand(ymin + 0x8000, ymax - 0x8000) end)
+    :write(function(v) w32(0x02353158, v) end)
+    return function()
+        if X() then Y() xspeed = rand(2, 4) * 0x800 end
+    end
+end)()
+
+local _i = 0
+
+local vobj = {
+    ValueUpdater(60, 0, 0x1000)
+    :calc(function(obj) return obj:isin() end)
+    :write(function(v) w32(0x02348E74, v) end),
+    ValueUpdater(450, 0, 0x7000)
+    :calc(function(obj) return obj:isin() end)
+    :write(function(v) w16(0x02348E70, v) end),
+    ValueUpdater(410, 0xC000, 0xF000)
+    :calc(function(obj) return obj:isin() end)
+    :write(function(v) w16(0x02348E72, v) end),
+}
+
+local move_active = false
+
+local update_gechis_name = (function()
+    local done = false
+    local ge = "b230"
+    local chis = "c130b930"
+    local small_e = "a730"
+    local big_e = "a830"
+    local s = ge
+    for i = 1, 6 do s = s .. small_e end
+    s = s .. chis .. "FFFF"
+    -- 0x0226EED0: ゲーチスの名前
+    local m = lib.at(0x0226EED0)
+    return function()
+        if done then return end
+        if m:r32() == 0x30FC30B2 then
+            print("GECHIS NAME CHANGED")
+            m:warr(lib.htob(s))
+            done = true
+            move_active = true
+        end
+    end
+end)()
+
+function loop()
+    update_gechis_name()
+    if not move_active then return end
+    for _, obj in pairs(vobj) do obj() end
+    update_timers()
+    update_name_pos()
+end
+```
+
+## video11 vの口笑顔のNしきがお
+
+```lua
+CLS()
+
+local function change_pos(x, y)
+    if within(y, 0x40, 0x4f) and within(x, 0x28, 0x57) then
+        return lib.pos.Morton(x - 0x28, y - 0x40, 0x08, 0x40, 0x180) + 0x06189800
+    else return lib.pos.Morton(x, y, 0x08, 0x40, 0x400) + 0x06183800
+    end
+end
+
+local function MAIN()
+
+local W = 0x80
+local hW = W // 2
+
+local wid = 0x20
+local hwid = wid // 2
+local yscale = 0x10
+CLS()
+
+lib.image.filterObj()
+:width(W)
+:bound(0x6000)
+:go(function(x, y)
+    if within(x, 0, 0x7) then
+        return nil
+    end
+    local x1 = x % (2*wid)
+    local f, x2 = x // wid == 0, x1 % wid
+    local yd = hwid - math.abs(x2 - hwid)
+    local y2 = y + (f and -1 or 1) * math.round(yd * yscale / hwid)
+    y2 = clamp(y2, 0, 0xbf)
+    return change_pos(x, y), r8(change_pos(x, y2))
+end)
+
+end
+
+local _i = 0
+local ts = {
+    360,
+    480,
+    540,
+}
+local do_time = 595
+
+local span = 10
+
+function loop()
+    _i = _i + 1
+    if _i == do_time then MAIN() span = 30
+    elseif _i == do_time + 58 then
+        -- 強制フリーズ
+        lib.fill_in(0x02210000, 0x0221ffff)
+        print("DONE")
+        return
+    elseif _i > do_time then return
+    end
+    for _, t in pairs(ts) do
+        if _i == t then
+            DS.key.set("A", true) break
+        elseif _i == t + 10 then
+            DS.key.set("A", false) break
+        end
+    end
+end
+
+
+lib.irume.start(function()
+    local head = 0x03eba730
+    local poses = {}
+    local as = {}
+    for i = 0, 16 do
+        as[i] = head + 0x40*i
+        poses[i] = r32(as[i] + 0x34)
+    end
+    local r = RC(30)
+    local r2 = RC(120)
+    return function()
+        for i, a in pairs(as) do
+            local pos = as[i] + 0x34
+            if r2() then
+                poses[i] = r32(pos)
+            end
+            if r() then
+                w32(pos, poses[i])
+            end
+        end
+    end
+end)
+```
+
+## video11 ゼクロム崩壊 & だるまさん?
+
+```lua
+
+local active = true
+
+local ready = false
+
+local update_zek = (function()
+    local function found(v)
+        local v1 = (v >> 0) & 0xff
+        local v2 = (v >> 8) & 0xff
+        local v3 = (v >> 16) & 0xff
+        local v4 = (v >> 24) & 0xff
+        return (
+            v1 == 0x38
+        ) and (
+            v2 == 0x3A or v2 == 0x3B
+        ) and (
+            v3 == 0
+        ) and within(v4, 1, 0x20)
+    end
+
+    local begin = 0x026C45A8
+    local inclusiveEnd = 0x026C486F
+
+    local _i = 0
+    local ready_m = lib.at(0x026C45A2)
+    local r = RC(5)
+    local backup = nil
+    local prev_active = 30
+    return function()
+        if not ready then
+            if ready_m:r8() ~= 0 then
+                print("READY")
+                ready = true
+            end
+            return
+        end
+        if not backup then
+            backup = lib.range(begin - 0x10, inclusiveEnd + 0x10):save()
+        end
+        if not active then
+            prev_active = 5
+            return
+        end
+        if prev_active > 0 then
+            prev_active = prev_active - 1
+        elseif prev_active == 0 then
+            backup:rollback()
+            prev_active = -1
+        end
+        _i = (_i + 1) % 30
+        -- local _v = math.round(math.cos(_i*2*math.pi/30) * 0x1000)
+        local _v = math.round(math.cos(_i*2*math.pi/30) * 0x600)
+        -- w32(0x02278424, 0xd2000)
+        local i = begin
+        while i <= inclusiveEnd do
+            local v = r32(i)
+            i = i + 4
+            if found(v) then
+                for j = 1, 3 do
+                    if r() then
+                    add32(i, rand(-4, 4) * 0x1000)
+                    end
+                    -- add32(i, _v)
+                    i = i + 4
+                end
+            end
+        end
+    end
+end)()
+
+-- カメラをいじって、ゼクロムを何度見しているようにする
+local update_camera = (function()
+    local addr = 0x02278424
+    local v = 0x130000
+
+    local target = 0x130000
+    local r = RC(10)
+    local f = 1
+    local vals = {
+        0xf0000,
+        -- 0x20000,
+        0x8000,
+    }
+    local rl = RL(100)
+    return function()
+        if not ready then return end
+        if not rl() then return end
+        if r() then
+            f = rand(1, #vals)
+            active = f ~= 1
+            target = vals[f]
+            -- target = rand(0x0800, 0x140000)
+            -- target = rand(0x8000, 0xf0000)
+            -- target = rand(0x0800, 0x1c0000)
+            -- target = rand(0x1c0000, 0x1c0000)
+        end
+        v = ilerp(v, target, 0.3)
+        w32(addr, v + rand(-0x1000, 0x1000))
+    end
+end)()
+
+
+function loop()
+    update_camera()
+    update_zek()
+end
+
+lib.irume.start(function()
+    local head = 0x03eba730
+    local as = {}
+    local vs = {}
+    for i = 0, 16 do
+        as[i] = head + 0x40*i
+        vs[i] = 0x10
+    end
+    local r = RC(30)
+    local r2 = RC(120)
+    return function()
+        for i, a in pairs(as) do
+            if r() then
+                w8(as[i] + 0x1f, rand(11, 16))
+            end
+            if ready then
+                w8(as[i] + 0x16, 0x50)
+                w8(as[i] + 0x26, 0x70)
+                if r2() then
+                    vs[i] = rand(0, 0x40)
+                end
+                w8(as[i] + 0x27, vs[i])
+            end
+        end
+    end
+end)
+```

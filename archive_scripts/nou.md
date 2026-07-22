@@ -387,3 +387,139 @@ end
 </details>
 
 ---
+
+
+## video11 顔面崩壊 その1 & 微ピッチずれ
+
+```lua
+
+CLS()
+
+local m = lib.at(0x02000000)
+
+local scale = 0x20
+local i = 0
+
+w32(0x04000350, 0xdddddddd) -- 上画面の背景を消す
+
+local function found(v)
+    local _v = v & 0xffffff
+    return _v == 0x003B38 or _v == 0x003A38
+end
+local backup = lib.range(0x0296E4B8, 0x0296F01F):save()
+
+local first = true
+local span = 51
+function loop()
+    i = (i + 1) % span
+    local v = math.round(math.sin(i * 2 * math.pi / span) * scale)
+    local a = 0x0296E4B8
+    while a <= 0x0296EFFF do
+        if found(r32(a)) then
+            for j = 1, 3 do
+                a = a + 4
+                if first then
+                    m:with(a):add32(-0x600)
+                end
+                if rand(1, 2) == 1 then
+                m:with(a):add32(v * 0x4 + 2)
+                end
+            end
+        end
+        a = a + 4
+    end
+    first  = false
+    m:with(0x0296E4AC):w32(0xFFFFFD00)
+    w16(0x02128768, 0)
+    w16(0x02129050, 0)
+end
+
+lib.irume.start(function()
+    local head = 0x03EC8A00
+    local as = {}
+    for i = 0, 16 do
+        as[i] = head + 0x40 * i
+    end
+    local p = 0x18
+    local r = RC(10)
+    return function()
+        for i, a in pairs(as) do
+            if r() then
+                w16(a + p, stou16(rand(-0x10, 0x10) * 0x4))
+            end
+        end
+    end
+end)
+```
+
+## video11 ホッピング教授
+
+```lua
+
+local h = 0x0200
+-- local H = ValueUpdater(90, -0x1000, 0x2000)
+local H = ValueUpdater(60, -0x400, 0x2000)
+:calc(function(obj)
+    local min, max = obj:get_minmax()
+    local x = obj:x() * 2 - 1
+    return math.round((1 - x * x) * (max - min)) + min
+    -- return obj:isin()
+end)
+:overflow_behavior("clamp")
+:write(function(v) w32(0x0296E4BF, v) end)
+local H2 = ValueUpdater(60, -0x1000, 0x400)
+:calc(function(obj)
+    local min, max = obj:get_minmax()
+    local x = obj:x()
+    local d = (max - min) // 2
+    return math.isin(x, d) + min + d
+end)
+:overflow_behavior("clamp")
+:write(function(v) w32(0x0296E600, v) end)
+H2.i = H2.n * 1 // 4 + 10
+
+w32(0x04000350, 0xdddddddd) -- 上画面の背景を消す
+
+local uup = 0
+local target = 0
+function loop()
+    w16(0x02128768, 0)
+    w16(0x02129050, 0)
+    -- w32(0x0296E600, 0xffffff00)
+
+    H()
+    H2()
+    -- 教授をどアップに
+    -- w32(0x0296E4BF, h)
+    -- w32(0x0296E4C0, 0xFFFFE000)
+    w32(0x0296E4C0, uup)
+    if DS.key.get("Down") then
+        target = ilerp(target, -0x2000, 0.05)
+        -- uup = ilerp(uup, target, 0.05)
+    elseif DS.key.get("Up") then
+        -- target = ilerp(target, 0, 0.03)
+        target = ilerp(target, 0x3e00, 0.05)
+        -- uup = ilerp(uup, 0, 0.05)
+    end
+    uup = ilerp(uup, target, 0.1)
+end
+
+
+lib.irume.start(function()
+    local head = 0x03EC8A00
+    local as = {}
+    for i = 0, 16 do
+        as[i] = head + 0x40 * i
+    end
+    local p = 0x1f
+    local r = RC(10)
+    return function()
+        if r() then
+            local _p = stou8(rand(-2, 4)*2)
+            for i, a in pairs(as) do
+                w8(a + p, _p)
+            end
+        end
+    end
+end)
+```
