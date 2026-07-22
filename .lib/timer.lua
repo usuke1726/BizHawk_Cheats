@@ -1,6 +1,184 @@
 
 ---@alias Callback fun(obj: TimerObj)
 
+---@class ValueUpdaterObj
+---@field i int
+---@field n int
+---@field v int
+---@field active bool
+---@field protected min int?
+---@field protected max int?
+---@field protected _overflow_behavior 0 | 1
+---@field protected _v int
+---@field protected _ready bool
+---@field protected _calc fun(obj: ValueUpdaterObj): int?
+---@field protected _write fun(v: int, status: int?)
+---@overload fun(): int?
+local ValueUpdaterObj = {}
+
+---@return int?
+function ValueUpdaterObj:update()
+    if not self._ready then
+        local s = {}
+        if self._calc == nil then s[#s+1] = "calc" end
+        if self._write == nil then s[#s+1] = "write" end
+        error("未指定のプロパティがあります: " .. table.concat(s, ", "))
+    end
+    if not self.active then return end
+    if self._v == nil then self._v = 0 end
+    self.i = (self.i + 1) % self.n
+    local v = self._calc(self)
+    if not v then return end
+    local status = nil
+    local min, max = self.min, self.max
+    if min and v < min then status = -1
+    elseif max and v > max then status = 1
+    end
+    if self._overflow_behavior == 1 then
+        v = __util.clamp(v, min, max)
+    elseif min and max then
+        v = (v - min) % (max - min) + min
+    end
+    self._v = v
+    self.v = v
+    self._write(v, status)
+    return status
+end
+---@param behavior "loop" | "clamp"
+---@return ValueUpdaterObj
+function ValueUpdaterObj:overflow_behavior(behavior)
+    self._overflow_behavior = behavior == "loop" and 0 or 1
+    return self
+end
+---指定した値を `v` に格納する。
+---@param v int
+---@return ValueUpdaterObj
+function ValueUpdaterObj:init(v)
+    self._v = v
+    self.v = v
+    return self
+end
+---@return bool
+function ValueUpdaterObj:v_not_ready()
+    return self._v == nil
+end
+---@param calc fun(obj: ValueUpdaterObj): int?
+---@return ValueUpdaterObj
+function ValueUpdaterObj:calc(calc)
+    self._calc = calc
+    self._ready = self._write ~= nil
+    return self
+end
+---@param write fun(v: int, status: int?)
+---@return ValueUpdaterObj
+function ValueUpdaterObj:write(write)
+    self._write = write
+    self._ready = self._calc ~= nil
+    return self
+end
+---@param min (int | "nil")?
+---@param max (int | "nil")?
+---@return ValueUpdaterObj
+function ValueUpdaterObj:minmax(min, max)
+    if min then
+        self.min = type(min) == "number" and min or nil
+    end
+    if max then
+        self.max = type(max) == "number" and max or nil
+    end
+    if self.min and self.max then
+        assert(self.min < self.max, string.format("it must be max > min (min: %d, max: %d)", self.min, self.max))
+    end
+    return self
+end
+---@return integer? min
+---@return integer? max
+function ValueUpdaterObj:get_minmax()
+    return self.min, self.max
+end
+
+---引数有の場合、`[-scale, scale]`の範囲を、無しの場合は`[min, max]`の範囲をとる。
+---@param scale number?
+---@return int
+function ValueUpdaterObj:isin(scale)
+    if scale then
+        return math.isin(self.i / self.n, scale)
+    else
+        local min = self.min or 0
+        local max = self.max or (min + 100)
+        local d = (max - min) // 2
+        return math.isin(self.i / self.n, d) + min + d
+    end
+end
+---引数有の場合、`[-scale, scale]`の範囲を、無しの場合は`[min, max]`の範囲をとる。
+---@param scale number?
+---@return int
+function ValueUpdaterObj:icos(scale)
+    if scale then
+        return math.icos(self.i / self.n, scale)
+    else
+        local min = self.min or 0
+        local max = self.max or (min + 100)
+        local d = (max - min) // 2
+        return math.icos(self.i / self.n, d) + min + d
+    end
+end
+---@return number
+function ValueUpdaterObj:x()
+    return self.i / self.n
+end
+---@param x number
+---@return int
+function ValueUpdaterObj:lerp(x)
+    local min = self.min or 0
+    local max = self.max or (min + 100)
+    return math.round(x * (max - min) + min)
+end
+---@return int
+function ValueUpdaterObj:linear()
+    return self:lerp(self:x())
+end
+---@return number
+function ValueUpdaterObj:sq()
+    local x = self:x()
+    return x * x
+end
+---@return number
+function ValueUpdaterObj:sqrt()
+    return math.sqrt(self:x())
+end
+
+---@param n int?
+---@param min int?
+---@param max int?
+---@return ValueUpdaterObj
+local function _ValueUpdater(n, min, max)
+    n = n or 1
+    assert(n > 0, "n must be positive")
+    local of_behavior = 1
+    if min and max then
+        of_behavior = 0
+        assert(min < max, "it must be max > min")
+    end
+    return setmetatable({
+        i = 0,
+        n = n,
+        min = min,
+        max = max,
+        v = 0,
+        _v = nil,
+        _ready = false,
+        _calc = nil,
+        _write = nil,
+        _overflow_behavior = of_behavior,
+        active = true,
+    }, {
+        __index = ValueUpdaterObj,
+        __call = ValueUpdaterObj.update,
+    })
+end
+ValueUpdater = _ValueUpdater
+
 ---@class CounterObjBase
 ---@field i int
 ---@field n int

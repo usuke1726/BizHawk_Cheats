@@ -1,4 +1,67 @@
 
+---@class ValueUpdaterObj
+---@field i int
+---@field n int
+---@field v int
+---@field active bool
+---@overload fun(): int?
+local ValueUpdaterObj = {}
+
+---@return int?
+function ValueUpdaterObj:update() end
+
+---@param behavior "loop" | "clamp"
+---@return ValueUpdaterObj
+function ValueUpdaterObj:overflow_behavior(behavior) end
+
+---指定した値を `v` に格納する。
+---@param v int
+---@return ValueUpdaterObj
+function ValueUpdaterObj:init(v) end
+---@return bool
+function ValueUpdaterObj:v_not_ready() end
+
+---@param calc fun(obj: ValueUpdaterObj): int?
+---@return ValueUpdaterObj
+function ValueUpdaterObj:calc(calc) end
+---@param write fun(v: int, status: int?)
+---@return ValueUpdaterObj
+function ValueUpdaterObj:write(write) end
+
+---@param min (int | "nil")?
+---@param max (int | "nil")?
+---@return ValueUpdaterObj
+function ValueUpdaterObj:minmax(min, max) end
+
+---@return integer? min
+---@return integer? max
+function ValueUpdaterObj:get_minmax() end
+
+---引数有の場合、`[-scale, scale]`の範囲を、無しの場合は`[min, max]`の範囲をとる。
+---@param scale number?
+---@return int
+function ValueUpdaterObj:isin(scale) end
+---引数有の場合、`[-scale, scale]`の範囲を、無しの場合は`[min, max]`の範囲をとる。
+---@param scale number?
+---@return int
+function ValueUpdaterObj:icos(scale) end
+---@return number
+function ValueUpdaterObj:x() end
+---@param x number
+---@return int
+function ValueUpdaterObj:lerp(x) end
+---@return int
+function ValueUpdaterObj:linear() end
+---@return number
+function ValueUpdaterObj:sq() end
+---@return number
+function ValueUpdaterObj:sqrt() end
+
+---@param n int?
+---@param min int?
+---@param max int?
+---@return ValueUpdaterObj
+function ValueUpdater(n, min, max) end
 
 ---@class CounterObjBase
 ---@field i int
