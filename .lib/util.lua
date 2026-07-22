@@ -214,6 +214,21 @@ end
 math.round = _round
 round = _round
 
+---@param x number
+---@param scale number
+---@return int
+local function _isin(x, scale)
+    return _round(math.sin(x * 2 * math.pi) * scale)
+end
+---@param x number
+---@param scale number
+---@return int
+local function _icos(x, scale)
+    return _round(math.cos(x * 2 * math.pi) * scale)
+end
+math.isin = _isin
+math.icos = _icos
+
 ---線形補間を行う。
 ---@param value number
 ---@param target number

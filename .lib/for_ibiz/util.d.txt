@@ -107,6 +107,14 @@ function round(v) end
 ---@return int
 function math.round(v) end
 
+---@param x number
+---@param scale number
+---@return int
+function math.isin(x, scale) end
+---@param x number
+---@param scale number
+---@return int
+function math.icos(x, scale) end
 
 ---線形補間を行う。
 ---@param value number
