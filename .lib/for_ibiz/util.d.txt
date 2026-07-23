@@ -75,7 +75,9 @@ function htob(bytes_str) end
 ---@param min_ int?
 ---@param max_ int?
 ---@return int
-function clamp(value, min_, max_) end
+local function _clamp(value, min_, max_) end
+clamp = _clamp
+math.clamp = _clamp
 
 ---`value`を**signed**と解釈した上でclampする
 ---@param value int
@@ -116,18 +118,38 @@ function math.isin(x, scale) end
 ---@return int
 function math.icos(x, scale) end
 
+---`[0,1]`の範囲の`x`から`[0,1]`範囲のsinカーブを返却する。
+---@param x number
+---@return number
+function math.sin01(x) end
+---`[0,1]`の範囲の`x`から`[0,1]`範囲のcosカーブを返却する。
+---@param x number
+---@return number
+function math.cos01(x) end
+
+---整数`x`を`[min, max]`の範囲でmodをとる。
+---@param x int
+---@param min int
+---@param max int
+---@return int
+function math.mod(x, min, max) end
+
 ---線形補間を行う。
 ---@param value number
 ---@param target number
 ---@param t number
 ---@return number
-function lerp(value, target, t) end
+local function _lerp(value, target, t) end
 ---整数の線形補間を行う。
 ---@param value int
 ---@param target int
 ---@param t number
 ---@return int
-function ilerp(value, target, t) end
+local function _ilerp(value, target, t) end
+lerp = _lerp
+ilerp = _ilerp
+math.lerp = _lerp
+math.ilerp = _ilerp
 
 ---@generic T
 ---@class SetObj<T>

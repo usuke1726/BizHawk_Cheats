@@ -161,6 +161,7 @@ local function _clamp(value, min_, max_)
     return value
 end
 clamp = _clamp
+math.clamp = _clamp
 
 ---@param value int
 ---@param min_ int?
@@ -228,6 +229,29 @@ local function _icos(x, scale)
 end
 math.isin = _isin
 math.icos = _icos
+---`[0,1]`の範囲の`x`から`[0,1]`範囲のsinカーブを返却する。
+---@param x number
+---@return number
+local function _sin01(x)
+    return math.sin(x * 2 * math.pi) * 0.5 + 0.5
+end
+---`[0,1]`の範囲の`x`から`[0,1]`範囲のcosカーブを返却する。
+---@param x number
+---@return number
+local function _cos01(x)
+    return math.cos(x * 2 * math.pi) * 0.5 + 0.5
+end
+math.sin01 = _sin01
+math.cos01 = _cos01
+---整数`x`を`[min, max]`の範囲でmodをとる。
+---@param x int
+---@param min int
+---@param max int
+---@return int
+local function _mod(x, min, max)
+    return (x - min) % (max - min) + min
+end
+math.mod = _mod
 
 ---線形補間を行う。
 ---@param value number
@@ -243,10 +267,12 @@ end
 ---@param t number
 ---@return int
 local function _ilerp(value, target, t)
-    return round(_lerp(value, target, t))
+    return _round(_lerp(value, target, t))
 end
 lerp = _lerp
 ilerp = _ilerp
+math.lerp = _lerp
+math.ilerp = _ilerp
 
 ---@generic T
 ---@class SetObj<T>
