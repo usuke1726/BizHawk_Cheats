@@ -47,11 +47,9 @@ function ValueUpdaterObj:isin(scale) end
 function ValueUpdaterObj:icos(scale) end
 ---@return number
 function ValueUpdaterObj:x() end
----@param x number
+---@param x? number `nil`なら`self:x()`を用いる
 ---@return int
 function ValueUpdaterObj:lerp(x) end
----@return int
-function ValueUpdaterObj:linear() end
 ---@return number
 function ValueUpdaterObj:sq() end
 ---@return number
@@ -60,8 +58,9 @@ function ValueUpdaterObj:sqrt() end
 ---@param n int?
 ---@param min int?
 ---@param max int?
+---@param calc? fun(obj: ValueUpdaterObj): int?
 ---@return ValueUpdaterObj
-function ValueUpdater(n, min, max) end
+function ValueUpdater(n, min, max, calc) end
 
 ---@class CounterObjBase
 ---@field i int
