@@ -1,6 +1,9 @@
 
 ---@alias Callback fun(obj: TimerObj)
 
+local OF_Behavior_loop <const> = 0
+local OF_Behavior_clamp <const> = 1
+
 ---@class ValueUpdaterObj
 ---@field i int
 ---@field n int
@@ -36,10 +39,10 @@ function ValueUpdaterObj:update()
     if min and v < min then status = -1
     elseif max and v > max then status = 1
     end
-    if self._overflow_behavior == 1 then
+    if self._overflow_behavior == OF_Behavior_clamp then
         v = math.clamp(v, min, max)
     elseif min and max then
-        v = (v - min) % (max - min) + min
+        v = math.mod(v, min, max)
     end
     self._v = v
     self.v = v
@@ -49,7 +52,7 @@ end
 ---@param behavior "loop" | "clamp"
 ---@return ValueUpdaterObj
 function ValueUpdaterObj:overflow_behavior(behavior)
-    self._overflow_behavior = behavior == "loop" and 0 or 1
+    self._overflow_behavior = behavior == "loop" and OF_Behavior_loop or OF_Behavior_clamp
     return self
 end
 ---指定した値を `v` に格納する。
@@ -189,7 +192,7 @@ local function _ValueUpdater(n, min, max, calc)
         _ready = false,
         _calc = nil,
         _write = nil,
-        _overflow_behavior = 1,
+        _overflow_behavior = OF_Behavior_clamp,
         active = true,
     }, {
         __index = ValueUpdaterObj,
