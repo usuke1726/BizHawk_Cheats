@@ -27,6 +27,18 @@ function ValueUpdaterObj:calc(calc) end
 ---@param write fun(v: int, status: int?)
 ---@return ValueUpdaterObj
 function ValueUpdaterObj:write(write) end
+--- `write`処理として`w8`を設定する
+---@param addr int
+---@return ValueUpdaterObj
+function ValueUpdaterObj:w8(addr) end
+--- `write`処理として`w16`を設定する
+---@param addr int
+---@return ValueUpdaterObj
+function ValueUpdaterObj:w16(addr) end
+--- `write`処理として`w32`を設定する
+---@param addr int
+---@return ValueUpdaterObj
+function ValueUpdaterObj:w32(addr) end
 
 ---@param min (int | "nil")?
 ---@param max (int | "nil")?

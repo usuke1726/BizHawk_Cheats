@@ -78,6 +78,24 @@ function ValueUpdaterObj:write(write)
     self._ready = self._calc ~= nil
     return self
 end
+--- `write`処理として`w8`を設定する
+---@param addr int
+---@return ValueUpdaterObj
+function ValueUpdaterObj:w8(addr)
+    return self:write(function(v) w8(addr, v) end)
+end
+--- `write`処理として`w16`を設定する
+---@param addr int
+---@return ValueUpdaterObj
+function ValueUpdaterObj:w16(addr)
+    return self:write(function(v) w16(addr, v) end)
+end
+--- `write`処理として`w32`を設定する
+---@param addr int
+---@return ValueUpdaterObj
+function ValueUpdaterObj:w32(addr)
+    return self:write(function(v) w32(addr, v) end)
+end
 
 ---@param min int?
 ---@param max int?
