@@ -394,3 +394,202 @@ end
 print("OK")
 ```
 
+## video12 ブルブル震える
+
+```lua
+local function found(v)
+    local v1 = (v >> 0) & 0xff
+    local v2 = (v >> 8) & 0xff
+    local v3 = (v >> 16) & 0xff
+    local v4 = (v >> 24) & 0xff
+    return (
+        v1 == 0x38
+    ) and (
+        v2 == 0x3A or v2 == 0x3B
+    ) and (
+        v3 == 0
+    ) and within(v4, 1, 0x20)
+    -- ) and within(v4, 1, 2)
+end
+
+---@type {addr: int, i: int, n: int, scale: int, live: bool}[]
+local addrs = {}
+
+local function get_n()
+    return rand(2, 20)
+end
+local function scale()
+    return rand(-0x40, 0x40) * 0x4
+end
+
+local function main(begin, inclusiveEnd)
+    local i = begin
+    while i <= inclusiveEnd do
+        local v = r32(i)
+        i = i + 4
+        if found(v) then
+            for j = 1, 3 do
+                if not addrs[i] then
+                    local n = get_n()
+                    addrs[i] = {
+                        addr = i,
+                        n = n,
+                        i = rand(0, n-1),
+                        scale = scale(),
+                        live = true,
+                    }
+                else
+                    addrs[i].live = true
+                end
+                -- add32(i, rand(-4, 4) * 0x100)
+                -- add32(i, rand(4, 4) * 0x1000)
+                i = i + 4
+            end
+        end
+    end
+end
+function update_value()
+    for _, v in pairs(addrs) do
+        if v.live then
+            v.i = (v.i + 1) % v.n
+            if v.i == 0 and rand(1, 2) == 1 then
+                v.n = get_n()
+                v.scale = scale()
+            end
+            local d = math.icos(v.i / v.n, v.scale)
+            add32(v.addr, d)
+            v.live = false
+        end
+    end
+end
+-- 2292030
+-- 228E000
+
+local update_voice = (function()
+    local head = 0x02131220
+    local width = 0x800
+    local cnt = 0
+    local vvs = {}
+    ---@param scl number
+    return function(scl)
+        local vs = {}
+        if r16(head) ~= 0 or r16(head+2) ~= 0 then
+            for i = 0, width-1, 2 do
+                vvs[#vvs+1] = r16(head+i)
+            end
+            cnt = cnt + 1
+        end
+        for i = 0, width-1, 2 do
+            local _i = (cnt-1)*(width//2) + math.round((i//2) * scl)
+            vs[head+i] = vvs[_i] or 0
+        end
+        for a, v in pairs(vs) do
+            w16(a, v)
+        end
+    end
+end)()
+
+local max_scale = 0.75
+local min_scale = 0.5
+local c = Cnt(20)
+
+local function get_scale2()
+    return (math.sin(c:next() * 2 * math.pi / c.n) + 1.0) * (max_scale - min_scale) + min_scale
+end
+
+function loop()
+    main(0x02310000, 0x02313FFF)
+    -- main(0x02313000, 0x02313fff)
+    -- main(0x02313000, 0x02313fff)
+    update_value()
+    update_voice(get_scale2())
+end
+```
+
+## video12 手を上げ続ける & 途中で揺れたりジャンプしたり
+
+```lua
+---@param obj ValueUpdaterObj
+local function calc(obj)
+    return obj:isin()
+end
+
+local d = 0x1800
+local vs = {
+ValueUpdater(60, -0x1000+d, 0x1000+d, calc)
+:w32(0x02313AA4),
+ValueUpdater(60, -0x1000, 0x1000, calc)
+:w32(0x02313AB4),
+-- ValueUpdater(60, -0x4000, 0x4000, calc)
+-- :w32(0x02313B14),
+}
+
+local m = lib.at(0x02310D56)
+
+local mc = Cnt(30)
+
+local v = ValueUpdater(45, -0x1000, 0x1000, calc)
+:w16(0x0224842c)
+
+local r = RL(440)
+
+local update_voice = (function()
+    local head = 0x02131220
+    local width = 0x800
+    ---@param scale number
+    return function(scale)
+        local vs = {}
+        for i = 0, width-1, 2 do
+            local _i = head + (math.round(i * scale) % width)
+            vs[head + i] = r16(_i)
+            -- w16(head + i, r16(_i))
+        end
+        for a, v in pairs(vs) do
+            w16(a, v)
+        end
+    end
+end)()
+
+local max_scale = 1.1
+local min_scale = 1.0
+local c = Cnt(20)
+
+local function get_scale()
+    return min_scale + c:next() * (max_scale - min_scale) / c.n
+end
+local function get_scale2()
+    return (math.sin(c:next() * 2 * math.pi / c.n) + 1.0) * (max_scale - min_scale) + min_scale
+end
+
+local y_v_r = RL(990)
+local y_v = ValueUpdater(27, 0, 0x2000)
+:calc(function(obj)
+    local x = 2*obj:x() - 1
+    return obj:lerp(clamp(1 - x*x, 0, 1))
+end)
+:w32(0x02248418)
+
+local ready = true
+local ready_m = lib.at(0x0224845E)
+
+function loop()
+    if not ready then
+        if ready_m:r8() == 0x8 then
+            ready = true
+        end
+        return
+    end
+    -- for _, v in pairs(vs) do v() end
+    if mc() then m:w8(3) end
+    w8(0x02313AAc, 0x11)
+    add16(0x02248428, 0x80)
+    -- if r() then v() end
+    update_voice(0.8)
+    if y_v_r() then y_v()
+    elseif r() then v()
+    end
+end
+
+-- 2313AA4
+-- 2313B14
+```

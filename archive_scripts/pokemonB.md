@@ -2718,3 +2718,347 @@ lib.irume.start(function()
     end
 end)
 ```
+
+ゲーチス立ち絵調査
+
+- 234892C: 関係あり? (`EE62432E`)
+- 2348934: color (`6A01CE1F`)
+
+
+2E<0010> = AE<1010> = EE<1110>
+8E<1000> = CE<1100> -> GB
+4E<0100> -> GB&loop
+6E<0110> -> loop
+
+ROM領域の03472CA4を00000000にすると、「都会」とか「中身」とかテキストがおかしくなる
+恐らくここはテキストメッセージなどを管理する場所。他のアドレスの値などに書き換えても面白い。
+
+
+## レシラムバグ集
+
+`228E600`あたりをいじる
+
+(例: `228E60E -> 00, 11, etc.`)
+
+228e019 -> アゴ
+
+アゴを適時いじる
+
+```lua
+local m = lib.at(0x0228e019)
+
+local vs = {
+    {300, 0x5},
+    {345, 0x9},
+    {560, 0x8},
+    {970, 0x40},
+    {995, 0x13},
+    {1050, 0x4c},
+    {1280, 0x06},
+    {1410, 0x20},
+    {1668, 0x07},
+}
+
+local _i = 5
+local cnt = 1
+local prev = false
+
+function loop()
+    _i = _i + 1
+    if DS.key.get("A") then
+        if not prev then
+            prev = true
+            print(string.format("i: %d", _i))
+            -- cnt = cnt + 1
+        end
+    elseif prev then prev = false
+    end
+    if cnt > #vs then return end
+    local d = vs[cnt]
+    if _i >= d[1] then
+        cnt = cnt + 1
+        m:w8(d[2])
+    end
+end
+```
+
+## video12 ゼクロムNの城登場シーンバグ
+
+```lua
+
+
+
+---@type {addr: int, cnt: int, data: [int, int][]}[]
+local vs = {
+{
+    addr = 0x022c9574,
+    cnt = 1,
+    data = {
+        {174, 0x27B24},
+        {490, 0x7b24},
+    }
+}
+}
+
+local rl = RL(490)
+
+local v1 = ValueUpdater(36, -0x40000, 0x40000, function(obj) return rl.fired and obj:isin() or nil end)
+:w32(0x022c957c)
+
+local v2 = ValueUpdater(36, -0x4000, 0x10000, function(obj) return rl.fired and obj:isin() or nil end)
+:w32(0x022c95a8)
+
+
+local v3 = ValueUpdater(36, -0x4000, 0x20000, function(obj) return rl.fired and obj:isin() or nil end)
+:w32(0x022c95c0)
+
+local v4 = ValueUpdater(36, -0x4000, 0x20000, function(obj) return rl.fired and obj:isin() or nil end)
+:w32(0x022c96d4)
+
+local v5 = ValueUpdater(36, -0x10000, 0x10000)
+:calc(function(obj)
+    if not rl.fired then return end
+    w32(0x022c9678, stou32(obj:isin() - 0x1b))
+    w32(0x022c967C, stou32(obj:icos()))
+end):write(function()end)
+
+-- 9674が首
+
+local _i = 0
+function loop()
+    rl()
+    -- v1()
+    v2()
+    v3()
+    v4()
+    v5()
+    _i = _i + 1
+    for _, v in pairs(vs) do
+        local d = v.data[v.cnt]
+        if d and _i >= d[1] then
+            v.cnt = v.cnt + 1
+            w32(v.addr, d[2])
+        end
+    end
+end
+
+
+lib.irume.start(function()
+    local head = 0x03eba730
+    local as = {}
+    local vs = {}
+    for i = 0, 29 do
+        as[i] = head + 0x40*i
+        vs[i] = 0x10
+    end
+    local r = RC(10)
+    return function()
+        for i, a in pairs(as) do
+            if r() then
+                w8(as[i] + 0x1f, rand(23, 39))
+            end
+        end
+    end
+end)
+```
+
+### ゼクロムをじたばた(リュウラセンのときの流用)
+
+```lua
+
+local update_zek = (function()
+    local function found(v)
+        local v1 = (v >> 0) & 0xff
+        local v2 = (v >> 8) & 0xff
+        local v3 = (v >> 16) & 0xff
+        local v4 = (v >> 24) & 0xff
+        return (
+            v1 == 0x38
+        ) and (
+            v2 == 0x3A or v2 == 0x3B or v2 == 0x38
+        ) and (
+            v3 == 0
+        ) and within(v4, 1, 0x20)
+    end
+
+    local begin = 0x022C9500
+    local inclusiveEnd = 0x022C988F
+
+    local _i = 0
+    local r = RC(5)
+    local backup = nil
+    return function()
+        if not backup then
+            backup = lib.range(begin - 0x10, inclusiveEnd + 0x10):save()
+        end
+        if r() then
+            backup:rollback()
+        end
+        _i = (_i + 1) % 30
+        local _v = math.round(math.cos(_i*2*math.pi/30) * 0x600)
+        local i = begin
+        while i <= inclusiveEnd do
+            local v = r32(i)
+            i = i + 4
+            if found(v) then
+                for j = 1, 3 do
+                    if r() then
+                    add32(i, rand(-4, 4) * 0x1000)
+                    end
+                    i = i + 4
+                end
+            end
+        end
+    end
+end)()
+function loop()
+    update_zek()
+end
+
+lib.irume.start(function()
+    local head = 0x03eba730
+    local as = {}
+    local prevs = {}
+    local fs = {}
+    for i = 0, 29 do
+        as[i] = head + 0x40*i
+        prevs[i] = 0
+        fs[i] = false
+    end
+    local r = RC(10)
+    local _T = 0x0a
+    return function()
+        for i, a in pairs(as) do
+            local t = r8(a + 0x2c)
+            if prevs[i] < t then
+                fs[i] = not fs[i]
+                t = fs[i] and _T or _T*2
+            end
+            w8(a + 0x2c, t)
+            prevs[i] = t
+        end
+    end
+end)
+```
+
+<details>
+<summary>雑多</summary>
+<div>
+
+```lua
+
+local function found(v)
+    local v1 = (v >> 0) & 0xff
+    local v2 = (v >> 8) & 0xff
+    local v3 = (v >> 16) & 0xff
+    local v4 = (v >> 24) & 0xff
+    return (
+        v1 == 0x38
+    ) and (
+        v2 == 0x3A or v2 == 0x3B
+    ) and (
+        v3 == 0
+    ) and within(v4, 1, 0x20)
+end
+
+-- local begin = 0x026C45A8
+-- local inclusiveEnd = 0x026C486F
+
+local function main(begin, inclusiveEnd)
+    local i = begin
+    while i <= inclusiveEnd do
+        local v = r32(i)
+        i = i + 4
+        if found(v) then
+            for j = 1, 3 do
+                add32(i, rand(-4, 4) * 0x1000)
+                -- add32(i, rand(4, 4) * 0x1000)
+                i = i + 4
+            end
+        end
+    end
+end
+-- 2292030
+-- 228E000
+
+function loop()
+    main(0x02287C30, 0x022aFFFF)
+    main(0x02687c34, 0x02687d6f)
+end
+loop = nil
+
+local ok = false
+CLS()
+for i = 0x02000000, 0x025fffff, 4 do
+    local v = r32(i)
+    if found(v) then
+        ok = true
+        print("FOUND!!!")
+        _HEXP(i)
+        break
+    end
+end
+if not ok then print("not found") end
+```
+
+```lua
+
+
+local function found(v)
+    local function ok(_v)
+        return _v == 0x22 or _v == 0x23 or _v == 0x25 --or _v == 0x1b or _v == 0x14
+    end
+    local v1 = (v >> 0) & 0xff
+    local v2 = (v >> 8) & 0xff
+    local v3 = (v >> 16) & 0xff
+    local v4 = (v >> 24) & 0xff
+    return ok(v1) and ok(v2) and ok(v3) and ok(v4)
+end
+local function main(begin, inclusiveEnd)
+    local i = begin
+    while i <= inclusiveEnd do
+        local v = r32(i)
+        i = i + 4
+        if found(v) then
+            for j = 1, 3 do
+                add32(i, rand(4, 4) * 0x10)
+                i = i + 4
+            end
+        end
+    end
+end
+-- 2292030
+-- 228eba0
+
+function loop()
+    main(0x02290000, 0x0229ffff)
+    -- main(0x02687c34, 0x02687d6f)
+end
+```
+
+```lua
+
+local _i = 5
+local cnt = 1
+local prev = false
+
+local v = ValueUpdater(36, -0x40000, 0x40000, function(obj) return obj:isin() end)
+:w32(0x022c957c)
+
+function loop()
+    -- v()
+    _i = _i + 1
+    if DS.key.get("A") then
+        if not prev then
+            prev = true
+            print(string.format("i: %d", _i))
+            -- _i = 0
+            -- cnt = cnt + 1
+        end
+    elseif prev then prev = false
+    end
+end
+```
+
+</div>
+</details>

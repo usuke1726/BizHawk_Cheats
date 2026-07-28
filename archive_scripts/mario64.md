@@ -849,3 +849,244 @@ end)
 ```
 
 
+## video12 ルイージ荒ぶりなど
+
+```lua
+-- w8(0x0217D418, 0x0300) -- 太くする
+
+local v = ValueUpdater(51, -0x4000, 0x1600)
+:calc(function(obj)
+    return obj:lerp(clamp(1 - math.abs(2*obj:x() - 1), 0, 1))
+end)
+-- :w32(0x0217D42C)
+:w32(0x0217D41C)
+
+local v2 = ValueUpdater(05, -0x2000, 0x2000)
+:calc(function(obj)
+    return obj:lerp(clamp(1 - math.abs(2*obj:x() - 1), 0, 1))
+end)
+:w32(0x0217D430)
+
+local v3 = ValueUpdater()
+:calc(function(obj)
+    if rand(1, 20) == 1 then
+        return stou32(rand(-3, 3) * 0x1000)
+    end
+end)
+:w32(0x0217D418)
+
+local i = 0
+local prev = false
+local rl = RL(70)
+local ready = false
+function loop()
+    if not rl() then return end
+    if not ready then
+        print("READY")
+        w8(0x022A5CFC, 0xf8) -- Lにしきがお
+
+        lib.fill_in(0x02299700, 0x02299fff) -- キノピオがぺしゃんこになる
+        ready = true
+    end
+    -- v()
+    v2()
+    v3()
+end
+
+--[[
+雑多メモ
+
+
+
+
+-- w8(0x022992CC, 0xa0) -- キノピオが駄々っ子みたいになる
+-- lib.fill_in(0x022992D8, 0x0229930f, 0x11) -- キノピオが両腕を横に広げて前傾姿勢で歩く
+-- lib.fill_in(0x022992D8, 0x022993af, 0x11) -- キノピオがふんぞりかえってなめ腐ったような歩き方をする
+
+-- lib.fill_in(0x02299700, 0x02299fff) -- キノピオがぺしゃんこになる
+
+-- local begin = 0x0229F100
+-- lib.fill_in(0x02297800, 0x022978ff)
+-- 22978e0: 15
+
+
+local rl = RL(360)
+
+w8(0x022992CC, 0xa0) -- キノピオが駄々っ子みたいになる
+w8(0x022978e0, 0x15) -- Lも駄々っ子みたく横になって暴れる
+local v = ValueUpdater(30, -0x8f00, 0xd000, function(obj)
+    local x = 2*obj:x()-1
+    return obj:lerp(clamp(1 - x*x, 0, 1))
+end):w32(0x0217D440)
+
+-- 217D41C, -0x1000
+-- 217D420, 0x2000
+
+function loop()
+    if rl() then
+        v()
+    end
+end
+
+]]
+```
+
+そのときのイルーム
+
+```lua
+lib.irume.start(function()
+    local head = 0x03e07d40
+    local as = {}
+    local prevs = {}
+    for i = 0, 16 do
+        as[i] = head + 0x40*i
+        prevs[i] = 0
+    end
+    local tone = {0x42, 0x00, 0x79, 0x7f}
+    local t = 0x24
+    local p1 = 0x17
+    return function()
+        for i, a in pairs(as) do
+            local _t = r8(a + t)
+            if prevs[i] < _t then
+                _t = rand(0x6, 0x10)
+                -- ver1
+                -- w8(a + p1, stou8(rand(-5, 12)))
+                -- ver2
+                w8(a + p1, stou8(rand(27, 50)))
+            end
+            w8(a + t, _t)
+            prevs[i] = _t
+            -- i=6: 0x03E07EC0
+            if i == 6 then
+                w8(a + p1, stou8(-12))
+                -- ver1
+                -- w8(a + 0x1d, 1)
+                -- w16(a + 0x1e, 0x5050)
+                -- ver2
+                w8(a + 0x1d, 6)
+                w16(a + 0x1e, 0x3030)
+            else
+                lib.warr(a + 0x06, tone)
+            end
+        end
+    end
+end)
+
+```
+
+## video12 ルイージなどのポリゴン頂点をいじる
+
+```lua
+-- 240F3DC -> A6, AA, B8, B2: カメラがヘンになる?(ルイージがドアップになったり)
+
+-- w8(0x022A5CFC, 0x11) -- Lがワイヤーだけになる
+
+-- 22b1910
+-- 22AFc70あたり、キノピオのポリゴンデータ?
+
+-- 22A7E00あたりは背景のオブジェクトのポリゴンデータ(22A9590あたりまで?)
+
+-- local begin = 0x0229F100
+local begin = 0x0229E400
+-- local inclusiveEnd = 0x0229FFFF
+-- local inclusiveEnd = 0x022A5CCF
+
+local inclusiveEnd = 0x022B1B6F
+
+-- ポリゴンデータ
+--終わりはもっと長い
+-- 22a2f10より後
+-- 22a5cc0あたりまで
+
+local backup = lib.range(begin - 0x10, inclusiveEnd + 0x10):save()
+local backup_r = RC(20)
+
+local vs = {
+    0x2122,
+    0x2223,
+    0x2321,
+    0x1221,
+    0x4123,
+}
+local function found(v)
+    local function _in(_v)
+        for _, a in pairs(vs) do
+            if a == _v then return true end
+        end
+        return false
+    end
+    local v1 = v & 0xffff
+    local v2 = (v >> 16) & 0xffff
+    return _in(v1) and _in(v2)
+end
+
+local r = RC(2)
+local addrs ={}
+local first = true
+function loop()
+    if backup_r() then
+        backup:rollback()
+    end
+    local i = begin
+    local __v = rand(-0x4, 0x4) * 0x100
+    while i <= inclusiveEnd do
+        local v = r32(i)
+        i = i + 4
+        if found(v) then
+            if first then
+            addrs[#addrs+1] = i
+            end
+            for j = 1, 4 do
+                if j == 4 then
+                    add32(i, -0x200)
+                elseif j ~= 1 then
+                    if r() then
+                add32(i, __v + rand(-0x200, 0x200))
+                    end
+                end
+                i = i + 4
+            end
+        end
+    end
+    if first then
+        _HEXP(addrs[1])
+        _HEXP(addrs[#addrs])
+    end
+    first = false
+end
+
+-- w8(0x022A5CFC, 0xf8) -- Lにしきがお
+
+-- そのときのイルーム
+lib.irume.start(function()
+    local head = 0x03e07d40
+    local as = {}
+    for i = 0, 16 do
+        as[i] = head + 0x40*i
+    end
+    local tone = {0x42, 0x00, 0x79, 0x7f}
+    local t = 0x24
+    local p1 = 0x17
+    return function()
+        for i, a in pairs(as) do
+            w8(a + p1, rand(12, 24))
+            w8(a + 0x1d, 1)
+            w16(a + 0x1e, 0x2020)
+            lib.warr(a + 0x06, tone)
+        end
+    end
+end)
+```
+
+## ピーチの位置固定(ポリゴンいじるテストに利用するとよい)
+
+```lua
+-- ピーチの位置固定(ポリゴンいじるテストに利用するとよい)
+local tate = lib.at(0x022f657c)
+local yoko = lib.at(0x022f6580)
+function loop()
+    yoko:w32(0x480000)
+    -- tate:w32(0xffe60000)
+end
+```
