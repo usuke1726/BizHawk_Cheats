@@ -3062,3 +3062,298 @@ end
 
 </div>
 </details>
+
+## ROMハック: レベル技変更
+
+- http://blog.livedoor.jp/nnnnnnnnnnaito/archives/3554242.html
+
+> 【ポケモンのレベル技変更】
+> おそらくROMを直接バイナリ書き換えしたほうが早い。
+> レベル技はROM内に暗号化なしでずらーっと並んでるので、Stirlingで検索して書き換えるだけで良い。
+> たとえばレベル20で銀色の風を覚えるポケモンのレベル技を変えたいなら、
+> 「3E 01 13 00」でROM内を検索。銀色の風の技コードが「3E 01」で、レベル20が16進数で13に該当。
+> ポケモンとポケモンの間は「FF FF FF FF」で区切られている。
+
+図: 領域はROMの `06FAE3A0--06FAE4BF`
+
+一部
+
+```
+06FAE400 9D 01 3F 00 77 00 46 00 FF FF FF FF FE 01 01 00 <= "FE 01 01 00"がレベル1で技"01 FE"(やきつくす)を覚える
+06FAE410 7A 00 01 00 3C 01 06 00 14 00 0B 00 53 00 10 00
+06FAE420 9A 00 15 00 21 01 1A 00 E1 01 1F 00 C2 01 24 00
+06FAE430 A3 00 29 00 85 00 2E 00 35 00 33 00 FE 00 38 00
+06FAE440 FF 00 38 00 00 01 38 00 05 02 3D 00 FF FF FF FF
+```
+
+> 図はクイタランの例。
+> 黒い選択部分がクイタラン。FF FF FF FFで挟まれた領域が1つのポケモン。
+> これはバイナリ編集だけで出来、面倒なnarc処理やツールがいらないので結構手軽。
+> なお、このポケモンレベル技はNitroでいうとa-0-1-8に該当する。
+> 検索候補が多すぎてわからない場合のために、a-0-1-8を抽出しておくと楽かも（検索で余計なものに当たらない）。
+> なお技コードはぐぐれば出る。PAR等の改造コードのページに技リストとして良く載ってる。
+> たとえば銀色の風なら、バイナリ上では「3E 01」だが、改造コードでは「013E」となっていることもあるので注意。
+> 16進数への換算は、windows標準の電卓の機能で可能。
+> あ、技変更も先ほど同様、ファイルサイズを変えてはいけない。
+> つまり新技の追加は無理。いらない技を置き換えるのが手軽。あとは、おそらく覚える順番に並べたほうが良い。
+> なお奥の手として、まあ入手できないだろうという幻ポケモンの技を削るという荒業がある。
+> お気に入りのポケモンに新レベル技をひとつ追加するかわりに、シェイミやアルセウスの技をひとつ削る。
+> これならファイルサイズは変わらないし、影響はないはず。たぶん。
+
+
+## ゲーチス立ち絵調査
+
+ROM内のゲーチス立ち絵の圧縮データと思われる箇所を発見！ => `0AF4C210` (恐らくNintendo LZ10 algorithm)
+
+```
+FNT: 00 1E 2F 00
+FNT: 08 04 00 00
+FAT: 00 24 2F 00
+FAT: 20 0F 00 00
+```
+
+`0x22148B0`あたりのデータが候補か?
+
+1つ手がかり発見！ `0AF4C262, 0AF4C268`を0x11で埋める
+
+```lua
+w8r(0x0AF4C264, 0x11)
+```
+
+- C9B5からC9F1だけを0でうめつくしたら、立ち絵の右下端だけかいめつした。なんかLZ77ぽい？
+
+C750からは安全にこわせる? => ちがう、C730とかは、1バイトずれていて、その途中から塗りつぶすとエラーのもと。(恐らく2byte構成みたくなっていて、そのうちの片方だけ、となるとエラーになってしまう)
+つまり、前半部分は `*0` からではなく、 `*1` から塗りつぶすとエラーになりにくい
+
+C249からいじれる。それ以前のデータは0とかにするとフリーズエラー。
+C210が先頭？やっぱりLZ10かも。
+
+RAM 2274D30付近 => ROM AF4C330付近の圧縮データを、ここらへんの場所に一瞬だけコピーしているみたい。
+同じように、圧縮データとして壊れた形でいじるとフリーズする
+
+## video13 博士&チェレン アゴ化
+
+```lua
+CLS()
+
+local _i = 0
+local ts = {
+    160,
+    470,
+}
+local do_time = 515
+
+
+local function MAIN()
+    print("== MAIN ==")
+
+local function pos(x, y)
+    local function pos_l(x, y)
+        local addr = 0x06010000
+        if y >= 96 then
+            addr = addr + 0x6000
+            y = y - 96
+        end
+        return lib.pos.Morton(x, y, 8, 0x40, 0x400) + addr
+    end
+    local function pos_r(x, y)
+        local addr = 0x06013000
+        if y >= 96 then
+            addr = addr + 0x6000
+            y = y - 96
+        end
+        return lib.pos.Morton(x, y, 8, 0x40, 0x400) + addr
+    end
+    if x >= 0x80 then
+        return pos_r(x - 0x80, y)
+    else return pos_l(x, y)
+    end
+end
+
+local orig = {}
+for a = 0x06010000, 0x0601bfff do
+    orig[a] = r8(a)
+end
+local st = 44
+local st2 = 49
+
+local vs = {}
+for y = 0, 96*2-1 do
+    for x = 0, 0x7f do
+        if y >= st and x < 80 then
+            local _y = (y - st) // 5 + st
+            vs[pos(x, y)] = orig[pos(x, _y)]
+        end
+    end
+    for x = 0x80, 0xff do
+        if y >= st then
+            local _y = (y - st2) // 5 + st2
+            vs[pos(x, y)] = orig[pos(x, _y)]
+        end
+    end
+end
+for a = 0x06010000, 0x0601bfff, 4 do
+    local v = 0
+    for i = 3, 0, -1 do
+        local _v = vs[a + i] or r8(a + i)
+        v = (v << 8) | _v
+    end
+    w32(a, v)
+end
+lib.fill_in(0x6400000, 0x640ffff) -- 上にのっかってる目や口の可動部分を消す
+lib.fill_in(0x6007B00, 0x6007BAF) -- ムユルンの名前を消す
+end
+
+
+function loop()
+    _i = _i + 1
+    if _i == do_time then MAIN() span = 30
+    elseif _i == do_time + 8 then
+        -- 強制フリーズ
+        lib.fill_in(0x02400000, 0x0240ffff)
+        print("DONE")
+        return
+    elseif _i > do_time then return
+    end
+    for _, t in pairs(ts) do
+        if _i == t then
+            DS.key.set("A", true) break
+        elseif _i == t + 10 then
+            DS.key.set("A", false) break
+        end
+    end
+end
+
+
+-- araragi: 0x06010000
+-- 8, 0x40, 0x400 bound: 0x3000
+-- width: (0x400/0x40)*8 = 80
+-- height: (0x40/8) * (0x3000/0x400) = 96
+-- tyeren: 0x06013000
+-- touko: 0x06016000
+-- bell: 0x06019000
+
+
+-- araragi mouse: 6402500
+-- araragi eye 6401D80 (8, 0x20, 0x80)
+
+
+lib.irume.start(function()
+    local head = 0x03eba730
+    local p2 = 0x18
+    -- local p2_range = 0x20
+    local p2_range = 0x40
+    local as = {}
+    for i = 0, 19 do
+        as[i] = head + 0x40*i
+    end
+    local r = RC(5)
+    return function()
+        for i, a in pairs(as) do
+            if r() then
+                w16(a + p2, stou16(rand(-p2_range, p2_range)))
+            end
+        end
+    end
+end)
+
+```
+
+## video13 Nアゴ
+
+```lua
+local function MAIN()
+
+local function pos(x, y)
+    if within(y, 0x40, 0x4f) and within(x, 0x28, 0x57) then
+        return lib.pos.Morton(x - 0x28, y - 0x40, 0x08, 0x40, 0x180) + 0x06189800
+    else return lib.pos.Morton(x, y, 0x08, 0x40, 0x400) + 0x06183800
+    end
+end
+
+local W = 0x80
+local hW = W // 2
+
+local st1 = 0x40
+local st2 = 0x58
+
+lib.image.filterObj()
+:width(W)
+:bound(0x6000)
+:go(function(x, y)
+    if within(y, 0xb0, 0xbf) and within(x, 0x38, 0x47) then
+        local _x = (x - 0x38) % 16 - 7
+        local _y = (y - st2) // 7 + st2
+        if _x < 0 then _x = -_x end
+        _x = 0x30 + _x
+        return pos(x, y), r8(pos(_x, _y))
+    end
+    if y >= st2 then
+        local _y = (y - st2) // 7 + st2
+        return pos(x, y), r8(pos(x, _y))
+    else
+        local _y = y // 6 + st1
+        _y = _y + math.round(math.sin(x * 2 * math.pi // 0x10) * 0x4)
+        return pos(x, y), r8(pos(x, _y))
+    end
+end)
+end
+
+local _i = 0
+local ts = {
+    360,
+    480,
+    540,
+}
+local do_time = 595
+
+local span = 10
+
+function loop()
+    _i = _i + 1
+    if _i == do_time then MAIN() span = 30
+    elseif _i == do_time + 58 then
+        -- 強制フリーズ
+        lib.fill_in(0x02210000, 0x0221ffff)
+        print("DONE")
+        return
+    elseif _i > do_time then return
+    end
+    for _, t in pairs(ts) do
+        if _i == t then
+            DS.key.set("A", true) break
+        elseif _i == t + 10 then
+            DS.key.set("A", false) break
+        end
+    end
+end
+
+lib.irume.start(function()
+    local head = 0x03eba730
+    local p2 = 0x18
+    -- local p2_range = 0x20
+    local p2_range = 0x40
+    local as = {}
+    local prevs = {}
+    for i = 0, 19 do
+        as[i] = head + 0x40*i
+        prevs[i] = 0
+    end
+    local r = RC(5)
+    local time = 0x2c
+    return function()
+        for i, a in pairs(as) do
+            local t = r8(a + time)
+            if prevs[i] < t then
+                t = rand(0x10, 0x30)
+            end
+            w8(a + time, t)
+            prevs[i] = t
+            if r() then
+                w16(a + p2, stou16(rand(-p2_range, p2_range)))
+            end
+        end
+    end
+end)
+```
+

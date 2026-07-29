@@ -523,3 +523,222 @@ lib.irume.start(function()
     end
 end)
 ```
+
+## video13
+
+```lua
+w32(0x04000350, 0x33333333) -- 上画面の背景を消す
+
+
+local function s32(v)
+    if v > 0x80000000 then
+        return v - 0x100000000
+    end
+    return v
+end
+
+---@param obj ValueUpdaterObj
+local function update(obj)
+    return obj.v + rand(-0x20, 0x20) * 2
+end
+
+local left_eye = {
+ValueUpdater(1, 0x06D0, 0x07E0, update):w32(0x0296E550),
+ValueUpdater(1, 0x0190, 0x0330, update):w32(0x0296E558),
+}
+local right_eye = {
+ValueUpdater(1, 0x06D0, 0x07E0, update):w32(0x0296E564),
+ValueUpdater(1, 0xFFFFFCD0, 0xFFFFFEB0, update):w32(0x0296E56C),
+}
+local glasses = {
+ValueUpdater()
+:calc(function() return 0x0b68 end)
+:w32(0x0296E5D8),
+ValueUpdater()
+:calc(function() return rand(0x2, 0x19) end)
+:w8(0x0296E5E4),
+}
+
+local hoo = {
+ValueUpdater(45, -0x100, 0x800, function(obj) return obj:isin() end):w32(0x0296E5F4),
+ValueUpdater(45, -0x750, 0x100, function(obj)
+    local min, max = obj:get_minmax()
+    return math.ilerp(min, max, math.sin01(1.0 - obj:x()))
+end):w32(0x0296E644),
+}
+
+local mouses = {
+--  -0x1000  -- 0x10C6 shita (def 01c6)
+--  -0x800 -- 0x10BA ue (def 02ba)
+(function()
+    local d = 0xf4
+    local a_shita = 0x0296E600
+    local a_ue = 0x0296E650
+    local def_shita = 0x01c6
+    local def_ue = 0x02ba
+    local r = RC(60)
+    return function()
+        d = clamp(d + rand(-0x20, 0x20)*4, 0x10,0x1000)
+        local v = s32(r32(a_shita))
+        v = clamp(v + rand(-0x80, 0x80)*2, -0x1000, 0x10c6)
+        w32(a_shita, r() and def_shita or stou32(v))
+        w32(a_ue, r() and def_ue or stou32(v + d))
+    end
+end)(),
+}
+
+local left_eyebrow = {
+ValueUpdater(1, -0x400, 0x200)
+:calc((function()
+    local r = RC(10)
+    local target = 0
+    ---@param obj ValueUpdaterObj
+    return function(obj)
+        if r() then
+            target = rand(obj:get_minmax())
+        end
+        return math.ilerp(s32(obj.v), target, 0.1)
+    end
+end)())
+:write(function(v) w32(0x0296E504, stou32(v)) end),
+ValueUpdater(1, -0x400, 0x200)
+:calc((function()
+    local r = RC(3)
+    local target = 0
+    ---@param obj ValueUpdaterObj
+    return function(obj)
+        if r() then
+            target = rand(obj:get_minmax())
+        end
+        return math.ilerp(s32(obj.v), target, 0.3)
+    end
+end)())
+:write(function(v) w32(0x0296E544, stou32(v)) end),
+}
+
+local body = {
+(function()
+    local ay = 0x0296E4BC
+    local ax = 0x0296E4C4
+    local iy = 0
+    local ix = 0
+    local span = 60
+    local def_x = 0
+    local def_y = 0x0500
+    local depth = 0x20
+    return function()
+        iy = (iy + rand(-2, 4)) % span
+        ix = (ix + rand(-2, 4)) % span
+        local x = math.round(math.sin(ix * 2 * math.pi / span) * depth)
+        local y = math.round(math.sin(iy * 2 * math.pi / span) * depth)
+        w32(ax, stou32(def_x + x))
+        w32(ay, stou32(def_y + y))
+    end
+end)(),
+}
+
+local bodies = {
+left_eye,
+right_eye,
+glasses,
+left_eyebrow,
+mouses,
+hoo,
+body,
+}
+
+function loop()
+    for _, __body in pairs(bodies) do
+        for _, v in pairs(__body) do v() end
+    end
+    local _v
+    w32(0x0296E4AC, 0xFFFFFD00)
+    _v = 0x1400
+    w32(0x0296E4B0, _v)
+    w16(0x02128768, 0)
+    w16(0x02129050, 0)
+    w16(0x02128768, 0)
+    w16(0x02129050, 0)
+end
+
+lib.irume.start(function()
+    local head = 0x03EC8A00
+    local as = {}
+    local prev = 0
+    for i = 0, 16 do
+        as[i] = head + 0x40 * i
+    end
+    local p = 0x1f
+    local r = RC(10)
+    local time = 0x2c
+    local c = Cnt(5) c()
+    local v = 0x16
+    return function()
+        local _t = r8(as[0] + time)
+        if prev < _t then
+            _t = c() and 0x16 or 0x6
+            for i, a in pairs(as) do
+                w8(a + p, stou8(rand(0, 24)))
+            end
+        end
+        for i, a in pairs(as) do
+            w16(a + v, 0x80)
+            w8(a + time, _t)
+        end
+        prev = _t
+    end
+end)
+```
+
+## video13 雑多メモ
+
+```lua
+local addrs = {
+-- 顔全体
+-- 0x0296E4B8,
+-- まゆげあたり
+-- 0x0296E4E4,
+-- 0x0296E4F8,
+-- 0x0296E524,
+-- 0x0296E538,
+
+-- 黒目
+-- 0x0296E54C,
+-- 0x0296E560,
+
+-- メガネ
+-- 0x0296E5D4,
+
+-- 左頬
+-- 0x0296E5E8,
+
+-- 下唇, あご中心
+0x0296E5FC,
+
+-- あご左
+-- 0x0296E610,
+
+-- あご右
+-- 0x0296E624,
+
+-- 右頬
+-- 0x0296E638,
+
+-- 上唇
+0x0296E64C,
+}
+
+
+local backup = lib.range(0x0296E4B8, 0x0296F01F):save()
+local r = RC(90)
+function loop()
+    if r() then backup:rollback() end
+    local scale = 0x20
+    for i, a in pairs(addrs) do
+        for j = 1, 3 do
+            add32(a+j*4, rand(-scale, scale))
+        end
+    end
+end
+```
+

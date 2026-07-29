@@ -1204,3 +1204,123 @@ w32r(0x12041C, 0x020F9AB4) -- orig: 020f99e4
 -- title/title_main_t.dat title/title_main_p.dat がタイトルの画像データ?
 ```
 
+
+## video13 ケモケモ
+
+
+```lua
+-- (太鼓の達人で「試験も」の部分を記録しておく)
+
+local head = 0x21D9500
+local width = 0x1000
+
+local kyoku_broken_head = 0x020E1660
+local kyoku_broken_width = 0xa00
+
+
+local i = 0
+local n = #DATA_kemo2
+print("n:" .. tostring(n))
+
+local kemo2 = {}
+local j = 0
+for _i = 1, n do
+    -- if not within(_i, -1, 0) then
+    if within(_i, 4, 16) or within(_i, 30, 46) then
+    -- if not within(_i, 13, 29) then
+        j = j + 1
+        kemo2[j] = DATA_kemo2[_i]
+    end
+end
+-- local __n = #(DATA_kemo2[1])
+-- for _i = 1, 4 do
+--     j = j + 1
+--     kemo2[j] = {}
+--     for _j = 1, __n do
+--         kemo2[j][_j] = 0
+--     end
+-- end
+n = j
+
+local time = lib.at(0x021DA6D0)
+local ready = false
+local print_stop = false
+
+function loop()
+    local t = time:r16()
+    if not ready then
+        if within(t, 0x0191, 0x02ff) then
+            print("== TIMER READY ==")
+            ready = true
+        else return
+        end
+    end
+    if t >= 0x03ad then
+        if not print_stop then
+            print("STOP")
+            print_stop = true
+        end
+        lib.fill_in(head, head + width - 1, 0)
+    else
+        i = (i % n) + 1
+        lib.fill_in_arr(head, head + width - 1, kemo2[i])
+    end
+end
+
+
+local update_logo = function()
+    -- ロゴ画像: 0x100で1行のラスタスキャン
+    -- 2a00から 5affまで
+    local function pos(x, y)
+        return lib.pos.Raster(x, y, 0x100) + 0x014B2A00
+    end
+
+    local vs = {}
+    local st = 0x2e
+    local ed = 0x5f
+    for y = 0, 48 do
+        for x = 0, 0xff do
+            local _x = (x - st) % (ed - st)
+            if within(y, 10, 19) and within(_x, 0, 6) then
+                vs[pos(x, y)] = 0
+            else
+                vs[pos(x, y)] = r8r(pos(_x + st, y))
+            end
+        end
+    end
+    for a, v in pairs(vs) do w8r(a, v) end
+
+    lib.fill_in(0x00120000, 0x0012000F, 0x11, ROM_DOMAIN_NAME)
+end
+
+update_logo()
+
+-- ↓ロゴが消え始めてから実行
+
+local orig = {}
+local begin = 0x6400000
+local inclusiveEnd = 0x640ffff
+for i = begin, inclusiveEnd, 4 do
+    orig[i] = r32(i)
+end
+
+local span = 0x100
+local r = RC(1)
+
+SET_LOOP("gra_bug", function()
+    local vs = {}
+    for i = begin, inclusiveEnd, span do
+        if r() then
+            local n = rand(-32, 32) * 0x210
+            local _i = clamp(i + n, begin, inclusiveEnd + 1 - span)
+            for j = 0, span-1, 4 do
+                vs[i+j] = orig[_i + j]
+            end
+        end
+    end
+    for a, v in pairs(vs) do
+        w32(a, v)
+    end
+end)
+```
+
