@@ -49,6 +49,20 @@ function ValueUpdaterObj:minmax(min, max) end
 ---@return integer? max
 function ValueUpdaterObj:get_minmax() end
 
+---@param x_func fun(obj: ValueUpdaterObj): number
+---@return ValueUpdaterObj
+function ValueUpdaterObj:x_with(x_func) end
+
+---@return ValueUpdaterObj
+function ValueUpdaterObj:x_reverse() end
+
+--- ease関数を指定する。
+--- (https://easings.net/ja を参考。)
+---@param type "sin" | "quad" | "cubic" | "back"
+---@param inout? "in" | "out" | "inout" default: `"inout"`
+---@return ValueUpdaterObj
+function ValueUpdaterObj:x_ease(type, inout) end
+
 ---引数有の場合、`[-scale, scale]`の範囲を、無しの場合は`[min, max]`の範囲をとる。
 ---@param scale number?
 ---@return int

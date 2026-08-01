@@ -1,5 +1,6 @@
 
 ---@alias Callback fun(obj: TimerObj)
+---@alias VUO_xfun fun(obj: ValueUpdaterObj): number
 
 local OF_Behavior_loop <const> = 0
 local OF_Behavior_clamp <const> = 1
@@ -15,6 +16,7 @@ local OF_Behavior_clamp <const> = 1
 ---@field protected _dmax int ダミーの`max`
 ---@field protected _overflow_behavior 0 | 1
 ---@field protected _v int
+---@field protected _x_func VUO_xfun
 ---@field protected _ready bool
 ---@field protected _calc fun(obj: ValueUpdaterObj): int?
 ---@field protected _write fun(v: int, status: int?)
@@ -135,8 +137,113 @@ end
 
 ---@return number
 function ValueUpdaterObj:x()
+    return self._x_func(self)
+end
+---@package
+---@return number
+function ValueUpdaterObj:x_orig()
     return self.i / self.n
 end
+---@param x_func VUO_xfun
+---@return ValueUpdaterObj
+function ValueUpdaterObj:x_with(x_func)
+    self._x_func = assert(x_func, "nil ValueUpdaterObj.x_func given")
+    return self
+end
+---@return ValueUpdaterObj
+function ValueUpdaterObj:x_reverse()
+    return self:x_with(function(obj)
+        return (obj.n - 1 - obj.i) / obj.n
+    end)
+end
+
+local easing_back_c1 <const> = 1.70158
+local easing_back_c2 <const> = easing_back_c1 + 1.525
+local easing_back_c3 <const> = easing_back_c1 + 1
+---@type table<string, {in: VUO_xfun, out: VUO_xfun, inout: VUO_xfun}>
+local easing_functions = {
+    ["sin"] = {
+        ["in"] = function(obj)
+            local x = obj:x_orig()
+            return 1 - math.cos(x*math.pi/2)
+        end,
+        ["out"] = function(obj)
+            local x = obj:x_orig()
+            return math.sin(x*math.pi/2)
+        end,
+        ["inout"] = function(obj)
+            local x = obj:x_orig()
+            return (1-math.cos(x*math.pi))/2
+        end,
+    },
+    ["quad"] = {
+        ["in"] = function(obj)
+            local x = obj:x_orig()
+            return x * x
+        end,
+        ["out"] = function(obj)
+            local x = 1 - obj:x_orig()
+            return 1 - x * x
+        end,
+        ["inout"] = function(obj)
+            local x = obj:x_orig()
+            local x2 = -2 * x + 2
+            return x < 0.5 and 2 * x * x or 1 - x2 * x2 / 2
+        end,
+    },
+    ["cubic"] = {
+        ["in"] = function(obj)
+            local x = obj:x_orig()
+            return x * x * x
+        end,
+        ["out"] = function(obj)
+            local x = 1 - obj:x_orig()
+            return 1 - x * x * x
+        end,
+        ["inout"] = function(obj)
+            local x = obj:x_orig()
+            local x2 = -2 * x + 2
+            return x < 0.5 and 4 * x * x * x or 1 - x2 * x2 * x2 / 2
+        end,
+    },
+    ["back"] = {
+        ["in"] = function(obj)
+            local x = obj:x_orig()
+            local x2 = x * x
+            return easing_back_c3 * x * x2 - easing_back_c1 * x2
+        end,
+        ["out"] = function(obj)
+            local x = obj:x_orig() - 1
+            local x2 = x * x
+            return 1 + easing_back_c3 * x * x2 + easing_back_c1 * x2
+        end,
+        ["inout"] = function(obj)
+            local x = obj:x_orig()
+            local a = (easing_back_c2 + 1)
+            local x2, b, c
+            if x < 0.5 then
+                x2 = 2 * x
+                b, c = -1, 0
+            else
+                x2 = 2 * x - 2
+                b, c = 1, 2
+            end
+            return (x2 * x2 * (
+                a*x2 + b*easing_back_c2
+            ) + c) / 2
+        end,
+    }
+}
+--- ease関数を指定する。
+--- (https://easings.net/ja を参考。)
+---@param type "sin" | "quad" | "cubic" | "back"
+---@param inout? "in" | "out" | "inout" default: `"inout"`
+---@return ValueUpdaterObj
+function ValueUpdaterObj:x_ease(type, inout)
+    inout = inout or "inout"
+    return self:x_with(easing_functions[type][inout])
+end
+
 ---@param x? number `nil`なら`self:x()`を用いる
 ---@return int
 function ValueUpdaterObj:lerp(x)
@@ -189,6 +296,9 @@ local function _ValueUpdater(n, min, max, calc)
         max = nil,
         v = 0,
         _v = nil,
+        _x_func = function(obj)
+            return obj.i / obj.n
+        end,
         _ready = false,
         _calc = nil,
         _write = nil,
