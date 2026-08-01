@@ -1,4 +1,7 @@
 
+---@alias VUO_calc fun(obj: ValueUpdaterObj): int?
+---@alias VUO_calcEntry VUO_calc | "lerp" | "isin" | "icos" | "sq" | "sqrt"
+
 ---@class ValueUpdaterObj
 ---@field i int
 ---@field n int
@@ -6,6 +9,18 @@
 ---@field active bool
 ---@overload fun(): int?
 local ValueUpdaterObj = {}
+
+---@class VUO
+---@field add fun(d: int): VUO_calc 現在の値に`d`だけ加算する関数を返却する
+---
+---calc関数を生成するユーティリティ
+VUO = {}
+
+---@param use_nil? bool
+---@return int
+---@return int?
+---@overload fun(self: ValueUpdaterObj, use_nil: true): int?, int?
+function ValueUpdaterObj:next(use_nil) end
 
 ---@return int?
 function ValueUpdaterObj:update() end
@@ -21,7 +36,7 @@ function ValueUpdaterObj:init(v) end
 ---@return bool
 function ValueUpdaterObj:v_not_ready() end
 
----@param calc fun(obj: ValueUpdaterObj): int?
+---@param calc VUO_calcEntry
 ---@return ValueUpdaterObj
 function ValueUpdaterObj:calc(calc) end
 ---@param write fun(v: int, status: int?)
@@ -84,7 +99,7 @@ function ValueUpdaterObj:sqrt() end
 ---@param n int?
 ---@param min int?
 ---@param max int?
----@param calc? fun(obj: ValueUpdaterObj): int?
+---@param calc? VUO_calcEntry
 ---@return ValueUpdaterObj
 function ValueUpdater(n, min, max, calc) end
 

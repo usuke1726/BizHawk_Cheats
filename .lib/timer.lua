@@ -1,6 +1,39 @@
 
 ---@alias Callback fun(obj: TimerObj)
 ---@alias VUO_xfun fun(obj: ValueUpdaterObj): number
+---@alias VUO_calc fun(obj: ValueUpdaterObj): int?
+---@alias VUO_calcEntry VUO_calc | "lerp" | "isin" | "icos" | "sq" | "sqrt"
+
+---@type table<string, VUO_calc>
+local VUOCalcEntryFunctions = {
+    ["lerp"] = function(obj)
+        return obj:lerp()
+    end,
+    ["isin"] = function(obj)
+        return obj:isin()
+    end,
+    ["icos"] = function(obj)
+        return obj:icos()
+    end,
+    ["sq"] = function(obj)
+        return obj:sq()
+    end,
+    ["sqrt"] = function(obj)
+        return obj:sqrt()
+    end,
+}
+
+---@class VUO
+---@field add fun(d: int): VUO_calc 現在の値に`d`だけ加算する関数を返却する
+---
+---calc関数を生成するユーティリティ
+VUO = {
+    add = function(d)
+        return function(obj)
+            return obj.v + d
+        end
+    end,
+}
 
 local OF_Behavior_loop <const> = 0
 local OF_Behavior_clamp <const> = 1
@@ -17,25 +50,23 @@ local OF_Behavior_clamp <const> = 1
 ---@field protected _overflow_behavior 0 | 1
 ---@field protected _v int
 ---@field protected _x_func VUO_xfun
----@field protected _ready bool
----@field protected _calc fun(obj: ValueUpdaterObj): int?
+---@field protected _calc VUO_calc
 ---@field protected _write fun(v: int, status: int?)
 ---@overload fun(): int?
 local ValueUpdaterObj = {}
 
+---@param use_nil? bool
+---@return int
 ---@return int?
-function ValueUpdaterObj:update()
-    if not self._ready then
-        local s = {}
-        if self._calc == nil then s[#s+1] = "calc" end
-        if self._write == nil then s[#s+1] = "write" end
-        error("未指定のプロパティがあります: " .. table.concat(s, ", "))
-    end
-    if not self.active then return end
+---@overload fun(self: ValueUpdaterObj, use_nil: true): int?, int?
+function ValueUpdaterObj:next(use_nil)
     if self._v == nil then self._v = 0 end
+    local def = (not use_nil) and self._v or nil
+    if not self.active then return def, nil end
+    assert(self._calc, "calc プロパティが指定されていません")
     self.i = (self.i + 1) % self.n
     local v = self._calc(self)
-    if not v then return end
+    if not v then return def, nil end
     local status = nil
     local min, max = self.min, self.max
     if min and v < min then status = -1
@@ -48,7 +79,14 @@ function ValueUpdaterObj:update()
     end
     self._v = v
     self.v = v
-    self._write(v, status)
+    return v, status
+end
+---@return int?
+function ValueUpdaterObj:update()
+    local v, status = self:next(true)
+    if v and self._write then
+        self._write(v, status)
+    end
     return status
 end
 ---@param behavior "loop" | "clamp"
@@ -69,18 +107,20 @@ end
 function ValueUpdaterObj:v_not_ready()
     return self._v == nil
 end
----@param calc fun(obj: ValueUpdaterObj): int?
+---@param calc VUO_calcEntry
 ---@return ValueUpdaterObj
 function ValueUpdaterObj:calc(calc)
-    self._calc = calc
-    self._ready = self._write ~= nil
+    if type(calc) == "string" then
+        self._calc = assert(VUOCalcEntryFunctions[calc], "invalid calc id: " .. calc)
+    else
+        self._calc = calc
+    end
     return self
 end
 ---@param write fun(v: int, status: int?)
 ---@return ValueUpdaterObj
 function ValueUpdaterObj:write(write)
     self._write = write
-    self._ready = self._calc ~= nil
     return self
 end
 --- `write`処理として`w8`を設定する
@@ -283,7 +323,7 @@ end
 ---@param n int?
 ---@param min int?
 ---@param max int?
----@param calc? fun(obj: ValueUpdaterObj): int?
+---@param calc? VUO_calcEntry
 ---@return ValueUpdaterObj
 local function _ValueUpdater(n, min, max, calc)
     n = n or 1
@@ -299,7 +339,6 @@ local function _ValueUpdater(n, min, max, calc)
         _x_func = function(obj)
             return obj.i / obj.n
         end,
-        _ready = false,
         _calc = nil,
         _write = nil,
         _overflow_behavior = OF_Behavior_clamp,
