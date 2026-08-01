@@ -3357,3 +3357,114 @@ lib.irume.start(function()
 end)
 ```
 
+## video14 Nの城
+
+- `0x2273040`あたりがカメラ?
+- `0x229d227, 0x11` -> 地面のテクスチャがドット状に
+- `0x2272e00`: 幅?
+- `0x2272e04`: ズーム
+- `0x02272d95`: y軸の拡大?
+
+```lua
+-- びょんびょん伸び縮みさせる
+local v = ValueUpdater(20, 0x100, 0x8000, "lerp")
+:x_parabola()
+:w32(0x02272d95)
+function loop()
+    v()
+end
+```
+
+
+```lua
+local v = ValueUpdater(40, 0x90, 0x400, "lerp")
+:x_pingpong()
+:w32(0x02272e04)
+
+local v2 = ValueUpdater(40, -0x80, 0x02d0, "lerp")
+:x_pingpong()
+:w32(0x02272e00)
+
+function loop()
+    v()
+    v2()
+end
+
+
+lib.irume.start(function()
+    local head = 0x03eba730
+    local p2 = 0x18
+    -- local p2_range = 0x20
+    local p2_range = 0x40
+    local as = {}
+    local prevs = {}
+    for i = 0, 19 do
+        as[i] = head + 0x40*i
+        prevs[i] = 0
+    end
+    local r = RC(5)
+    local time = 0x2c
+    local hat1 = 0x23
+    return function()
+        for i, a in pairs(as) do
+            prevs[i] = t
+            if r() then
+                w16(a + p2, stou16(rand(-p2_range, p2_range)))
+            end
+            if r() then
+                w8(a + hat1, rand(1, 5))
+            end
+        end
+    end
+end)
+```
+
+## video14 定点カメラ
+
+```lua
+-- w16(0x3eba714, 0x1111) -- BGMを消す -> ボツ
+local c = Cnt(40)
+local r = RC(20)
+local ready = false
+function loop()
+    if not ready then
+        if within(r32(0x02272f3c), 0x2000, 0x5fff) then
+            ready = true
+            print("== READY ==")
+        else return
+        end
+    end
+    w32(0x02272f3c, 0x492800)
+-- add16(0x022695ec, -10) -- 高速にする -> 結局使わなかった
+end
+-- w8(0x229d227, 0x11) -- 地面のテクスチャがドット状に => 結局使わなかった
+
+lib.irume.start(function()
+    local head = 0x03eba730
+    local p1 = 0x1f
+    local p2 = 0x18
+    local p2_range = 0x40
+    local as = {}
+    local prevs = {}
+    for i = 0, 19 do
+        as[i] = head + 0x40*i
+        prevs[i] = 0
+    end
+    local r = RC(5)
+    local time = 0x2c
+    return function()
+        for i, a in pairs(as) do
+            local t = r8(a + time)
+            if prevs[i] < t then
+                t = 0x20
+            end
+            w8(a + time, t)
+            prevs[i] = t
+            if r() then
+                w8(a + p1, stou8(rand(-5, 5)))
+                w16(a + p2, stou16(rand(-p2_range, p2_range)))
+            end
+        end
+    end
+end)
+```

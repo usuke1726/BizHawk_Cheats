@@ -254,3 +254,391 @@ function loop()
 end
 ```
 
+- `0x23564D0`: 自分キャラのポリゴン頂点リスト?
+
+```lua
+-- ピーナッツマリオぽくなる?
+local begin = 0x02346000
+local inclusiveEnd = 0x02347fFF
+function loop()
+    local i = begin
+    while i <= inclusiveEnd do
+        local v = r32(i)
+        i = i + 4
+        local _v = v & 0xffff
+        if _v == 0x3b38 or _v == 0x03a38 then
+            w32(i - 8, 0)
+            i = i + 12
+        end
+    end
+end
+```
+
+```lua
+-- ポリゴン頂点をいじる
+local function found(v)
+    local vs = {
+        0x2621,
+        0x2122,
+        0x2223,
+        0x2321,
+        0x2821,
+        0x2226,
+    }
+    local function ok(_v)
+        for _, v in pairs(vs) do
+            if v == _v then return true end
+        end
+        return false
+    end
+    local v1 = v & 0xffff
+    local v2 = (v >> 16) & 0xffff
+    return ok(v1) and ok(v2)
+end
+
+local begin = 0x02356600
+local inclusiveEnd = 0x02357fFF
+function loop()
+    local i = begin
+    while i <= inclusiveEnd do
+        local v = r32(i)
+        i = i + 4
+        if found(v) then
+            for j = 0, 3 do
+                add32(i, rand(-0x400, 0x400))
+                i = i + 4
+            end
+        end
+    end
+end
+```
+
+## 運転手
+
+```
+22a483c アニメーション
+
+2351E88, 胴の長さ
+2351E8c, 90, 胴のx, z
+
+2351e98, 左腕 y
+2351e9c, a0, 左腕x, z
+ac, b0, b4: 左手
+
+2351ecc, 右腕 y
+2351ed0, d4, 右腕x, z
+e0, e4, e8: 右手
+
+f00: 顔y
+f04, f08: 顔x, z
+
+=== POLYGON ===
+local begin = 0x02352000
+local inclusiveEnd = 0x02354fff
+
+local function found(v)
+    local vs = {0x21, 0x22, 0x23, 0x24, 0x25, 0x40}
+    local function ok2(_v)
+        for _, v in pairs(vs) do
+            if _v == v then return true end
+        end
+        return false
+    end
+    local function ok(_v)
+        return ok2(_v & 0xff) and ok2((_v >> 8) & 0xff)
+    end
+    return ok(v & 0xffff) and ok((v >> 16) & 0xffff)
+end
+```
+
+波形?: 0213F820 -- 0214081f (bound: 0x1000)
+
+## video14 ドレミ音 & 回転 & 首すっ飛び
+
+```lua
+local cursor_y = ValueUpdater(60, -0x30, 0xd, "lerp")
+:x_reverseParabola()
+:w32(0x02370F84)
+
+local mus_r = CntOnce(240)
+local update_mus = function()
+if mus_r() then
+lib.irume.start(function()
+    local head = 0x03ec8640
+    local time = 0x2c
+    local p1 = 0x12
+    local p2 = 0x13
+    local vib_speed = 0x25
+    local vib_depth = 0x27
+    local ps = {
+        0x26, 0x2c, 0x30, 0x33,
+        0x39, 0x3e, 0x44, 0x47,
+    }
+    local c = Cnt(5, #ps)
+    return function()
+        w8(head + p1, 0x30)
+        w8(head + p2, ps[c:next() + 1])
+        w16(head + time, 0x100)
+    end
+end)
+end
+end
+
+local rot_ready = RL(300)
+local rot_speed_c = Cnt(60)
+local rot_speed = 1
+
+local rot = ValueUpdater(1)
+:calc(function(obj)
+    if not rot_ready then return end
+    if rot_speed_c() then
+        rot_speed = rot_speed + 2
+    end
+    return obj.v + rot_speed
+end)
+:init(8)
+:w8(0x022A4741)
+
+local facey_ready = RL(900)
+local facey_d = 0x20
+local facey_c = Cnt(2)
+
+local facey = ValueUpdater(1, 0, 0x1f7c)
+:calc(function(obj)
+    if not facey_ready() then return end
+    if facey_c() then facey_d = math.min(facey_d * 2, 0x1000) end
+    return obj.v + facey_d
+end)
+:init(0x066c)
+:w32(0x02351f00)
+
+local setup_kappa = function()
+    w32(0x22A4708, 0x011000)
+    w32(0x22A4710, 0x1000)
+    w32(0x22A4ee4, 0x24EC)
+    if not rot_ready.fired then
+        w8(0x022A4741, 0x08)
+    end
+    w8(0x025c209f, 0x01)
+    -- w8(0x02370F80, 0x30) -- カーソルを画面外にやる
+    if r32(0x06000230) == 0xeeeee1ee then
+    -- 吹き出しを消す
+    lib.fill_in(0x06000000, 0x06002fff)
+    end
+end
+
+function loop()
+    rot_ready()
+    update_mus()
+    facey()
+    cursor_y()
+    rot()
+    setup_kappa()
+end
+```
+
+## video14 辻先生ボイス混入 & 運転手荒ぶり
+
+```lua
+local update_voice = (function()
+    -- どう森 音楽をバグらせる(辻先生まみれにする)
+    -- ryori.luaを読み込むこと！！！
+    local ready = RL(220)
+
+    local r = RC(60)
+    local r2 = RC(45)
+    local c = Cnt(90)
+    local active = false
+    local i = 0
+
+    local data = {
+        DATA_Piman_hi,
+        DATA_Piman_norm,
+        DATA_Piman_fast,
+        DATA_Piman_low_slow,
+        -- DATA_AAAAAAAA,
+        -- DATA_kujikesou,
+        -- DATA_last,
+    }
+    local data_n = #data
+    local cdata
+
+    local head = 0x0213F820
+    local width = 0x1000
+
+    return function()
+        if not ready() then return end
+        if (not active) or r() or c() then
+            cdata = data[rand(1, data_n)]
+            n = #cdata
+            c.i = 0
+            active = true
+            i = 0
+        end
+        if active then
+            i = i + 1
+            if i <= n then
+                lib.fill_in_arr(head, head + width - 1, cdata[i])
+            else active = false
+            end
+            -- active = not r2()
+        end
+    end
+end)()
+
+local setup_kappa = function()
+    w32(0x22A4708, 0x011000)
+    w32(0x22A4710, 0x1000)
+    w32(0x22A4ee4, 0x24EC)
+    w8(0x022A4741, 0x08)
+    w8(0x025c209f, 0x01)
+    w8(0x02370F80, 0x30) -- カーソルを画面外にやる
+    if r32(0x06000230) == 0xeeeee1ee then
+    -- 吹き出しを消す
+    lib.fill_in(0x06000000, 0x06002fff)
+    end
+end
+
+local update_move = (function()
+    local time = 0x22a483c
+    local time_d = 0x1000
+    local times_i = 1
+    local times = {
+        Cnt(120),
+        Cnt(60),
+        Cnt(90),
+        function() return false end,
+    }
+    return function()
+        if times[times_i]() then
+            times_i = times_i + 1
+            print("update times_i:" .. tostring(times_i))
+            time_d = math.min(time_d*2, 0x6000)
+        end
+        w32(time, (r32(time) + time_d) % 0x28000)
+    end
+end)()
+
+
+
+
+local update_bodies = (function()
+---@type table<string, bool>
+local actives = {
+    dou_x = true,
+    dou_z = true,
+}
+
+---@type table<string, [int, int, ValueUpdaterObj]>
+local bodies = {
+    -- dou_y = {
+    --     RL(60), ValueUpdater()
+    -- }
+    dou_x = {
+        0x02351E8C, 0, ValueUpdater(40, -0x2000, 0x2000, "icos")
+    },
+    dou_xz = {
+        0x02351E90, 0, ValueUpdater(40, -0xf000, 0x1000, "isin")
+    },
+    face_y = {
+        0x02351F00, 0x066C, ValueUpdater(1, -0x400, 0x1600)
+        :overflow_behavior("loop")
+        :calc(function(obj)
+            return obj.v + rand(-5, 5) * 0x40
+        end)
+    },
+}
+
+-- default: 1e14
+local camera_y_r = RL(500)
+local camera_y = ValueUpdater(25, 0x1814, 0x1e14, "lerp")
+:x_reverseParabola()
+:w32(0x022a4ee0)
+
+local body_ready = RL(640)
+
+local r = RC(30)
+
+local addrs = {
+{0x02351e98, 0x0333},
+{0x02351e9c, -0x400},
+{0x02351ea0, 0},
+{0x02351eac, 0x0332},
+{0x02351eb0, 0},
+{0x02351eb4, 0},
+{0x02351ecc, 0x0333},
+{0x02351ed0, 0x0400},
+{0x02351ed4, 0},
+{0x02351ee0, 0x0336},
+{0x02351ee4, 0},
+{0x02351ee8, 0},
+}
+local reset_r = RC(60)
+return function()
+    if not body_ready() then return end
+    if camera_y_r() then camera_y() end
+    for _, v in pairs(addrs) do
+        add32(v[1], rand(-8, 8) * 0x40)
+        if reset_r() then
+            w32(v[1], v[2])
+        end
+    end
+    for k, v in pairs(bodies) do
+        if actives[k] == nil then
+            actives[k] = false
+        end
+        if actives[k] then
+            w32(v[1], v[3]:next())
+        else
+            v[3].i = 0
+            w32(v[1], v[2])
+        end
+        if r() then
+            actives[k] = not actives[k]
+        end
+    end
+end
+end)()
+
+function loop()
+    setup_kappa()
+    update_move()
+    update_voice()
+    update_bodies()
+end
+```
+
+## video14 首だけ & 口を変える
+
+```lua
+-- animation: 22a483c
+-- camera y: 22a4ee0  z: 4ee4 x 4edc
+
+-- 22a4F4C -> 一瞬カメラが回転?
+-- 22a4f88: worldの太さ
+-- 22a4f8c: near clip?
+
+-- lib.fill_in(0x2333600, 0x233363f, 0x44)
+
+SET_LOOP("setup_kappa", function()
+    w32(0x22A4708, 0x011000)
+    w32(0x22A4710, 0x1000)
+    w32(0x22A4ee4, 0x24EC)
+    w8(0x022A4741, 0x08)
+    w8(0x025c209f, 0x01)
+    w8(0x02370F80, 0x30) -- カーソルを画面外にやる
+    -- if r32(0x06000230) == 0xeeeee1ee then
+    -- 吹き出しを消す
+    lib.fill_in(0x06000000, 0x06002fff)
+    -- end
+end)
+
+function loop()
+    w32(0x022a4ee0, 0x1414)
+    w32(0x02351f00, 0xfffff700)
+end
+
+-- ↓適当なタイミングで実行
+w8(0x23522AA, 0x02) -- 口が上に移動
+w32(0x023522A8, 0x0d60040c)
+```

@@ -1083,10 +1083,225 @@ end)
 
 ```lua
 -- ピーチの位置固定(ポリゴンいじるテストに利用するとよい)
-local tate = lib.at(0x022f657c)
-local yoko = lib.at(0x022f6580)
-function loop()
-    yoko:w32(0x480000)
-    -- tate:w32(0xffe60000)
-end
+SET_LOOP("fix_peach", (function()
+    local tate = lib.at(0x022f657c)
+    local yoko = lib.at(0x022f6580)
+    return function()
+        if r32(0x06004010) ~= 0 then
+            print("== REMOVED LETTER ==")
+            w16(0x02301808, 0) -- 手紙の文字以外が消える
+            lib.fill_in(0x06004000, 0x060054ff) -- 文字が消える
+        end
+        yoko:w32(0x480000)
+        -- tate:w32(0xffe60000)
+        w32(0x02093534, 0x20) -- timerを固定
+    end
+end)())
 ```
+
+## ピーチ
+
+- `0x022FF490`あたりがいい感じにバグる
+- `0x022FF4B0`がスカート
+- `0x022FF4C0`がheader?でその後4byteずつ腕のx,y,z
+- `0x022FF529`から`10 10 10`で回転する
+
+```lua
+w16(0x02301808, 0) -- 手紙の文字以外が消える
+lib.fill_in(0x06004000, 0x060054ff) -- 文字が消える
+```
+
+## video14 ピーチあらぶり
+
+```lua
+SET_LOOP("fix_peach", (function()
+    local tate = lib.at(0x022f657c)
+    local yoko = lib.at(0x022f6580)
+    local timer = lib.at(0x02093534)
+    local active = false
+    return function()
+        if not active then
+            if within(timer:r32(), 0x1a, 0x1f) then
+                active = true
+                w16(0x02301808, 0) -- 手紙の文字以外が消える
+                lib.fill_in(0x06004000, 0x060054ff) -- 文字が消える
+            else return
+            end
+        end
+        -- if r32(0x06004010) ~= 0 then
+        --     print("== REMOVED LETTER ==")
+        -- end
+        if ok then
+            yoko:w32(0x480000)
+        else
+            yoko:w32(0x45b300)
+        end
+        -- yoko:w32(0x460000)
+        w32(0x02093534, 0x20)
+    end
+end)())
+
+ok = true
+
+-- =====================
+-- (少し遅れて有効)
+local addrs = {
+0x22ff48c,
+0x22ff490,
+0x22ff494,
+0x22ff4b4,
+0x22ff4b8,
+0x22ff4bc,
+0x22ff4c4,
+0x22ff4c8,
+0x22ff4cc,
+0x22ff4d0,
+0x22ff4d4,
+0x22ff4d8,
+0x22ff4dc,
+0x22ff4e0,
+0x22ff4e4,
+0x22ff4e8,
+0x22ff4ec,
+0x22ff4f0,
+0x22ff4f4,
+}
+
+local defs = {}
+local r = RC(30)
+
+function loop()
+    for _, a in pairs(addrs) do
+        if not defs[a] then
+            defs[a] = r32(a)
+        end
+        add32(a, rand(-0xf, 0xf) * 0x100)
+        if r() then
+            w32(a, defs[a])
+        end
+    end
+    w16(0x022ff50a, rand(0, 0xffff))
+end
+
+-- =====================
+-- (少し遅れて有効)
+lib.irume.start(function()
+    local head = 0x03e07d40
+    local pos = 0x2c
+    local as = {}
+    local poses = {
+{
+0x02181CDF,
+0x02181D05,
+0x02181D0D,
+0x02181D12,
+0x02181D17,
+0x02181D1C,
+0x02181D21,
+0x02181D26,
+0x02181D2B,
+0x02181D30,
+0x02181D35,
+0x02181D3F,
+0x02181D44,
+0x02181D49,
+0x02181D4F,
+0x02181D54,
+},
+{
+0x02181D73,
+0x02181D78,
+0x02181D7D,
+0x02181D82,
+0x02181D87,
+0x02181D8C,
+0x02181D91,
+0x02181D97
+},
+{
+0x02181DB9,
+0x02181DBD,
+0x02181DC1,
+0x02181DC5,
+0x02181DC9,
+0x02181DCD,
+0x02181DD1,
+0x02181DD5,
+0x02181DD9,
+0x02181DDD,
+0x02181DE1,
+0x02181DE5,
+0x02181DE9,
+0x02181DED,
+0x02181DF1,
+0x02181DF5,
+0x02181DFA,
+0x02181E05,
+0x02181E09,
+0x02181E0D,
+0x02181E11,
+0x02181E15,
+0x02181E19
+},
+{
+0x02181E3D,
+0x02181E42,
+0x02181E47,
+0x02181E4C,
+0x02181E51,
+0x02181E56,
+0x02181E5B,
+0x02181E60,
+0x02181E65,
+0x02181E6A,
+0x02181E6F,
+0x02181E74,
+0x02181E79
+},
+{
+0x021B51CB,
+0x021B51CD,
+0x021B51DC,
+0x021B51DE,
+0x021B51E3,
+0x021B51E5,
+0x021B51EA,
+0x021B51EC,
+0x021B51F1,
+0x021B51F3,
+0x021B51F8,
+-- 0x021B51FA,
+-- 0x021B51FF
+},
+{
+0x021B51DC,
+0x021B51DE,
+0x021B51E3,
+0x021B51E5,
+0x021B51EA,
+0x021B51EC,
+0x021B51F1,
+0x021B51F3,
+0x021B51F8,
+-- 0x021B51FA,
+-- 0x021B51FF
+}
+    }
+    local cs = {}
+    for i = 0, 5 do
+        as[i] = head + 0x40*i
+        cs[i] = Cnt(40)
+    end
+    local p1 = 0x17
+    local r = RC(30)
+    return function()
+        for i, a in pairs(as) do
+            if cs[i]() or r() then
+                local _p = poses[i+1]
+                w32(a + pos, _p[rand(1, #_p)])
+            end
+        end
+    end
+end)
+```
+
