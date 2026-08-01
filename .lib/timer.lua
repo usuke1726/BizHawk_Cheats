@@ -190,10 +190,43 @@ function ValueUpdaterObj:x_with(x_func)
     self._x_func = assert(x_func, "nil ValueUpdaterObj.x_func given")
     return self
 end
+---`x`の向きを逆(0→1ではなく1→0)にする。
 ---@return ValueUpdaterObj
 function ValueUpdaterObj:x_reverse()
     return self:x_with(function(obj)
         return (obj.n - 1 - obj.i) / obj.n
+    end)
+end
+---`x`を0→1→0という風に線形で折り返す。
+---@return ValueUpdaterObj
+function ValueUpdaterObj:x_pingpong()
+    return self:x_with(function(obj)
+        local x = obj:x_orig()
+        return 1 - math.abs(2*x - 1)
+    end)
+end
+---`x`を1→0→1という風に線形で折り返す。
+---@return ValueUpdaterObj
+function ValueUpdaterObj:x_reversePingpong()
+    return self:x_with(function(obj)
+        local x = obj:x_orig()
+        return math.abs(2*x - 1)
+    end)
+end
+---`x`に放物線関数を用いる。(`1-(2x-1)^2`)
+---@return ValueUpdaterObj
+function ValueUpdaterObj:x_parabola()
+    return self:x_with(function(obj)
+        local x = obj:x_orig() * 2 - 1
+        return 1 - x * x
+    end)
+end
+---`x`に上下逆の放物線関数を用いる。(`(2x-1)^2`)
+---@return ValueUpdaterObj
+function ValueUpdaterObj:x_reverseParabola()
+    return self:x_with(function(obj)
+        local x = obj:x_orig() * 2 - 1
+        return x * x
     end)
 end
 

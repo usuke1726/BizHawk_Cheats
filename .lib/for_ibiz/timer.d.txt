@@ -68,8 +68,21 @@ function ValueUpdaterObj:get_minmax() end
 ---@return ValueUpdaterObj
 function ValueUpdaterObj:x_with(x_func) end
 
+---`x`の向きを逆(0→1ではなく1→0)にする。
 ---@return ValueUpdaterObj
 function ValueUpdaterObj:x_reverse() end
+---`x`を0→1→0という風に線形で折り返す。
+---@return ValueUpdaterObj
+function ValueUpdaterObj:x_pingpong() end
+---`x`を1→0→1という風に線形で折り返す。
+---@return ValueUpdaterObj
+function ValueUpdaterObj:x_reversePingpong() end
+---`x`に放物線関数を用いる。(`1-(2x-1)^2`)
+---@return ValueUpdaterObj
+function ValueUpdaterObj:x_parabola() end
+---`x`に上下逆の放物線関数を用いる。(`(2x-1)^2`)
+---@return ValueUpdaterObj
+function ValueUpdaterObj:x_reverseParabola() end
 
 --- ease関数を指定する。
 --- (https://easings.net/ja を参考。)
