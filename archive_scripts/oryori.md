@@ -746,3 +746,828 @@ local function final_bg()
 end
 final_bg()
 ```
+
+## part3 雑多メモ
+
+- `w32(0x023D086C, 0x12121212)`
+- `w32(0x023D086C, 0x22222200)`
+
+### 辻先生のテクスチャ
+
+手: `Morton(4, 0x20, 0x80)`, bound: 0x200
+顔: `Morton(4, 0x20, 0x100)`, bound: 0x800
+
+- anime1: `0x06600ec0 -- 0x066010c0 -- 0x066018bf`
+- anime2: `0x066018c0 -- 0x06601ac0 -- 0x066022bf`
+- anime3: `(none) -- 0x066022c0 -- 0x06602abf`
+- anime4: `(none) -- 0x06602ac0 -- 0x066032bf`
+
+待機
+
+- anime1: `(none) -- 0x066036c0 -- 0x06603ebf` (OKのときも)
+- anime2: `(none) -- 0x06603ec0 -- 0x066046bf`
+- anime3: `(none) -- 0x066046c0 -- 0x06604ebf`
+
+OKの手: `0x066057c0 -- 0x066059bf`
+
+おじぎ: `0x066059c0 -- 0x066061bf`
+
+顔: 幅32, 高さ64
+
+```lua
+-- x in [0, 31], y in [0, 63]
+local function tsuji_face_pos(x, y, anime_i)
+    anime_i = anime_i or 1
+    local heads = {
+0x066010c0,
+0x06601ac0,
+0x066022c0,
+0x066036c0,
+0x06603ec0,
+0x066046c0,
+0x066059c0,
+    }
+    local head = heads[anime_i] or heads[1]
+    return lib.pos.Morton(x, y, 4, 0x20, 0x100) + head
+end
+```
+
+### 写真
+
+#### 写真 左上
+
+高さ64 * 幅64
+
+`0x0660a580 -- 0x0660b57f`, `Morton(8, 0x40, 0x200)`
+
+#### 写真 中央上
+
+高さ64 * 幅32
+
+`0x0660b580 -- 0x0660bd7f`, `Morton(8, 0x40, 0x100)`
+
+#### 写真 右上
+
+高さ64 * 幅16
+
+`0x0660bd80 -- 0x0660c17f`, `Morton(8, 0x40, 0x80)`
+
+#### 写真 左下
+
+`0x0660c180 -- 0x0660d17f`, `Morton(8, 0x40, 0x200)`
+
+#### 写真 中央下
+
+`0x0660d180 -- 0x0660d97f`, `Morton(8, 0x40, 0x100)`
+
+#### 写真 右下
+
+`0x0660d980 -- 0x0660dd7f`, `Morton(8, 0x40, 0x80)`
+
+#### 写真 底
+
+高さ8
+
+`0x0660dd80 -- 0x0660e0ff`, `Morton(8, 0x40, 0x380)`
+
+#### コード
+
+```lua
+-- x in [0, 111], y in [0, 135]
+local function pos(x, y)
+    local head_ue = {
+0x0660a580, 0x0660b580, 0x0660bd80
+    }
+    local head_shita = {
+0x0660c180, 0x0660d180, 0x0660d980
+    }
+    ---@type int | int[]
+    local head
+    if y >= 128 then
+        head = 0x0660dd80
+        return lib.pos.Morton(x, y - 128, 8, 0x40, 0x380) + head
+    elseif y >= 64 then
+        head = head_shita
+        y = y - 64
+    else head = head_ue
+    end
+    local L
+    if x >= 96 then
+        head = head[3]
+        x = x - 96
+        L = 0x80
+    elseif x >= 64 then
+        head = head[2]
+        x = x - 64
+        L = 0x100
+    else
+        head = head[1]
+        L = 0x200
+    end
+    return lib.pos.Morton(x, y, 8, 0x40, L) + head
+end
+```
+
+### 出来上がり写真
+
+#### 左上
+
+高さ64 * 幅64
+
+`0x0640b000 -- 0x0640bfff`, `Morton(8, 0x40, 0x200)`
+
+#### 中央上
+
+高さ64 * 幅64
+
+`0x0640c000 -- 0x0640cfff`, `Morton(8, 0x40, 0x200)`
+
+#### 右上
+
+高さ64 * 幅8
+
+`0x0640d000 -- 0x0640d1ff`, `Raster(8)`
+
+#### 左下
+
+`0x0640d200 -- 0x0640e1ff`, `Morton(8, 0x40, 0x200)`
+
+#### 中央下
+
+`0x0640e200 -- 0x0640f1ff`, `Morton(8, 0x40, 0x200)`
+
+#### 右下
+
+`0x0640f200 -- 0x0640f3ff`, `Raster(8)`
+
+#### 写真 底
+
+高さ8
+
+`0x0640f400 -- 0x0660f83f`, `Morton(8, 0x40, 0x440)`
+
+#### コード
+
+```lua
+-- x in [0, 129], y in [0, 135]
+local function pos(x, y)
+    local head_ue = {
+0x0640b000, 0x0640c000, 0x0640d000
+    }
+    local head_shita = {
+0x0640d200, 0x0640e200, 0x0640f200,
+    }
+    ---@type int | int[]
+    local head
+    if y >= 128 then
+        head = 0x0640f400
+        return lib.pos.Morton(x, y - 128, 8, 0x40, 0x440) + head
+    elseif y >= 64 then
+        head = head_shita
+        y = y - 64
+    else head = head_ue
+    end
+    local L
+    if x >= 128 then
+        head = head[3]
+        x = x - 128
+        return lib.pos.Raster(x, y, 8) + head
+    elseif x >= 64 then
+        head = head[2]
+        x = x - 64
+        L = 0x200
+    else
+        head = head[1]
+        L = 0x200
+    end
+    return lib.pos.Morton(x, y, 8, 0x40, L) + head
+end
+```
+
+## ryori3 使用コード
+
+<details>
+<summary>コード</summary>
+<div>
+
+```lua
+-- ================================
+-- ======== ライブラリ部分 ========
+-- ================================
+
+local update_chars = (function()
+
+local addrs = {
+    {
+        0x02F47DC0,
+        0x02F47E00,
+        0x02F47E40,
+        0x02F47E80,
+        0x02F47EC0,
+        0x02F47F00,
+        0x02F47F40,
+        0x02F47F80,
+        0x02F47FC0,
+    },
+    {
+        0x02F48180,
+        0x02F481C0,
+        0x02F48200,
+        0x02F48240,
+        0x02F48280,
+    },
+    {
+        0x02F48000,
+        0x02F48040,
+        0x02F48080,
+        0x02F480a0,
+        0x02F48100,
+        0x02F48140,
+    }
+}
+
+local vs = {{}, {}, {}}
+local r = RC(40)
+local is_first = true
+local n = #addrs
+local function get_random(i, _n)
+    _n = _n or n
+    while true do
+        local v = rand(1, _n)
+        if v ~= i then return v end
+    end
+end
+return function()
+    if is_first then
+        for j = 1, 3 do
+            for i, a in pairs(addrs[j]) do
+                vs[j][i] = r16(a)
+            end
+        end
+    end
+    for j = 1, 3 do
+        for i, a in pairs(addrs[j]) do
+            if r() then
+                local d = 9
+                w16(a, vs[j][get_random(i)] + rand(-d, d) * 0x100)
+            end
+        end
+    end
+    is_first = false
+end
+end)()
+
+local update_voice = (function()
+    local r = RC(10)
+    return function()
+        if r() or r32(0x023D086C) == 0 then
+        w32(0x023D086C, rand(0, 0xffffffff))
+        end
+    end
+end)()
+
+-- x in [0, 111], y in [0, 135]
+local function pic_pos(x, y)
+    local head_ue = {
+0x0660a580, 0x0660b580, 0x0660bd80
+    }
+    local head_shita = {
+0x0660c180, 0x0660d180, 0x0660d980
+    }
+    ---@type int | int[]
+    local head
+    if y >= 128 then
+        head = 0x0660dd80
+        return lib.pos.Morton(x, y - 128, 8, 0x40, 0x380) + head
+    elseif y >= 64 then
+        head = head_shita
+        y = y - 64
+    else head = head_ue
+    end
+    local L
+    if x >= 96 then
+        head = head[3]
+        x = x - 96
+        L = 0x80
+    elseif x >= 64 then
+        head = head[2]
+        x = x - 64
+        L = 0x100
+    else
+        head = head[1]
+        L = 0x200
+    end
+    return lib.pos.Morton(x, y, 8, 0x40, L) + head
+end
+
+-- x in [0, 135], y in [0, 135]
+local function lastPic_pos(x, y)
+    local head_ue = {
+0x0640b000, 0x0640c000, 0x0640d000
+    }
+    local head_shita = {
+0x0640d200, 0x0640e200, 0x0640f200,
+    }
+    ---@type int | int[]
+    local head
+    if y >= 128 then
+        head = 0x0640f400
+        return lib.pos.Morton(x, y - 128, 8, 0x40, 0x440) + head
+    elseif y >= 64 then
+        head = head_shita
+        y = y - 64
+    else head = head_ue
+    end
+    local L
+    if x >= 128 then
+        head = head[3]
+        x = x - 128
+        return lib.pos.Raster(x, y, 8) + head
+    elseif x >= 64 then
+        head = head[2]
+        x = x - 64
+        L = 0x200
+    else
+        head = head[1]
+        L = 0x200
+    end
+    return lib.pos.Morton(x, y, 8, 0x40, L) + head
+end
+
+-- x in [0, 31], y in [0, 63]
+local function tsuji_face_pos(x, y, anime_i)
+    anime_i = anime_i or 1
+    local heads = {
+0x066010c0,
+0x06601ac0,
+0x066022c0,
+0x06602ac0,
+0x066036c0,
+0x06603ec0,
+0x066046c0,
+0x066059c0,
+    }
+    local head = heads[anime_i] or heads[1]
+    return lib.pos.Morton(x, y, 4, 0x20, 0x100) + head
+end
+
+local function tsuji_hand_pos(x, y, anime_i)
+    anime_i = anime_i or 1
+    local heads = {
+0x06600ec0,
+0x066018c0,
+0x066057c0,
+    }
+    local head = heads[anime_i] or heads[1]
+    return lib.pos.Morton(x, y, 4, 0x20, 0x80) + head
+end
+
+local picF = lib.image.filterObj()
+:width(112):height(136)
+local lastPicF = lib.image.filterObj()
+:width(136):height(136)
+local tsujiF = lib.image.filterObj()
+:width(32):height(64)
+local tsujiHandF = lib.image.filterObj()
+:width(16):height(32)
+
+-- あらかじめ辻先生のグラ情報はバックアップをとる
+local tsuji_vs = {}
+for j = 1, 8 do
+    for y = 0, 63 do
+        for x = 0, 31 do
+            local a = tsuji_face_pos(x, y, j)
+            tsuji_vs[a] = r8(a)
+        end
+    end
+end
+
+local tsuji_hand_vs = {}
+for j = 1, 3 do
+    for y = 0, 31 do
+        for x = 0, 15 do
+            local a = tsuji_hand_pos(x, y, j)
+            tsuji_hand_vs[a] = r8(a)
+        end
+    end
+end
+
+---@type table<int, fun(): fun()?>
+local update_gra = {}
+
+gra_mode = 0
+local _current_gra_mode = 0
+---@type fun()?
+local current_gra_fun = nil
+
+local _update_gra = function()
+    if _current_gra_mode ~= gra_mode then
+        _current_gra_mode = gra_mode
+        ---@type fun(): fun()?
+        local f = update_gra[gra_mode]
+        local res, fun = pcall(f)
+        current_gra_fun = res and fun or nil
+        print(string.format("== STEP to next gra_mode \"%d\" ==", gra_mode))
+    end
+    if current_gra_fun then
+        current_gra_fun()
+    end
+end
+
+function loop()
+    update_chars()
+    update_voice()
+    _update_gra()
+end
+
+irume_active = false
+lib.irume.start(function()
+    local head = 0x03EB9210
+    local as = {}
+    local prevs = {}
+    for i = 0, 14 do
+        as[i] = head + 0x40*i
+        prevs[i] = 0
+    end
+    local p1 = 0x0a
+    local p2 = 0x17
+    local t = 0x24
+    local vol = 0x0e
+    return function()
+        if not irume_active then return end
+        for i, a in pairs(as) do
+            local _t = r8(a + t)
+            if prevs[i] < _t then
+                _t = rand(0x5, 0x14)
+                w8(a + p1, rand(0,0xff))
+                w8(a + p2, stou8(rand(-6, 6)))
+            end
+            w8(a + t, _t)
+            prevs[i] = _t
+            -- w16(a + vol, 0x40)
+        end
+        w16(as[0] + vol, 0x80)
+    end
+end)
+
+-- ================================
+-- ================================
+-- ================================
+-- ================================
+-- ================================
+
+update_gra[1] = function()
+-- step4 で画像が切り替わる瞬間！
+local function go()
+picF:go(function(x, y)
+    local _x, _y = math.round(x * 32 / 112), math.round(y * 64 / 136)
+    return pic_pos(x, y), tsuji_vs[tsuji_face_pos(_x, _y, 3)]
+end)
+end
+local r = RL(10)
+return function()
+    if not r() then go() end
+end
+end
+
+update_gra[2] = function()
+-- step5
+local c = Cnt(2, 2)
+return function()
+    local i = c:next() + 1
+    for j = 1, 3 do
+    tsujiHandF:go(function(x, y)
+        return tsuji_hand_pos(x, y, j), tsuji_hand_vs[tsuji_hand_pos(x, y, i)]
+    end)
+    end
+end
+end
+
+update_gra[3] = function()
+-- step6
+return function()
+    local i = rand(1, 3)
+    for j = 1, 3 do
+    tsujiHandF:go(function(x, y)
+        return tsuji_hand_pos(x, y, j), tsuji_hand_vs[tsuji_hand_pos(x, y, i)]
+    end)
+    end
+    i = rand(1, 8)
+    for j = 1, 8 do
+        tsujiF:go(function(x, y)
+            return tsuji_face_pos(x, y, j), tsuji_vs[tsuji_face_pos(x, y, i)]
+        end)
+    end
+end
+end
+
+update_gra[4] = function()
+-- step7
+local c = Cnt(32)
+local face = 1
+local face_r = RC(30)
+return function()
+    if face_r() then face = rand(1, 8) end
+    local xd = c:next()
+    picF:go(function(x, y)
+        local _x, _y
+        _x = math.round(x * 32 / 112)
+        _y = math.round(y * 64 / 136)
+        _x = (_x + xd) % 32
+        return pic_pos(x, y), tsuji_vs[tsuji_face_pos(_x, _y, face)]
+    end)
+end
+end
+
+update_gra[5] = function()
+-- step8 -- 12
+local __f = update_gra[3]()
+local xd = 0
+local yd = 0
+local xs = 3
+local ys = 2
+local xs_t = xs
+local ys_t = ys
+local xsr = RC(60)
+local ysr = RC(60)
+
+local b_st = 40
+local b_scale = 0.7
+local br = RC(70)
+
+local face = 1
+local face_r = RC(30)
+return function()
+    __f()
+    if face_r() then face = rand(1, 8) end
+    if xsr() then xs_t = rand(-10, 10) end
+    if ysr() then ys_t = rand(-10, 10) end
+    xs = ilerp(xs, xs_t, 0.1)
+    ys = ilerp(ys, ys_t, 0.1)
+    if br() then
+        b_st = rand(10, 50)
+        b_scale = rand(30, 95) / 100
+    end
+    xd = (xd + xs) % 32
+    yd = (yd + ys) % 64
+    picF:go(function(x, y)
+        local _x, _y
+        _x = math.round(x * 32 / 112)
+        _y = math.round(y * 64 / 136)
+        _x = (_x + xd) % 32
+        _y = (_y + yd) % 64
+        if _y >= b_st then
+            _y = math.round((_y - b_st) * b_scale) + b_st
+        end
+        return pic_pos(x, y), tsuji_vs[tsuji_face_pos(_x, _y, face)]
+    end)
+end
+end
+
+mode6_use_color_change = false
+update_gra[6] = function()
+-- step13 -- ?
+local xd = 0
+local yd = 0
+local xs = 3
+local ys = 2
+local xs_t = xs
+local ys_t = ys
+local xsr = RC(60)
+local ysr = RC(60)
+
+local b_st = 40
+local b_scale = 0.7
+local br = RC(70)
+local bx_center = 16
+local bx_scale = 0.8
+
+local face = 1
+local face_r = RC(30)
+
+local color_mask = 0xff
+local color_mask_r = RC(20)
+local color_mask_r2 = RC(99000)
+local color_mask_r_rl = RL(300)
+local function cc(v)
+    if not mode6_use_color_change then return v end
+    if v == 0 then return 0 end
+    if color_mask_r_rl.fired and color_mask_r2() then
+        color_mask = rand(0, 0xf) * 0x11
+    end
+    return v ~ color_mask
+end
+
+local update_face = (function()
+    local xd = 0
+    local yd = 0
+    local xs = -3
+    local ys = 0
+    local xs_t = xs
+    local ys_t = ys
+    local xsr = RC(60)
+    local ysr = RC(60)
+
+    local b_st = 32
+    local b_scale_c = Cnt(90)
+    local br = RC(5)
+    return function()
+        if xsr() then xs_t = rand(-5, 5) end
+        if ysr() then ys_t = rand(-5, 5) end
+        xs = ilerp(xs, xs_t, 0.1)
+        ys = ilerp(ys, ys_t, 0.1)
+        xd = (xd + xs) % 32
+        yd = (yd + ys) % 64
+        if b_scale_c() and br() then
+            b_st = rand(20, 40)
+            b_scale_c:N(rand(30, 120))
+        end
+        local i = rand(1, 8)
+        local y_scale = math.sin01(b_scale_c.i / b_scale_c.n) * 1.3 + 0.2
+        for j = 1, 8 do
+            tsujiF:go(function(x, y)
+                local _x, _y
+                _x = (x + xd) % 32
+                _y = (y + yd) % 64
+                _y = math.round((_y - b_st) * y_scale) + b_st
+                _y = clamp(_y, 0, 63)
+                return tsuji_face_pos(x, y, j), cc(tsuji_vs[tsuji_face_pos(_x, _y, i)])
+            end)
+        end
+    end
+end)()
+local update_hand = (function()
+    local xc = Cnt(10)
+    local rev_y = false
+    local r = RC(20)
+    return function()
+        if r() then rev_y = not rev_y end
+        local xd = math.round(math.sin01(xc:next() / xc.n) * 8 - 4)
+        local i = rand(1, 3)
+        for j = 1, 3 do
+        tsujiHandF:go(function(x, y)
+            local _x, _y
+            _x = clamp(x + xd, 0, 15)
+            _y = rev_y and (31 - y) or y
+            return tsuji_hand_pos(x, y, j), cc(tsuji_hand_vs[tsuji_hand_pos(_x, _y, i)])
+        end)
+        end
+    end
+end)()
+
+return function()
+    if mode6_use_color_change then
+        if color_mask_r_rl() and color_mask_r() then
+            color_mask = rand(0, 0xf) * 0x11
+        end
+    end
+    if face_r() then face = rand(1, 8) end
+    if xsr() then xs_t = rand(-10, 10) end
+    if ysr() then ys_t = rand(-10, 10) end
+    xs = ilerp(xs, xs_t, 0.1)
+    ys = ilerp(ys, ys_t, 0.1)
+    if br() then
+        b_st = rand(10, 50)
+        b_scale = rand(30, 95) / 100
+    end
+    if br() then
+        bx_center = rand(10, 20)
+        bx_scale = rand(30, 100) / 100
+    end
+    xd = (xd + xs) % 32
+    yd = (yd + ys) % 64
+    picF:go(function(x, y)
+        local _x, _y
+        _x = math.round(x * 32 / 112)
+        _y = math.round(y * 64 / 136)
+        _x = (_x + xd) % 32
+        _y = (_y + yd) % 64
+        _x = math.round((_x - bx_center) * bx_scale) + bx_center
+        if _y >= b_st then
+            _y = math.round((_y - b_st) * b_scale) + b_st
+        end
+        return pic_pos(x, y), cc(tsuji_vs[tsuji_face_pos(_x, _y, face)])
+    end)
+    update_hand()
+    update_face()
+end
+end
+
+update_gra[7] = function()
+
+local function tsuji_mesen()
+w32(0x06406840, r32(0x06406840) & 0xffff | 0x11110000)
+w32(0x06406844, r32(0x06406844) & 0xffff | 0x11110000)
+w32(0x06406848, r32(0x06406848) & 0xffff | 0x11110000)
+w32(0x0640684c, r32(0x0640684c) & 0xffff | 0x11110000)
+
+w32(0x06406860, 0x11111111)
+w32(0x06406864, 0x11111111)
+w32(0x06406868, 0x11111111)
+w32(0x0640686c, 0x11111111)
+
+w32(0x06406880, r32(0x06406880) & 0xffff0000 | 0x1111)
+w32(0x06406884, r32(0x06406884) & 0xffff0000 | 0x1111)
+w32(0x06406888, r32(0x06406888) & 0xffff0000 | 0x1111)
+w32(0x0640688c, r32(0x0640688c) & 0xffff0000 | 0x1111)
+end
+
+local color_mask = 0
+local color_mask_r = RC(20)
+local color_mask_r2 = RC(99000)
+local color_mask_r_rl = RL(180)
+local function cc(v)
+    if v == nil then return nil end
+    if v == 0 then return 0 end
+    if color_mask_r_rl.fired and color_mask_r2() then
+        color_mask = rand(0, 0xf) * 0x11
+    end
+    return v ~ color_mask
+end
+
+local face = 1
+local face_r = RC(30)
+
+local br = RC(50)
+local bx_ready = false
+local by_ready = false
+local bx_center = 60
+local bx_max = 90
+local bx_min = 40
+local bx_scale_c = Cnt(40)
+local by_center = 60
+local by_scale_c = Cnt(50)
+local by_max = 90
+local by_min = 40
+local y_ss = nil
+local x_ss = nil
+local sss = {true, false, nil}
+return function()
+    if color_mask_r_rl() and color_mask_r() then
+        color_mask = rand(0, 0xf) * 0x11
+    end
+    tsuji_mesen()
+    if face_r() then face = rand(1, 8) end
+    bx_ready = bx_ready or br()
+    by_ready = by_ready or br()
+    if bx_scale_c() and bx_ready then
+        bx_ready = false
+        bx_center = rand(20, 110)
+        bx_scale_c:N(rand(20, 90))
+        bx_min = rand(20, 60)
+        bx_max = rand(bx_min + 10, 100)
+        x_ss = sss[rand(1, 3)]
+    end
+    if by_scale_c() and by_ready then
+        by_ready = false
+        by_center = rand(20, 110)
+        by_scale_c:N(rand(20, 90))
+        by_min = rand(20, 60)
+        by_max = rand(bx_min + 10, 100)
+        y_ss = sss[rand(1, 3)]
+    end
+    local x_scale = ilerp(bx_min, bx_max, math.sin01(bx_scale_c.i / bx_scale_c.n)) / 100
+    local y_scale = ilerp(by_min, by_max, math.sin01(by_scale_c.i / by_scale_c.n)) / 100
+    lastPicF:go(function(x, y)
+        local _x, _y = x, y
+        if x_ss == nil or (x < 68 == x_ss) then
+            _x = math.round((_x - bx_center) * x_scale) + bx_center
+        end
+        if y_ss == nil or (y < 68 == y_ss) then
+            _y = math.round((_y - by_center) * y_scale) + by_center
+        end
+        _x = clamp(_x, 0, 135)
+        _y = clamp(_y, 0, 135)
+        _x = math.round(_x * 32 / 136)
+        _y = math.round(_y * 64 / 136)
+        return lastPic_pos(x, y), cc(tsuji_vs[tsuji_face_pos(_x, _y, face)])
+    end)
+end
+end
+```
+
+操作コード
+
+```lua
+-- step2に入る直前 => コードを送信！(音声&テキストバグ)
+-- step3 声を高くする(0x023D0823)
+
+-- [1] step4 で画像が切り替わる瞬間！
+-- [2] step5
+-- [3] step6
+-- [4] step7
+-- [5] step8
+-- [6] step13
+-- [6] with COLOR: step 16
+-- [7] last scene
+
+-- irume_active = true
+
+gra_mode = gra_mode + 1
+-- mode6_use_color_change = true
+
+-- gra_mode = 7
+```
+
+</div>
+</details>
