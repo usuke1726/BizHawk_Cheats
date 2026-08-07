@@ -5,7 +5,7 @@
   "publisher": "usuke1726",
   "private": true,
   "license": "MIT",
-  "version": "0.0.4",
+  "version": "0.1.0",
   "main": "./dist/extension.js",
   "engines": {
     "vscode": "^1.125.0"
@@ -73,6 +73,17 @@
         "BizHawkServer.autoClose": {
           "type": "boolean",
           "description": "ILuaファイルをすべて閉じた時に自動的にサーバを停止させるか",
+          "default": true
+        },
+        "BizHawkServer.autoCompletion": {
+          "type": ["boolean", "object"],
+          "markdownDescription": "`local` や `function` などの入力ミスを自動補完する機能を有効にするか",
+          "properties": {
+            "local": { "type": "boolean" },
+            "function": { "type": "boolean" },
+            "local function": { "type": "boolean" }
+          },
+          "additionalProperties": false,
           "default": true
         }
       }

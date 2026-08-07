@@ -21,6 +21,30 @@ const isNotebookTemplates = (obj: any): obj is NotebookTemplates => {
     return obj.every(o => typeof o === "string" || isStringArray(o) || isNotebookTemplateObj(o));
 }
 
+export const CompletionKeys = ["local", "function", "local function"] as const;
+export type CompletionKeysType = typeof CompletionKeys[number];
+export type CompletionTypes = {
+    [key in CompletionKeysType]: boolean;
+};
+type UserDefinedCompletionTypes = boolean | {
+    [key in CompletionKeysType]?: boolean;
+};
+const isUserDefinedCompletionTypes = (obj: any): obj is UserDefinedCompletionTypes => {
+    return (typeof obj === "boolean") || (
+        typeof obj === "object" &&
+        CompletionKeys.every(k => !obj.hasOwnProperty(k) || typeof obj[k] === "boolean")
+    );
+};
+const formatCompletionTypes = (types: UserDefinedCompletionTypes): CompletionTypes => {
+    if(typeof types === "boolean"){
+        return Object.fromEntries(CompletionKeys.map(k => [k, types])) as CompletionTypes
+    }
+    return {
+        ...defaultConfig.autoCompletion,
+        ...types
+    };
+};
+
 type Config = {
     port: number,
     stopCommand: string | string[],
@@ -28,6 +52,7 @@ type Config = {
     alwaysShowStatus: boolean,
     autoListen: boolean,
     autoClose: boolean,
+    autoCompletion: CompletionTypes,
 }
 const defaultConfig: Config = {
     port: 8099,
@@ -36,6 +61,7 @@ const defaultConfig: Config = {
     alwaysShowStatus: false,
     autoListen: false,
     autoClose: true,
+    autoCompletion: Object.fromEntries(CompletionKeys.map(k => [k, true])) as CompletionTypes,
 }
 type ConfigKey = keyof Config;
 const conditions: {[key in ConfigKey]: (val: unknown) => boolean} = {
@@ -45,6 +71,7 @@ const conditions: {[key in ConfigKey]: (val: unknown) => boolean} = {
     alwaysShowStatus: val => typeof val === "boolean",
     autoListen: val => typeof val === "boolean",
     autoClose: val => typeof val === "boolean",
+    autoCompletion: val => isUserDefinedCompletionTypes(val),
 }
 const keys: ConfigKey[] = Object.keys(conditions) as ConfigKey[];
 const isConfig = (obj: any): obj is Config => {
@@ -59,6 +86,7 @@ const loadConfig = (): Config => {
     const config = vscode.workspace.getConfiguration("BizHawkServer");
     const obj = Object.fromEntries(keys.map(k => [k, config.get<any>(k)]));
     if(isConfig(obj)){
+        obj.autoCompletion = formatCompletionTypes(obj.autoCompletion);
         configCache = obj;
         Output(`successfully ${initted ? "re" : ""}loaded config.`);
         Log("config:", configCache);

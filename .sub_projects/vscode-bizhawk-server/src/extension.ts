@@ -4,6 +4,7 @@ import setNotebookProviders from './Notebook';
 import { closeServer, setServerProviders } from './Server';
 import setSenderProviders from './Sender';
 import LogObject from './Log';
+import setCompletionProviders from './Completion';
 const { Log, Output } = LogObject.bind("extension");
 
 export function activate(context: vscode.ExtensionContext){
@@ -11,6 +12,7 @@ export function activate(context: vscode.ExtensionContext){
         setNotebookProviders(context);
         setSenderProviders(context);
         setServerProviders(context);
+        setCompletionProviders(context);
         Output("extension successfully activated");
     }catch(e){
         const mes = `DeSmuME Server couldn't start ${String(e)}`;
