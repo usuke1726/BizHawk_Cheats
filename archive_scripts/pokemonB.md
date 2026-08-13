@@ -3468,3 +3468,542 @@ lib.irume.start(function()
     end
 end)
 ```
+
+## 雑多
+
+`0x226F44F`: ひるみ判定? (クダリ戦のイワパレス相手に、すなかけでひるませたりきあいパンチの中断状態にさせたりできた) →後述の戦闘ポケモンのHP等のステータスデータの一部だった説
+
+`0x02234E0C`: 先頭アニメを見るか否かの設定(戦闘中には変えられない)
+
+
+## 戦闘中カメラ
+
+- `0x2291CF0`付近!
+
+## 野生で登場するポケモンを変える
+
+`224FE70`あたりに、そのマップで登場するポケモンの全国図鑑Noとレベル範囲のデータが4byteずつ配置されている
+
+```lua
+---@param no int
+---@param min_l? int
+---@param max_l? int
+local function set_yasei(no, min_l, max_l)
+    local i = 0x0224FE70
+    while true do
+        local v = r32(i)
+        if v == 0 then break end
+        local _no = v & 0xffff
+        local _min_l = (v >> 16) & 0xff
+        local _max_l = (v >> 24) & 0xff
+        _min_l = min_l or _min_l
+        _max_l = max_l or _max_l
+        w32(i, (_max_l << 24) | (_min_l << 16) | no)
+        i = i + 4
+    end
+end
+
+set_yasei(37, 100, 100) -- ロコン100lv
+```
+
+- 戦闘時の表示レベルは `0x0226E1F4`(1byte) ここなら255lvとかも表示可能
+
+## 種族値データ
+
+1byteずつ、HP、攻撃、防御、素早さ、特攻、特防、の順で。
+
+ポケモンごとに各0x3c(=60) byteずつ。
+
+(ROM領域)
+
+`0x06F98518 + no*0x3c` (=`117015832 + no*60`)
+
+- フシギダネ `0x06F98554`
+- ロコン(no.37) `0x06F98DC4`
+- コリンク(no.403) `0x06F9E38C`
+- ブースター(no.136) `0x06F9A4F8`
+    - もらいび(Flash Fireh `0x12` -> `2E`)
+- ウルガモス(no.637) `0x06FA1A64`
+- コバルオン `0x06FA1AA0`
+
+```lua
+-- 検索したときのコード(消してもOK)
+-- 種族値はHP, 攻撃、防御、素早さ、とくこう、とくぼう、の順番?
+
+local values = {
+    -- 85, 60, 65, 100, 135, 105,
+    91, 90, 129, 108, 90, 72,
+}
+
+lib.findr(0x06f00000, 0x06ffffff, values)
+
+-- ウルガモス, コバルオン
+-- ウルガモス == FOUND from 0x06FA1A64
+-- コバルオン == FOUND from 0x06FA1AA0
+```
+
+```
+メラルバ
+37 55 37 3C 32 37 06 09 2D 01 04 00 00 00 00 00
+00 00 7F 28 46 05 03 03 31 00 44 00 00 00 00 00
+01 08 48 00 0B 00 20 01 28 86 39 94 24 8E 02 34
+00 08 40 13 00 00 00 00 00 00 00 00
+
+ウルガモス
+55 3C 41 64 87 69 06 09 0F 03 00 03 DE 00 DE 00
+00 00 7F 28 46 05 03 03 31 00 44 00 00 00 00 00
+01 08 F8 00 10 00 CC 01 28 C6 39 94 A4 8E 02 34
+08 08 48 13 01 00 00 00 00 00 00 00
+
+コバルオン
+5B 5A 81 6C 5A 48 08 01 03 03 30 00 00 00 00 00
+00 00 FF 50 23 05 0F 0F 9A 00 00 00 00 00 00 00
+01 01 05 01 15 00 C4 09 39 4A 19 84 91 8A 28 00
+DC 15 4D A6 04 00 00 00 00 00 00 00
+```
+
+```
+ポケモンデータ
+<6byte base stats(種族値)> <2byte タイプ> <1byte ゲットしやすさ> <1byte 倒したときの努力値獲得値>
+
+タイプ(単タイプの場合は同じ値が2回(`01 01`みたいに))
+00 ノーマル 01 かくとう 02 ひこう 03 どく
+04 じめん 05 いわ 06 むし 07 ゴースト
+08 はがね 09 ほのお 0A みず 0B くさ
+0C でんき 0D エスパー 0E こおり 0F ドラゴン
+10 あく
+```
+
+- 戦闘中の自分のタイプ:
+    - `0x0226E4F8, 0x0226E4F9`
+- 戦闘中の相手のタイプ(ただし少しタイミングを遅らせていじらないと元の値に戻される):
+    - `0x0226F1D0, 0x0226F1D1`
+
+- https://projectpokemon.org/home/files/file/5689-frosts-gen-5-editor/
+- https://github.com/FrostFalcon/FrostsGen5Editor/tree/main/Data
+
+## 戦闘曲変更
+
+`0x021CF58C`
+
+参考: https://www.youtube.com/watch?v=Hd8HDcgt7-s
+
+```
+https://www.youtube.com/playlist?list=PLtAe0CVYJKcV4BzHrbsdcxDmxUqnGXZAw
+
+0448: Meloetta's Song メロエッタのBGM
+0449: Emotion (Event) ピアノのメロい曲(Nとのエンディング前ではない) (D E C#m F#, melody E4 RR C#5 E5 RRのループ)
+044B: Last (Event) Nとのエンディング前の曲(以下の通り)
+N
+メロディ: B- E- F G
+E- -- Gm -- A- -- A-m のピアノ曲
+途中Cmからの半音進行
+
+B-M7 -- A-7/G- -- E-M7 -- B-add9/D -- E- - E-m --...
+```
+
+## 道具
+
+`0x02233E0C`あたりから
+
+前半2byteが道具ID、後半2byteが個数
+
+- `3F`: ピッピにんぎょう
+- `40`: エネコのしっぽ
+
+## 戦闘
+
+- 自分のHP: `0x0226D514` (MAX: `0x0226D512`)
+    - `0x0226E410`(実際にひんしになるか否かを判定)
+- 自分のわざ: `0x0226D620`付近
+
+`0x0226D710` -> 自分の2匹目
+`0x0226D810` -> 自分の2匹目のわざ
+
+`0x0226D910` -> 自分の3匹目
+...
+
+- `0x0226E1A0` -> 相手ポケモン
+    - HP: `0x0226E1EC`(みかけ上の値?) & `0x0226F0E8`(実際にひんしになるか否かを判定)
+
+
+```lua
+-- 雑多メモ
+lib.replace8(0x02290000, 0x02293fff, 1, 2) -- ポケモンのテクスチャもずれる
+lib.replace8(0x02297000, 0x022970ff, 1, 2) -- 中国語っぽくなる
+lib.replace8(0x02297400, 0x022974ff, 1, 2) -- スペースが「ワット」になる
+lib.replace8(0x0229b9a0, 0x0229b9af, 1, 2) -- 「!」が「?」になる
+lib.replace8(0x022a7000, 0x022a7fff, 1, 2) -- 敵キャラクターが自分のわざ披露中に消える?
+
+-- 0x020FD845 -- 02にするとサウンドに影響あり?
+-- 0x2291700あたり、下画面崩壊 & ゲームが遅くなる?
+
+lib.replace8(0x02277070, 0x02277088, 0, 2) -- チャンピオンのアギルダー戦、なぜかきあいだまが先に出され、その結果が表示されないまま自ターンになる
+```
+
+## 覚えるわざリスト
+
+- フシギダネがrom `0x06FA4B18`
+- 4byteずつ、前半がわざID(2byte LE), 後半が覚えるレベル(2byte LE)
+- データ `FFFF` で次のポケモンに移行
+
+```lua
+local function get_lvMoves(poke_no)
+    local base = 0x06FA4B18
+    local i = 1
+    local a = base
+    while i < poke_no do
+        if r32r(a) == 0xffffffff then
+            i = i + 1
+        end
+        a = a + 4
+    end
+    return a
+end
+_HEXP(get_lvMoves(483))
+```
+
+## 設定に関わらず、戦闘アニメーションをスキップする
+
+```lua
+w16(0x21B8436, 0x2000) -- 技アニメーション無効化
+w16(0x21B8436, 0xFC0) -- 元に戻す
+```
+
+参考(Hold R to Skip Battle Animations): https://gbatemp.net/threads/us-pokemon-black-2-white-2-action-replay-codes.335734/page-10
+
+(控え)調査で使ったコード
+
+```lua
+local begin = 0x021b8000
+local bound = 0x0fff
+
+CLS()
+for i = begin, begin + bound, 2 do
+    local v = r16(i)
+    if v == 0xFC0 then
+        _HEXP(i)
+        w16(i, 0x2000)
+    end
+end
+```
+
+## video15 まろ×たる SMプレイ風動画
+
+```lua
+-- ときのほうこう: 01CB
+-- だましうち: 00B9
+-- ひのこ: 0034
+-- はかいこうせん: 003F
+-- ギガインパクト: 01A0
+-- ぜったいれいど: 0149
+-- コールドフレア: 022A (google検索 by "pokemon black 1 ice burn move id")
+-- わざIDリスト: https://gamefaqs.gamespot.com/boards/661226-pokemon-black-version-2/70519184 (これはBW2のだけど、大体合ってるはず)
+
+-- あまいかおり: 00E6
+-- なきごえ: 002D
+-- あまえる: 00CC
+-- ドわすれ: 0085
+
+---@param no int
+---@param min_l? int
+---@param max_l? int
+---@param max_count? int
+local function set_yasei(no, min_l, max_l, max_count)
+    local i = 0x0224FE70
+    max_count = max_count or 1000
+    local count = 0
+    while true do
+        local v = r32(i)
+        if v == 0 then break end
+        local _no = v & 0xffff
+        local _min_l = (v >> 16) & 0xff
+        local _max_l = (v >> 24) & 0xff
+        _min_l = min_l or _min_l
+        _max_l = max_l or _max_l
+        w32(i, (_max_l << 24) | (_min_l << 16) | no)
+        count = count + 1
+        if count >= max_count then break end
+        i = i + 4
+    end
+end
+
+set_yasei(37, 100, 100) -- ロコン100lv
+-- set_yasei(403, 18, 18) -- コリンク18lv
+
+---@param move1? int
+---@param move2? int
+---@param move3? int
+---@param move4? int
+local function set_locon_moves(move1, move2, move3, move4)
+    w16r(0x06FA5308, move1 or 0x0205)
+    w16r(0x06FA530C, move2 or 0x0120)
+    w16r(0x06FA5310, move3 or 0x0146)
+    w16r(0x06FA5314, move4 or 0x007E)
+end
+
+-- set_locon_moves(0x00E6, 0x00CC, 0x0085, 0x022a)
+
+set_locon_moves(0x01CB, 0x00B9, 0x0034, 0x022A)
+-- set_locon_moves(0x01CB, 0x003F, 0x01A0)
+
+w16(0x021CF58C, 0x0449) -- BGMをEmotionに
+
+
+SET_LOOP("no_damage_no_my_turn", (function()
+    local started = false
+    local my_hp1 = 0x0226D514
+    local my_hp2 = 0x0226E410
+    local enemy_level = 0x0226E1F4
+    local rl = RL(120)
+    local a_key = false
+    local a_key_c = Cnt(5)
+    return function()
+        if not started then
+            -- if r16(my_hp1) == 0x011b then
+            if r16(my_hp1) == 0x002E then
+                started = true
+            end
+            return
+        end
+        if r8(enemy_level) == 100 then
+            w8(enemy_level, 0xff)
+        end
+        if not rl() then return end
+        if a_key_c() then
+            a_key = not a_key
+            DS.key.set("A", a_key)
+        end
+        w16(my_hp1, 0)
+        w16(my_hp2, 0x1080)
+    end
+end)())
+
+
+----------------------------
+----- しばらくして次を実行
+----------------------------
+
+local type1 = 0x0226E4F8
+local houkou = 0x0226E2E2 -- F1DE(EFC)
+local cold_flare = 0x0226E30C -- F208(EFC)
+local hinoko =  0x0226E2FE -- F1FA(EFC)
+local damashi = 0x0226E2F0 -- F1EC(EFC)
+
+local data = {
+    {houkou, 5, 0x0f, 0x0f, "houkou"},
+    {cold_flare, 5, 0x0f, 0x0f, "cold"},
+    {hinoko, 25, 0x0b, 0x0d, "hinoko"},
+    {damashi, 20, 0x0d, 0x0f, "damashi"},
+}
+
+local moves_set = {
+    3, 1, 2,
+}
+local moves_set_i = 0
+
+local next_move = 1
+local is_first = true
+
+SET_LOOP("change_type", function()
+    for i = 1, 4 do
+        local pp = r8(data[i][1])
+        if pp < data[i][2] then
+            is_first = false
+            moves_set_i = moves_set_i + 1
+            next_move = moves_set[moves_set_i] or rand(1, 4)
+            for j = 1, 4 do
+                local v = j == next_move and 5 or 0
+                data[j][2] = v
+                w8(data[j][1], v)
+                w8(data[j][1] + 6, v)
+                w8(data[j][1] + 0xefc, v)
+                w8(data[j][1] + 0xefc + 6, v)
+            end
+            w8(type1, data[next_move][3])
+            w8(type1+1, data[next_move][4])
+            print("== NEXT " .. data[next_move][5])
+            break
+        end
+    end
+    if is_first then
+        w8(type1, 0x0b)
+        w8(type1+1, 0x0d)
+    end
+end)
+
+----------------------------
+----- 十分時間が経ったら
+----------------------------
+
+w16(0x21B8436, 0x2000) -- 技アニメーション無効化
+
+-- ボタンでカメラを移動させる
+local a1 = 0x02291CEC
+local a2 = 0x02291CF0
+local a4 = 0x02291D04
+local a5 = 0x02291D0C
+local a3 = 0x02291CF4
+
+local v1 = 0x6b33
+local v2 = 0x6b33
+local v3 = 0x114cd
+local v4 = 0
+local v5 = 0
+
+local b3 = DS.key.lis("R"):delay(1)
+local d = 0x100
+
+function loop()
+    local L = DS.key.get("L")
+    if DS.key.get("Left") then
+        v1 = v1 + d
+    elseif DS.key.get("Right") then
+        v1 = v1 - d
+    end
+    if DS.key.get("Up") then
+        v2 = v2 + d
+    elseif DS.key.get("Down") then
+        v2 = v2 - d
+    end
+    if DS.key.get("X") then
+        v4 = v4 + d
+    elseif DS.key.get("Select") then
+        v4 = v4 - d
+    end
+    if DS.key.get("Y") then
+        v5 = v5 + d
+    elseif DS.key.get("B") then
+        v5 = v5 - d
+    end
+    b3()
+    if b3:holding() then
+        v3 = v3 + (L and -1 or 1) * d
+    end
+    w32(a1, v1)
+    w32(a2, v2)
+    w32(a3, v3)
+    w32(a4, v4)
+    w32(a5, v5)
+end
+-- loop = nil
+```
+
+## video15 クソ強いブースター登場
+
+```lua
+---@param no int
+---@param min_l? int
+---@param max_l? int
+---@param max_count? int
+local function set_yasei(no, min_l, max_l, max_count)
+    local i = 0x0224FE70
+    max_count = max_count or 1000
+    local count = 0
+    while true do
+        local v = r32(i)
+        if v == 0 then break end
+        local _no = v & 0xffff
+        local _min_l = (v >> 16) & 0xff
+        local _max_l = (v >> 24) & 0xff
+        _min_l = min_l or _min_l
+        _max_l = max_l or _max_l
+        w32(i, (_max_l << 24) | (_min_l << 16) | no)
+        count = count + 1
+        if count >= max_count then break end
+        i = i + 4
+    end
+end
+
+---@param move1? int
+---@param move2? int
+---@param move3? int
+---@param move4? int
+local function set_booster_moves(move1, move2, move3, move4)
+    w16r(0x06FA6B20, move1 or 0x007B)
+    w16r(0x06FA6B24, move2 or 0x00B8)
+    w16r(0x06FA6B28, move3 or 0x007E)
+    w16r(0x06FA6B2C, move4 or 0x01B4)
+end
+
+SET_LOOP("watch_yasei", function()
+    if r16(0x0224FE70) == 0x1F8 and 
+        r16(0x0224FE78) == 0x1F8 and
+        r16(0x0224FE80) == 0x1F8 and
+        r16(0x0224FE88) == 0x1F8 and
+        r16(0x0224FE90) == 0x1F8 and
+        r16(0x0224FE98) == 0x1F8 then
+        print("=== SET BOOSTER ===")
+        set_yasei(136, 100, 100, 12) -- ブースター100lv
+    end
+    if r32(0x021CF58C) == 0x468 then
+        print("== SET MUSIC ==")
+        w16(0x021CF58C, 0x043E) -- BGM変更(440: Encounter Bell, 43E: Follow NPC, 43D: Mom)
+    end
+end)
+
+w16r(0x06F9A510, 0x2E2E) -- とくせいをプレッシャーにする
+
+set_booster_moves(0xF6, 0xE8, 0x151, 0x1C1)
+
+-- げんしのちから 00F6
+-- メタルクロー 00E8
+-- ドラゴンクロー 0151
+-- さばきのつぶて 01C1
+
+-- 種族値MAXにする
+w32r(0x06F9A4F8, 0xffffffff)
+w16r(0x06F9A4FC, 0xffff)
+w8r(0x06F9A50A, 0xfe) -- 常にメスが現れるようにする
+
+-- ==================================
+-- ==== 登場したタイミングで実行 ====
+-- ==================================
+
+local gensi = 0x0226E2E2
+local metal = 0x0226E2F0
+local dragon =  0x0226E2FE
+local sabaki = 0x0226E30C
+
+local data = {
+    gensi, metal, dragon, sabaki
+}
+use_random_move = false
+
+set_move = (function()
+    local _no = 1
+    SET_LOOP("set_move", function()
+        for j = 1, 4 do
+            local v = (use_random_move or j == _no) and 5 or 0
+            w8(data[j], v)
+            w8(data[j] + 6, v)
+            w8(data[j] + 0xefc, v)
+            w8(data[j] + 0xefc + 6, v)
+        end
+    end)
+    return function(no)
+        _no = no
+    end
+end)()
+set_move(1)
+
+-- ====================================
+-- == だいじんにチェンジした後で実行 ==
+-- ====================================
+
+-- さばきのつぶてで待機4体全員死亡
+local function set_other_hps()
+    w16(0x0226D95C, 0)
+    w16(0x0226DB80, 0)
+    w16(0x0226DDA4, 0)
+    w16(0x0226DFC8, 0)
+end
+set_other_hps()
+
+-- ================
+-- ==== 制御用 ====
+-- ================
+-- use_random_move = true
+set_move(4)
+```
+
