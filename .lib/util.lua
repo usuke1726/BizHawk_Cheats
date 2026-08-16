@@ -533,7 +533,7 @@ local function _setRandomCheating(saveslot, options)
             addr = __RandomCheating_Conf.get_addr(i)
             bound = __RandomCheating_Conf.get_bound(i) - 1
             val = __RandomCheating_Conf.get_val(i)
-            meses[#meses+1] = string.format("0x%08X -- 0x%08X (0x%02x)", addr, addr + bound, val)
+            meses[#meses+1] = string.format("lib.fill_in(0x%08X, 0x%08X, 0x%02x)", addr, addr + bound, val)
             local maxlines = __RandomCheating_Conf.print_maxlines
             if #meses > maxlines then
                 local new_tbl = {}
