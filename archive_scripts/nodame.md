@@ -1256,3 +1256,556 @@ function loop()
 end
 ```
 
+
+```lua
+-- のだめイルーム(video11時点では未使用。12以降、いつか使う。) => 15で使用済。
+lib.irume.start(function()
+    local head = 0x03eb8660
+    local as = {}
+    local poses = {}
+    local pps = {}
+    for i = -1, 15 do
+        as[i] = head + 0x40*i
+    end
+    local r = RC(120)
+    return function()
+        for i, a in pairs(as) do
+            if not poses[i] or r() then
+                poses[i] = r32(a + 0x28)
+            end
+            w32(a + 0x28, poses[i])
+        end
+    end
+end)
+```
+
+## FAT調査
+
+```lua
+-- nodame
+-- FNT 08AA00
+-- FNT size A3
+-- FAT 08AC00
+-- FAT size E8
+
+-- ID: 5: JacketPic => 00EE0300 9C8E0400
+
+-- lib.fill_in(0x03EE00, 0x048E9C, 0, ROM_DOMAIN_NAME)
+-- lib.fill_in(0x03EE90, 0x040E9C, 0, ROM_DOMAIN_NAME)
+
+-- w8r(0x48939, 0xff) -- 立ち絵千秋の顔が真っ赤に
+-- w8r(0x48E72, 0x14) -- ローマの謝肉祭が「マリオ」?になる
+
+
+-- lib.fill_in(0x051200, 0x058F27, 0, ROM_DOMAIN_NAME)
+
+for i = 3, 4 do
+    local a = 0x8ac50 + i*8
+    local start = r32r(a)
+    local iend = r32r(a + 4)
+    print(string.format("0x%08X -- 0x%08X", start, iend))
+    lib.fill_in(start, math.min(iend-1, start + 0x100000), 0, ROM_DOMAIN_NAME)
+end
+
+-- 関係あり?
+-- 00280600 7C370600 (MusData.bin)
+```
+
+## video16 のだめ `3B 38` 領域テスト (動画では不使用)
+
+```
+雑多メモ
+
+-- 2680FC6 -- Fを1とかでうめる
+-- 26774E0からも波形データ?
+-- 267A3F8あたり: ピアノのテクスチャ
+-- のだめのテクスチャ: 2684CC4
+-- テクスチャ横位置? 2684CD4 -> FFFFF2FF 付近
+-- テクスチャ縦位置? 2684CD4 -> 1000 付近
+
+-- 22D6450 -> アニメーション関連
+-- 22B21C0 -> アニメーション関連
+
+-- 229A328 右腕のアニメーションの一部?
+
+-- 2284B70 -> 2700: ずっとこっち見る, 270f: 地面に横たわる
+
+-- 2284B9B, C: FFFFにすると左手が回転しながらすっ飛ぶ(Cの方を00にしてもう一度FFにすると、もう一回飛ぶ)
+-- 2284BCE: 0Eにすると右腕が回転しながらすっ飛ぶ(03にしてもう一度設定すると、もう一回飛ぶ。あと、0Eでなく0Fにすると速くなる)
+-- 2284BFC (00 -- 1B) 足の向きが狂う
+
+-- 228F3C0 -> 38 3Bゾーン?
+
+2684b70
+```
+
+```lua
+-- 228F6E0付近？
+
+local function found(v)
+    local _v = v & 0xffffff
+    if _v == 0x3b38 then return true end
+    if _v == 0x3a38 then return true end
+    return false
+end
+
+local c = Cnt(30)
+local r = RC(5)
+local r2 = RC(10)
+
+local origs = {}
+local scale = 0x2000
+
+function loop()
+    c()
+    if c.fired and r() then
+        c:N(rand(10, 60))
+        r:N(math.round(100 / c.n))
+        scale = rand(0x2, 0x16) * 0x200
+    end
+    local _v = math.round((math.cos01(c.i / c.n) - 0.5) * scale)
+    local i = 0x0228F000
+    while i <= 0x0229FFFF do
+        local v = r32(i)
+        i = i + 4
+        if found(v) then
+            for j = 1, 3 do
+                if not origs[i] then
+                    origs[i] = r32(i)
+                end
+                if r2() then
+                    w32(i, origs[i])
+                else
+                add32(i, _v * rand(1, 2))
+                end
+                -- add32(i, rand(-5, 5) * 0x100)
+                i = i + 4
+            end
+        end
+    end
+end
+```
+
+## video16 のだめ荒ぶり
+
+```lua
+local function found(v)
+    local _v = v & 0xffffff
+    if _v == 0x3b38 then return true end
+    if _v == 0x3a38 then return true end
+    return false
+end
+
+local vus = {}
+local origs = {}
+
+local function utos32(v)
+    if v < 0x80000000 then
+        return v
+    end
+    return v - 0x100000000
+end
+
+local function setup(is_first)
+    vus = {}
+    local r = RC(is_first and 8 or 2)
+    local i = 0x0228F000
+    local modes = {"lerp", "pingpong", "isin"}
+    while i <= 0x0229FFFF do
+        local v = r32(i)
+        i = i + 4
+        if found(v) then
+            for j = 1, 3 do
+                if not origs[i] then
+                    origs[i] = utos32(r32(i))
+                end
+                if not r() then
+                    v = origs[i]
+                    local d = rand(1, 0x20) * 0x1000
+                    local mode = modes[rand(1, #modes)]
+                    local n = rand(10, 40)
+                    vus[i] = ValueUpdater(n, v - d, v + d, mode):w32(i)
+                end
+            end
+        end
+    end
+end
+
+
+setup(true)
+
+local r = RC(60)
+
+local update_sound = (function()
+    local kyoku_broken_head = 0x022774E0
+    local kyoku_broken_width = 0x1400
+
+    local function kyoku_broken(scale)
+        local vs = {}
+        for i = 0, kyoku_broken_width-1, 2 do
+            local _i = kyoku_broken_head + (math.round(i * scale) % kyoku_broken_width)
+            vs[kyoku_broken_head + i] = r16(_i)
+        end
+        for a, v in pairs(vs) do
+            w16(a, v)
+        end
+    end
+    local c = Cnt(120)
+    return function()
+        local x = c:next() / c.n
+        local scale = -x * x * x * 0.5 + 1.0
+        kyoku_broken(scale)
+    end
+end)()
+
+function loop()
+    update_sound()
+end
+
+
+function loop()
+    update_sound()
+    for _, v in pairs(vus) do
+        v()
+    end
+    if r() then setup() end
+end
+```
+
+## video16 カンタービレボイスを連呼 & 服を顔テクスチャに & animation荒ぶり
+
+```lua
+local update_animation = (function()
+    local rl = RL(480)
+    local r = RC(60)
+    local is_first = true
+    return function()
+        rl()
+        if (not is_first) and (not r()) then return end
+        for i = 0x2298150, 0x229ffff, 4 do
+            local v = rand(-0x50, 0x50)
+            if rl.fired then v = v * 0x10 end
+            add32(i, v)
+        end
+        is_first = false
+    end
+end)()
+
+-- テクスチャ横位置? 2684CD4 -> FFFFF2FF 付近
+-- テクスチャ縦位置? 2684CD8 -> 1000 付近
+local update_texture = (function()
+    local v = ValueUpdater(1, -0xe00, -0x800)
+    :calc(function(obj)
+        return obj.v + rand(-0x10, 0x10) * 0x20
+    end)
+    :w32(0x02684CD4)
+    local v2 = ValueUpdater(1, 0xf00, 0x1100)
+    :calc(function(obj)
+        return obj.v + rand(-0x10, 0x10) * 0x10
+    end)
+    :w32(0x02684CD8)
+    return function()
+        v()
+        v2()
+    end
+end)()
+
+local update_muki = (function()
+    local r = RC(30)
+    local f = false
+    return function()
+        if r() then f = not f end
+        w8(0x02284B60, f and 0x27 or 0x26)
+    end
+end)()
+
+function loop()
+    update_animation()
+    update_texture()
+    update_muki()
+end
+
+lib.irume.start(function()
+    local head = 0x03eb8660
+    local as = {}
+    local poses = {}
+    local pps = {}
+    for i = -1, 15 do
+        as[i] = head + 0x40*i
+    end
+    local r = RC(120)
+    local voice = 0x03EB86EC + 0x00
+    local vr = RC(10)
+    local vrl = RL(240)
+    -- voice start? 15081802, 1B081802, 21081802
+    return function()
+        for i, a in pairs(as) do
+            if not poses[i] or r() then
+                poses[i] = r32(a + 0x28)
+            end
+            w32(a + 0x28, poses[i])
+        end
+        if vrl() and vr() then
+        w16(voice, rand(-4, 2) * 0x100)
+        end
+    end
+end)
+```
+
+## video16 股おっぴろげ & こっち見る
+
+```lua
+w16(0x2284B70, 0x0027)
+-- 途中から0f
+w8(0x2284BFC, 0x02) -- 02, 06, (0a), (0f), 13
+local c = CntOnce(701)
+function loop()
+    if c() then
+        print("DONE")
+        w8(0x2284BFC, 0x0f)
+    end
+end
+```
+
+## video16 上昇ハットリ & 腕が回転しながらすっ飛ぶ
+
+```lua
+arm_start = false
+
+local update_arms = (function()
+    local left_i = 0
+    local left_c = {
+        RC(60),
+        Cnt(120),
+    }
+    local right_i = 1
+    local right_v = 4
+    local right_c = {
+        RC(60),
+        Cnt(120),
+    }
+
+-- 2284B9B, C: FFFFにすると左手が回転しながらすっ飛ぶ(Cの方を00にしてもう一度FFにすると、もう一回飛ぶ)
+
+-- 2284BCE: 0Eにすると右腕が回転しながらすっ飛ぶ(03にしてもう一度設定すると、もう一回飛ぶ。あと、0Eでなく0Fにすると速くなる)
+    return function()
+        if not arm_start then
+            w8(0x02284B9B, 0x05)
+            w8(0x02284B9C, 0x03)
+            w8(0x02284BCE, 0x03)
+            return
+        end
+        if left_c[left_i+1]() then
+            left_i = (left_i + 1) % 2
+        end
+        w8(0x02284B9B, 0xff)
+        w8(0x02284B9C, left_i == 0 and 0 or 0xff)
+        if right_c[right_i+1]() then
+            right_i = (right_i + 1) % 2
+            right_v = rand(1, 4)
+        end
+        w8(0x2284BCE, right_i == 0 and 3 or (right_v == 1 and 0x0f or 0x0e))
+    end
+end)()
+
+-- 2284BFC (00 -- 1B)
+local update_leg = (function()
+    local r = RC(10)
+    local prev = -1
+    return function()
+        if not r() then return end
+        while true do
+            local v = rand(0, 0x1b)
+            if prev ~= v then
+                prev = v
+                break
+            end
+        end
+        w8(0x2284BFC, prev)
+    end
+end)()
+
+
+local update_sound = (function()
+    local kyoku_broken_head = 0x022774E0
+    local kyoku_broken_width = 0x1400
+
+    local function kyoku_broken(scale)
+        local vs = {}
+        for i = 0, kyoku_broken_width-1, 2 do
+            local _i = kyoku_broken_head + (math.round(i * scale) % kyoku_broken_width)
+            vs[kyoku_broken_head + i] = r16(_i)
+        end
+        for a, v in pairs(vs) do
+            w16(a, v)
+        end
+    end
+    local c = Cnt(30)
+    return function()
+        if not arm_start then return end
+        local x = c:next() / c.n
+        local scale = x * x * x * 0.3 + 1.0
+        kyoku_broken(scale)
+    end
+end)()
+
+function loop()
+    update_arms()
+    update_sound()
+    -- update_leg()
+end
+```
+
+## video16 レジェンドオブSオケの漫画シーンのバグ
+
+```plaintext
+改変テキスト(文字コードはSJIS)
+
+こいつに合わせられるのはオレ様ぐらい
+だ！Ｓオケメンバーがオレ様ぐらいだ！
+みんなはオレ様ぐらいめくそ！？歌い上
+げるオレ様！「キモー」オレ様！笑いに
+合わせられる僕ってやっぱすごい！
+天使はオレか♡フォーリンラブ♡
+
+♡: 8740
+\n: 0a
+・: A5(･)
+☆: 8199
+
+レジェンド･オブ･機長ーォ、あと一曲！
+
+峰る青春の喜びと 龍太郎☆龍太郎
+```
+
+```lua
+-- No. 1
+
+local lines = {
+"82b182a282c282c98d8782ed82b982e782ea82e982cc82cd8349838c976c82ae82e782a2",
+"82be814982728349835083818393836f815b82aa8349838c976c82ae82e782a282be8149",
+"82dd82f182c882cd8349838c976c82ae82e782a282df82ad82bb8149814889cc82a28fe3",
+"82b082e98349838c976c81498175834c8382815b81768349838c976c81498fce82a282c9",
+-- "8d8782ed82b982e782ea82e98b4092b7815b8348814182a082c688ea8bc88149",
+"8d8782ed82b982e782ea82e9966c82c182c482e282c182cf82b782b282a28149",
+"93568e6782cd8349838c82a9874083748348815b838a8393838983758740",
+}
+lib.warr(0x0263EA76, lib.htob(table.concat(lines, "0a")))
+
+lib.warr(0x02232DFD, lib.htob("838c8357834683938368a583498375a58b4092b7815b8348814182a082c688ea8bc88149")) -- タイトル(「レジェンド･オブ･機長ーォ、あと一曲！」)
+
+lib.warr(0x0223AEC4, lib.htob("95f482e990c28f7482cc8aec82d182c62097b491be9859819997b491be9859")) -- 作曲者
+
+
+-- ==============================
+-- No. 2
+-- ==============================
+
+local kyoku_broken_head = 0x0228F28C
+local kyoku_broken_width = 0x1400
+
+local function kyoku_broken1(scale)
+    local vs = {}
+    for i = 0, kyoku_broken_width-1, 2 do
+        local _i = kyoku_broken_head + (math.round(i * scale) % kyoku_broken_width)
+        vs[kyoku_broken_head + i] = r16(_i)
+    end
+    for a, v in pairs(vs) do w16(a, v) end
+end
+
+local max_scale = 1.03
+local min_scale = 1.0
+local c = Cnt(20)
+
+local function get_scale()
+    if c() then
+        min_scale = rand(98, 103) / 100
+        max_scale = min_scale + rand(0, 30) / 1000
+    end
+    return (math.sin(c.i * 2 * math.pi / c.n) + 1.0) * (max_scale - min_scale) + min_scale
+end
+
+SET_LOOP("kyoku", function()
+    kyoku_broken1(get_scale())
+end)
+
+-- ==============================
+-- No. 3
+-- ==============================
+
+
+local W = 0x80
+local H = 0xc0
+
+local function change_pos(x, y)
+    return lib.pos.Morton(x, y, 0x04, 0x20, 0x400) + 0x06214000
+end
+
+local vs = {}
+for x = 0, W-1 do
+    for y = 0, H-1 do
+        local a = change_pos(x, y)
+        vs[a] = r8(a)
+    end
+end
+
+local update = (function()
+    local v = ValueUpdater(20, -95, -65, "isin")
+    ---@type VUO_calcEntry[]
+    local v_modes = {"lerp", "isin", function(obj) return obj:lerp(1-obj:x()) end}
+    local ys = 0
+    local scl = 0.5
+    local cx = Cnt(60)
+    local x_span = 0x10
+    local x_d = 0
+    local x_ready = RL(10)
+    return function()
+        cx()
+        v()
+        if v.i == 0 then
+            ys = rand(0, 0x30)
+            scl = rand(20, 70) / 100
+            if x_ready() then
+                x_d = rand(0, 4)
+                x_span = rand(0x5, 0x20)
+            end
+            -- scl = rand(2, 5)
+            if rand(1, 2) == 1 then
+            v.n = rand(10, 60)
+            v:calc(v_modes[rand(1, #v_modes)])
+            end
+        end
+        local theta = v.v / 180 * math.pi
+        local A = {
+            {math.sin(theta), math.cos(theta)},
+            {math.cos(theta), -math.sin(theta)}
+        }
+
+lib.image.filterObj()
+:width(W)
+:height(H)
+:go(function(x, y)
+    local __x = x
+    __x = (__x + cx.i) % W
+    __x = (__x - 0x10) % 0x40 + 0x10
+    __x = __x - (W//2)
+    local __y = (H//2) - y
+    local _x = math.round(A[1][1]*__x + A[1][2]*__y)
+    local _y = math.round(A[2][1]*__x + A[2][2]*__y)
+    _x = _x + (W//2)
+    _y = -_y + (H//2)
+    -- _y = _y - 0x10
+    if _y > ys then
+        -- _y = math.round((_y - ys) * scl) + ys + (_x % 0x10)
+        _y = math.round((_y - ys) * scl) + ys + ((_x + x_d) % x_span)
+    end
+    return change_pos(x, y), vs[change_pos(_x, _y)] or 0
+end)
+    end
+end)()
+
+
+function loop()
+    update()
+end
+```

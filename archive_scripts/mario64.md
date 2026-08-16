@@ -1305,3 +1305,55 @@ lib.irume.start(function()
 end)
 ```
 
+## video16 ワリオ静とルイージ動 & マリオ顔長o
+
+```lua
+local v = 0
+function loop()
+    w32(0x022FA338, 0)
+    w32(0x022F33D0, rand(0, 0x7fff))
+    w32(0x022F33D4, rand(0, 0x7fff))
+    w32(0x022F33D8, rand(0x10000, 0x1ffff))
+    local i = 0x022F6C10
+    while i <= 0x022F6EDF do
+        add32(i, rand(-0x100, 0x100) * 0x10)
+        i = i + 4
+    end
+    v = (v + 0xf000) % 0x03C000
+    w32(0x022B3AEC, v)
+    -- + 0x1000 mod 03C000
+end
+
+lib.fill_in(0x02473800, 0x024738ff, 0xfd) -- 海になる(寿限無が起こすシーンは到達せずにフリーズする)
+
+
+
+irume_mode_2 = false
+lib.irume.start(function()
+    local head = 0x03e07d40
+    local as = {}
+    for i = 0, 16 do
+        as[i] = head + 0x40*i
+    end
+    local c = Cnt(5, 2)
+    return function()
+        if irume_mode_2 then c() end
+        for i, a in pairs(as) do
+            if irume_mode_2 then
+                w8(a + 0x0a, c.i * 2 + 0xf8)
+                w8(a + 0x0b, 0xff)
+                w8(a + 0x1a, 0)
+            else
+                w8(a + 0x1a, 0x77)
+            end
+        end
+    end
+end)
+
+
+-- ==== 制御用 ====
+
+irume_mode_2 = true
+-- 0x02480486 をいじる(最初17固定 -> 土管直前で12 -> 15、あと走るところで適当に値を大きくする(30くらいまで))
+
+```
