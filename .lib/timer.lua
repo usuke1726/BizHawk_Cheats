@@ -2,7 +2,7 @@
 ---@alias Callback fun(obj: TimerObj)
 ---@alias VUO_xfun fun(obj: ValueUpdaterObj): number
 ---@alias VUO_calc fun(obj: ValueUpdaterObj): int?
----@alias VUO_calcEntry VUO_calc | "lerp" | "isin" | "icos" | "sq" | "sqrt"
+---@alias VUO_calcEntry VUO_calc | "lerp" | "isin" | "icos" | "sq" | "sqrt" | "pingpong" | "rpingpong"
 
 ---@type table<string, VUO_calc>
 local VUOCalcEntryFunctions = {
@@ -16,21 +16,52 @@ local VUOCalcEntryFunctions = {
         return obj:icos()
     end,
     ["sq"] = function(obj)
-        return obj:sq()
+        return obj:lerp(obj:sq())
     end,
     ["sqrt"] = function(obj)
-        return obj:sqrt()
+        return obj:lerp(obj:sqrt())
     end,
 }
+---@type table<string, fun(_obj: ValueUpdaterObj): VUO_calc>
+local VUOCalcEntryFunctions_withSetup = {
+    ["pingpong"] = function(_obj)
+        _obj:x_pingpong()
+        return function(obj)
+            return obj:lerp()
+        end
+    end,
+    ["rpingpong"] = function(_obj)
+        _obj:x_reversePingpong()
+        return function(obj)
+            return obj:lerp()
+        end
+    end,
+}
+---@param entry string
+---@param obj ValueUpdaterObj
+---@return VUO_calc?
+local function resolve_string_entry(entry, obj)
+    local f = VUOCalcEntryFunctions[entry]
+    if f then return f end
+    local f2 = VUOCalcEntryFunctions_withSetup[entry]
+    if f2 then return f2(obj) end
+    return nil
+end
 
 ---@class VUO
 ---@field add fun(d: int): VUO_calc 現在の値に`d`だけ加算する関数を返却する
+---@field addrand fun(min: int, max: int): VUO_calc 現在の値に`rand(min, max)`だけ加算する関数を返却する
 ---
 ---calc関数を生成するユーティリティ
 VUO = {
     add = function(d)
         return function(obj)
             return obj.v + d
+        end
+    end,
+    addrand = function(min, max)
+        return function(obj)
+            return obj.v + rand(min, max)
         end
     end,
 }
@@ -111,7 +142,7 @@ end
 ---@return ValueUpdaterObj
 function ValueUpdaterObj:calc(calc)
     if type(calc) == "string" then
-        self._calc = assert(VUOCalcEntryFunctions[calc], "invalid calc id: " .. calc)
+        self._calc = assert(resolve_string_entry(calc, self), "invalid calc id: " .. calc)
     else
         self._calc = calc
     end
