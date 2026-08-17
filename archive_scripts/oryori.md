@@ -1571,3 +1571,153 @@ gra_mode = gra_mode + 1
 
 </div>
 </details>
+
+## 雑メモ
+
+`215CCC0` あたりから、右側の説明文のテキストデータ
+
+```lua
+-- 辻先生の位置あらぶり
+w8(0x21f4278, rand(0, 0xff))
+w8(0x21f427a, rand(0, 0xff))
+w8(0x21f4290, rand(0, 0xff))
+w8(0x21f4292, rand(0, 0xff))
+
+23C1900 -> 4byteで小さいほど声が高くなる
+23C1904 -> 2byteで大きいほど遅くなる
+
+23C3260 -> asciiでしゃべっている声の内容?
+
+23CA5E0あたり -> asciiで内容が分かる部分、いじると声が飛ぶ? => ここで発話内容をいじれる！！！！(なんとasciiで制御する)
+
+-- 辻先生のボイスが超断片的になる
+-- (1)
+for i = 0x023c4440, 0x23c46ff do
+    w8(i, 0)
+end
+
+-- (2)
+for i = 0x023c4450, 0x23c47ff, 0x10 do
+    if rand(1, 3) == 1 then
+        w32(i, r32(i - 0x10))
+        w32(i + 4, r32(i + 4 - 0x10))
+        w32(i + 8, r32(i + 8 - 0x10))
+        w32(i + 12, r32(i + 12 - 0x10))
+    elseif rand(1, 2) == 1 then
+        w32(i, r32(i + 0x10))
+        w32(i + 4, r32(i + 4 + 0x10))
+        w32(i + 8, r32(i + 8 + 0x10))
+        w32(i + 12, r32(i + 12 + 0x10))
+    end
+end
+
+-- (3)
+-- local d = 0x10
+local d = 0x20 -- 40もOK
+for i = 0x023c4450, 0x23c47ff, d do
+    if rand(1, 3) == 1 then
+        for j = 0, d-1, 4 do
+            w32(i + j, r32(i + j - d))
+        end
+    elseif rand(1, 2) == 1 then
+        for j = 0, d-1, 4 do
+            w32(i + j, r32(i + j + d))
+        end
+    end
+end
+
+
+-- 「ああああ」と発狂する
+local d = 0x10
+for i = 0x023c4440, 0x23c47ff, d do
+    w16(i, r16(i-d))
+end
+
+-- 「にょにょにょ」みたく連呼する
+local d = 0x10
+for i = 0x023c4440, 0x23c47ff, d do
+    -- r/w16ではなくr/w32にしてもよい
+    local v =r16(i+rand(-8, 8)*d)
+    if v ~= 0 and rand(1, 2) == 1 then
+        w16(i, v)
+    end
+end
+
+-- ノイズと水っけたっぷりの声になる
+function loop()
+    for i = 0x23c5c30, 0x23c5fff do
+        local v = r8(i)
+        if v ~= 0 then
+            w8(i, v + 1)
+        end
+    end
+end
+
+-- ノイズまみれ?
+function loop()
+-- iを2つおきとかにすると、抑揚が中途半端につくようになる(恐らく、各文字の音の高さをここで制御している?)
+-- ↑違う!2byteずつで、音の高さを管理している！
+    for i = 0x23c6230, 0x23c62bf do
+        local v = r8(i)
+        if v ~= 0 then
+            w8(i, v + rand(-4,4))
+            -- w8(i, 0x10) -- こっちにするとロボット声になる(0x10-0x1dまではいけそう)
+        end
+    end
+end
+-- ↓
+-- ver2
+-- ↓
+function loop()
+    for i = 0x23c6230, 0x23c62bf, 2 do
+        w16(i, 0x1300)
+    end
+end
+
+-- 音程をある程度制御する?
+local ps = {0x1200, 0x1300, 0x1400, 0x1500, 0x1600}
+local c = Cnt(5, #ps)
+function loop()
+    c()
+    for i = 0x23c6230, 0x23c62bf, 2 do
+        w16(i, ps[c.i+1])
+    end
+end
+
+-- 音声がハデにバグるが高確率でフリーズ
+function loop()
+    for i = 0x23c7638, 0x23c76cb, 4 do
+        local v = r16(i + rand(-6,-1)*4)
+        if v ~= 0 then
+        w16(i, v)
+        end
+    end
+end
+```
+
+```
+23c4450の構造?
+
+tttt s000 LL HH VV **
+
+tttt: 恐らく発音している文字
+s: 恐らく各文字の発話時間?
+LL: スピード(signed2byteLE)(大きいほど長い)
+HH: 高さ(signed2byteLE)(大きいほど高い)
+VV: ボリューム(signed2byteLE)
+**: unused
+```
+
+## twitter用(8/17) お前は終わりですネタ
+
+```lua
+local l1 = "3020300A686F2D63686F2D646520302031302030203230300A"
+local l2 = "6f6d61657761"
+local s2 = "203020313020313020300A"
+local l3 = "6f7761726964657375"
+local s3 = "20302031302030203230300A"
+-- local l2 = "7361796f2d6e617261"
+-- local l2 = "616e61746177617361796f756e617261"
+local last = "2E20332035203020313030300A0000000000000000000000000000000"
+lib.warr(0x023CA630, lib.htob(l1..l2..s2..l3..last))
+```
