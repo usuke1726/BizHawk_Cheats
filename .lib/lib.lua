@@ -11,6 +11,7 @@
 local pathlib = require "path"
 local mem = require "mem"
 local util = require "util"
+local array_lib = require "array"
 local repl = require "REPL"
 local timer = require "timer"
 local irume = require "irume"
@@ -102,6 +103,7 @@ return {
     ds = _ds,
     main = main,
     util = util,
+    array = array_lib,
     mem = mem,
     timer = timer,
     irume = irume,

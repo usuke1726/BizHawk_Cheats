@@ -1,0 +1,83 @@
+
+
+---@generic T
+---@param arr T[]
+---@return T[]
+local function copy(arr) end
+
+---@generic T
+---@generic U
+---@param arr T[]
+---@param func fun(value: T, key: int, arr: T[]): U
+---@return U[]
+local function map(arr, func) end
+
+---@generic T
+---@param arr T[]
+---@param func fun(value: T, key: int, arr: T[]): bool
+---@return T[]
+local function filter(arr, func) end
+
+---`arr`をコピーし、sortしたものを返却する。
+---@generic T
+---@param arr T[]
+---@param comp? fun(a: T, b: T): bool `a`が`b`より「小さい」か否かを返却
+---@return T[]
+local function sorted(arr, comp) end
+
+---`arr`を`n`個にコピーして結合したものを返却する。
+---@generic T
+---@param arr T[]
+---@param n int
+---@return T[]
+local function rep(arr, n) end
+
+---`st`から`st+n-1`までの`n`個の順列を生成する。
+---@param n? int
+---@param st? int default: `1`
+---@return int[]
+local function seq(n, st) end
+
+---配列の配列をすべてconcatする
+---@generic T
+---@param arrs T[][]
+---@return T[]
+local function flat(arrs) end
+
+---2つの配列を結合する
+---@generic T
+---@param arr1 T[]
+---@param arr2 T[]
+---@return T[]
+local function concat(arr1, arr2) end
+
+---(破壊的変更)`arr`の`pos`位置に`added`配列を挿入する
+---@generic T
+---@param arr int[]
+---@param added int[]
+---@param pos? int
+local function insert_array(arr, added, pos) end
+
+---配列の`[st, ed)`部分を抽出する。 (添字は0始まり)
+---@generic T
+---@param arr T[]
+---@param st int
+---@param ed? int non-inclusive
+---@return T[]
+local function slice(arr, st, ed) end
+
+Array = {
+    copy = copy,
+    map = map,
+    filter = filter,
+    sorted = sorted,
+    rep = rep,
+    flat = flat,
+    concat = concat,
+    seq = seq,
+    insert_array = insert_array,
+    slice = slice,
+}
+__map = map
+__filter = filter
+__sorted = sorted

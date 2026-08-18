@@ -46,25 +46,6 @@ function stou16(val) end
 function stou32(val) end
 
 
----`arr`をコピーし、sortしたものを返却する。
----@generic T
----@param arr T[]
----@param comp? fun(a: T, b: T): bool `a`が`b`より「小さい」か否かを返却
-local function sort(arr, comp) end
-
----@generic T
----@generic U
----@param arr T[]
----@param func fun(value: T, key: int, arr: T[]): U
----@return U[]
-function __map(arr, func) end
-
----@generic T
----@param arr T[]
----@param func fun(value: T, key: int, arr: T[]): bool
----@return T[]
-function __filter(arr, func) end
-
 ---文字列で記述されたバイト列を配列に変換する。
 ---@param bytes_str string
 ---@return int[] bytes

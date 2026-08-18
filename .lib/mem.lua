@@ -872,7 +872,7 @@ local function find_all(begin, inclusiveEnd, arr, domain, silent)
         if #res == 0 then
             print("[mem.find_all] not found")
         else
-            local s = table.concat(__util.map(res, function(v) return string.format("    0x%08X", v) end), "\n")
+            local s = table.concat(Array.map(res, function(v) return string.format("    0x%08X", v) end), "\n")
             print(string.format("[mem.find] == FOUND from\n%s", s))
         end
     end

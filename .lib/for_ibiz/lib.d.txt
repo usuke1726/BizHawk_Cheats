@@ -27,6 +27,7 @@ DS = {
 lib = {
     sjis = __sjis,
     timer = __timer,
+    array = Array,
     irume = __irume,
     image = __image_lib,
     recorder = __recorder,

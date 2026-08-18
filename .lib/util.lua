@@ -47,47 +47,6 @@ local function _table_copy(table)
     return out
 end
 table_copy = _table_copy
-array_copy = _table_copy
-
-
-
----@generic T
----@generic U
----@param arr T[]
----@param func fun(value: T, key: int, arr: T[]): U
----@return U[]
-local function map(arr, func)
-    local ret = {}
-    for key, value in pairs(arr) do
-        ret[key] = func(value, key, arr)
-    end
-    return ret
-end
----@generic T
----@param arr T[]
----@param func fun(value: T, key: int, arr: T[]): bool
----@return T[]
-local function filter(arr, func)
-    local ret = {}
-    for key, value in pairs(arr) do
-        if func(value, key, arr) then
-            ret[key] = value
-        end
-    end
-    return ret
-end
----`arr`をコピーし、sortしたものを返却する。
----@generic T
----@param arr T[]
----@param comp? fun(a: T, b: T): bool `a`が`b`より「小さい」か否かを返却
-local function _sort(arr, comp)
-    local ret = table_copy(arr)
-    table.sort(ret, comp)
-    return ret
-end
-__map = map
-__filter = map
-sort = _sort
 ---負値の可能性がある1バイト値`val`を非負にする。(負の場合は1byteオーバーフロー)
 ---@param val int
 ---@return int
@@ -557,9 +516,6 @@ __util = {
     hexp = print_hexstr,
     within = _within,
     table_copy = _table_copy,
-    sort = _sort,
-    map = map,
-    filter = filter,
     stou8 = _stou8,
     stou16 = _stou16,
     stou32 = _stou32,
