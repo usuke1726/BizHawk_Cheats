@@ -1,6 +1,6 @@
 
 ---@alias VUO_calc fun(obj: ValueUpdaterObj): int?
----@alias VUO_calcEntry VUO_calc | "lerp" | "isin" | "icos" | "sq" | "sqrt" | "pingpong" | "rpingpong"
+---@alias VUO_calcEntry VUO_calc | "lerp" | "isin" | "icos" | "sq" | "sqrt" | "pingpong" | "rpingpong" | "parabola" | "rparabola"
 
 ---@class ValueUpdaterObj
 ---@field i int
@@ -65,31 +65,72 @@ function ValueUpdaterObj:minmax(min, max) end
 ---@return integer? max
 function ValueUpdaterObj:get_minmax() end
 
+---@return number
+function ValueUpdaterObj:x() end
+---`[0, 1)`の浮動小数点数として取得する
+---@return number
+function ValueUpdaterObj:x_orig() end
+---`x`の向きを逆(0→1ではなく1→0)にする。
+---@return number
+function ValueUpdaterObj:x_reverse()
+    return (self.n - 1 - self.i) / self.n
+end
+---0→1→0という風に線形で折り返す。
+---@return number
+function ValueUpdaterObj:x_pingpong()
+    return 1 - math.abs(2*self:x_orig() - 1)
+end
+---1→0→1という風に線形で折り返す。
+---@return number
+function ValueUpdaterObj:x_reversePingpong()
+    return math.abs(2*self:x_orig() - 1)
+end
+---`x`から放物線関数を計算する。(`1-(2x-1)^2`)
+---@return number
+function ValueUpdaterObj:x_parabola()
+    local x = self:x_orig() * 2 - 1
+    return 1 - x * x
+end
+---`x`から上下逆の放物線関数を計算する。(`(2x-1)^2`)
+---@return number
+function ValueUpdaterObj:x_reverseParabola()
+    local x = self:x_orig() * 2 - 1
+    return x * x
+end
+
 ---@param x_func fun(obj: ValueUpdaterObj): number
 ---@return ValueUpdaterObj
-function ValueUpdaterObj:x_with(x_func) end
+function ValueUpdaterObj:with_x(x_func) end
 
 ---`x`の向きを逆(0→1ではなく1→0)にする。
 ---@return ValueUpdaterObj
-function ValueUpdaterObj:x_reverse() end
+function ValueUpdaterObj:with_x_reverse() end
 ---`x`を0→1→0という風に線形で折り返す。
 ---@return ValueUpdaterObj
-function ValueUpdaterObj:x_pingpong() end
+function ValueUpdaterObj:with_x_pingpong() end
 ---`x`を1→0→1という風に線形で折り返す。
 ---@return ValueUpdaterObj
-function ValueUpdaterObj:x_reversePingpong() end
+function ValueUpdaterObj:with_x_reversePingpong() end
 ---`x`に放物線関数を用いる。(`1-(2x-1)^2`)
 ---@return ValueUpdaterObj
-function ValueUpdaterObj:x_parabola() end
+function ValueUpdaterObj:with_x_parabola() end
 ---`x`に上下逆の放物線関数を用いる。(`(2x-1)^2`)
 ---@return ValueUpdaterObj
-function ValueUpdaterObj:x_reverseParabola() end
+function ValueUpdaterObj:with_x_reverseParabola() end
 
 --- ease関数を指定する。
 --- (https://easings.net/ja を参考。)
 ---@param type "sin" | "quad" | "cubic" | "back"
 ---@param inout? "in" | "out" | "inout" default: `"inout"`
 ---@return ValueUpdaterObj
+function ValueUpdaterObj:with_x_ease(type, inout) end
+--- ease関数で`x`値を計算する。
+--- (https://easings.net/ja を参考。)
+--- 
+--- (常にease関数を使う場合は `with_x_ease` を使うこと。 )
+---@param type "sin" | "quad" | "cubic" | "back"
+---@param inout? "in" | "out" | "inout" default: `"inout"`
+---@return number
 function ValueUpdaterObj:x_ease(type, inout) end
 
 ---引数有の場合、`[-scale, scale]`の範囲を、無しの場合は`[min, max]`の範囲をとる。
@@ -100,8 +141,6 @@ function ValueUpdaterObj:isin(scale) end
 ---@param scale number?
 ---@return int
 function ValueUpdaterObj:icos(scale) end
----@return number
-function ValueUpdaterObj:x() end
 ---@param x? number `nil`なら`self:x()`を用いる
 ---@return int
 function ValueUpdaterObj:lerp(x) end

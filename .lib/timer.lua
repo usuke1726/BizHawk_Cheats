@@ -2,7 +2,7 @@
 ---@alias Callback fun(obj: TimerObj)
 ---@alias VUO_xfun fun(obj: ValueUpdaterObj): number
 ---@alias VUO_calc fun(obj: ValueUpdaterObj): int?
----@alias VUO_calcEntry VUO_calc | "lerp" | "isin" | "icos" | "sq" | "sqrt" | "pingpong" | "rpingpong"
+---@alias VUO_calcEntry VUO_calc | "lerp" | "isin" | "icos" | "sq" | "sqrt" | "pingpong" | "rpingpong" | "parabola" | "rparabola"
 
 ---@type table<string, VUO_calc>
 local VUOCalcEntryFunctions = {
@@ -21,21 +21,21 @@ local VUOCalcEntryFunctions = {
     ["sqrt"] = function(obj)
         return obj:lerp(obj:sqrt())
     end,
+    ["pingpong"] = function(obj)
+        return obj:lerp(obj:x_pingpong())
+    end,
+    ["rpingpong"] = function(obj)
+        return obj:lerp(obj:x_reversePingpong())
+    end,
+    ["parabola"] = function(obj)
+        return obj:lerp(obj:x_parabola())
+    end,
+    ["rparabola"] = function(obj)
+        return obj:lerp(obj:x_reverseParabola())
+    end,
 }
 ---@type table<string, fun(_obj: ValueUpdaterObj): VUO_calc>
 local VUOCalcEntryFunctions_withSetup = {
-    ["pingpong"] = function(_obj)
-        _obj:x_pingpong()
-        return function(obj)
-            return obj:lerp()
-        end
-    end,
-    ["rpingpong"] = function(_obj)
-        _obj:x_reversePingpong()
-        return function(obj)
-            return obj:lerp()
-        end
-    end,
 }
 ---@param entry string
 ---@param obj ValueUpdaterObj
@@ -210,55 +210,69 @@ end
 function ValueUpdaterObj:x()
     return self._x_func(self)
 end
----@package
+---`[0, 1)`の浮動小数点数として取得する
 ---@return number
 function ValueUpdaterObj:x_orig()
     return self.i / self.n
 end
+---`x`の向きを逆(0→1ではなく1→0)にする。
+---@return number
+function ValueUpdaterObj:x_reverse()
+    return (self.n - 1 - self.i) / self.n
+end
+---0→1→0という風に線形で折り返す。
+---@return number
+function ValueUpdaterObj:x_pingpong()
+    return 1 - math.abs(2*self:x_orig() - 1)
+end
+---1→0→1という風に線形で折り返す。
+---@return number
+function ValueUpdaterObj:x_reversePingpong()
+    return math.abs(2*self:x_orig() - 1)
+end
+---`x`から放物線関数を計算する。(`1-(2x-1)^2`)
+---@return number
+function ValueUpdaterObj:x_parabola()
+    local x = self:x_orig() * 2 - 1
+    return 1 - x * x
+end
+---`x`から上下逆の放物線関数を計算する。(`(2x-1)^2`)
+---@return number
+function ValueUpdaterObj:x_reverseParabola()
+    local x = self:x_orig() * 2 - 1
+    return x * x
+end
+
 ---@param x_func VUO_xfun
 ---@return ValueUpdaterObj
-function ValueUpdaterObj:x_with(x_func)
+function ValueUpdaterObj:with_x(x_func)
     self._x_func = assert(x_func, "nil ValueUpdaterObj.x_func given")
     return self
 end
 ---`x`の向きを逆(0→1ではなく1→0)にする。
 ---@return ValueUpdaterObj
-function ValueUpdaterObj:x_reverse()
-    return self:x_with(function(obj)
-        return (obj.n - 1 - obj.i) / obj.n
-    end)
+function ValueUpdaterObj:with_x_reverse()
+    return self:with_x(ValueUpdaterObj.x_reverse)
 end
 ---`x`を0→1→0という風に線形で折り返す。
 ---@return ValueUpdaterObj
-function ValueUpdaterObj:x_pingpong()
-    return self:x_with(function(obj)
-        local x = obj:x_orig()
-        return 1 - math.abs(2*x - 1)
-    end)
+function ValueUpdaterObj:with_x_pingpong()
+    return self:with_x(ValueUpdaterObj.x_pingpong)
 end
 ---`x`を1→0→1という風に線形で折り返す。
 ---@return ValueUpdaterObj
-function ValueUpdaterObj:x_reversePingpong()
-    return self:x_with(function(obj)
-        local x = obj:x_orig()
-        return math.abs(2*x - 1)
-    end)
+function ValueUpdaterObj:with_x_reversePingpong()
+    return self:with_x(ValueUpdaterObj.x_reversePingpong)
 end
 ---`x`に放物線関数を用いる。(`1-(2x-1)^2`)
 ---@return ValueUpdaterObj
-function ValueUpdaterObj:x_parabola()
-    return self:x_with(function(obj)
-        local x = obj:x_orig() * 2 - 1
-        return 1 - x * x
-    end)
+function ValueUpdaterObj:with_x_parabola()
+    return self:with_x(ValueUpdaterObj.x_parabola)
 end
 ---`x`に上下逆の放物線関数を用いる。(`(2x-1)^2`)
 ---@return ValueUpdaterObj
-function ValueUpdaterObj:x_reverseParabola()
-    return self:x_with(function(obj)
-        local x = obj:x_orig() * 2 - 1
-        return x * x
-    end)
+function ValueUpdaterObj:with_x_reverseParabola()
+    return self:with_x(ValueUpdaterObj.x_reverseParabola)
 end
 
 local easing_back_c1 <const> = 1.70158
@@ -343,9 +357,20 @@ local easing_functions = {
 ---@param type "sin" | "quad" | "cubic" | "back"
 ---@param inout? "in" | "out" | "inout" default: `"inout"`
 ---@return ValueUpdaterObj
+function ValueUpdaterObj:with_x_ease(type, inout)
+    inout = inout or "inout"
+    return self:with_x(easing_functions[type][inout])
+end
+--- ease関数で`x`値を計算する。
+--- (https://easings.net/ja を参考。)
+--- 
+--- (常にease関数を使う場合は `with_x_ease` を使うこと。 )
+---@param type "sin" | "quad" | "cubic" | "back"
+---@param inout? "in" | "out" | "inout" default: `"inout"`
+---@return number
 function ValueUpdaterObj:x_ease(type, inout)
     inout = inout or "inout"
-    return self:x_with(easing_functions[type][inout])
+    return assert(easing_functions[type][inout])(self)
 end
 
 ---@param x? number `nil`なら`self:x()`を用いる
