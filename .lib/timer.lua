@@ -74,6 +74,7 @@ local OF_Behavior_clamp <const> = 1
 ---@field n int
 ---@field v int
 ---@field active bool
+---@field protected _step int
 ---@field protected min int?
 ---@field protected max int?
 ---@field protected _dmin int ダミーの`min`
@@ -95,7 +96,7 @@ function ValueUpdaterObj:next(use_nil)
     local def = (not use_nil) and self._v or nil
     if not self.active then return def, nil end
     assert(self._calc, "calc プロパティが指定されていません")
-    self.i = (self.i + 1) % self.n
+    self.i = (self.i + self._step) % self.n
     local v = self._calc(self)
     if not v then return def, nil end
     local status = nil
@@ -132,6 +133,13 @@ end
 function ValueUpdaterObj:init(v)
     self._v = v
     self.v = v
+    return self
+end
+---指定した値を `step` に格納する。
+---@param v int
+---@return ValueUpdaterObj
+function ValueUpdaterObj:step(v)
+    self._step = v
     return self
 end
 ---@return bool
@@ -424,6 +432,7 @@ local function _ValueUpdater(n, min, max, calc)
         min = nil,
         max = nil,
         v = 0,
+        _step = 1,
         _v = nil,
         _x_func = function(obj)
             return obj.i / obj.n

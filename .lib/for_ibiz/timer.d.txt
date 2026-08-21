@@ -34,6 +34,10 @@ function ValueUpdaterObj:overflow_behavior(behavior) end
 ---@param v int
 ---@return ValueUpdaterObj
 function ValueUpdaterObj:init(v) end
+---指定した値を `step` に格納する。
+---@param v int
+---@return ValueUpdaterObj
+function ValueUpdaterObj:step(v) end
 ---@return bool
 function ValueUpdaterObj:v_not_ready() end
 
