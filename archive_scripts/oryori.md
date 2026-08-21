@@ -1708,6 +1708,14 @@ VV: ボリューム(signed2byteLE)
 **: unused
 ```
 
+```
+23CA5E8あたりの構造
+soredewa 3 15 10 200
+|-- c --| v1 v2 v3 v4
+v3: 声の高さ(大体91が最大?)
+v4: c発話直後の待機時間(大体ミリ秒くらい？)
+```
+
 ## twitter用(8/17) お前は終わりですネタ
 
 ```lua
@@ -1720,4 +1728,155 @@ local s3 = "20302031302030203230300A"
 -- local l2 = "616e61746177617361796f756e617261"
 local last = "2E20332035203020313030300A0000000000000000000000000000000"
 lib.warr(0x023CA630, lib.htob(l1..l2..s2..l3..last))
+```
+
+## テキストの特殊記法メモ
+
+```
+きります -> kirimasU
+ほうちょうを -> ho-cho-o
+よっつ -> yoQtsu
+しんを -> shiNo
+切って -> kiQte
+```
+
+## テキスト改変ライブラリ
+
+```lua
+---@class VT_Unit
+---@field t string
+---@field v1 int
+---@field v2 int
+---@field v3 int
+---@field v4 int
+
+---@return VT_Unit[]
+local function get_vt()
+    local head = 0x023CA5E6
+    local i = head
+    ---@type VT_Unit[]
+    local ret = {}
+    local mode = 0
+    local function update_v(current, v)
+        if not within(v, 0x30, 0x39) then
+            error(string.format("invalid v value (not number character): %02X (at %08X)", v, i))
+        end
+        return current * 10 + (v - 0x30)
+    end
+    local function VT_init()
+        return {t = "", v1 = 0, v2 = 0, v3 = 0, v4 = 0}
+    end
+    ---@type VT_Unit
+    local tmp = VT_init()
+    while true do
+        local v = r8(i)
+        if v == 0 then return ret end
+        if v == 0x20 then
+            mode = mode + 1
+            assert(mode <= 4, "mode out of bound (must be <= 4)")
+        elseif v == 0x0a then
+            ret[#ret+1] = tmp
+            tmp = VT_init()
+            mode = 0
+        elseif mode == 0 then
+            tmp.t = tmp.t .. string.char(v)
+        elseif mode == 1 then
+            tmp.v1 = update_v(tmp.v1, v)
+        elseif mode == 2 then
+            tmp.v2 = update_v(tmp.v2, v)
+        elseif mode == 3 then
+            tmp.v3 = update_v(tmp.v3, v)
+        elseif mode == 4 then
+            tmp.v4 = update_v(tmp.v4, v)
+        end
+        i = i + 1
+    end
+end
+
+---@param data VT_Unit[]
+local function set_vt(data)
+    local bytes = {}
+    for i, v in pairs(data) do
+        local _i = tostring(i)
+        assert(v.v1 >= 0, _i .. ": v1 is negative")
+        assert(v.v2 >= 0, _i .. ": v2 is negative")
+        assert(v.v3 >= 0, _i .. ": v3 is negative")
+        assert(v.v4 >= 0, _i .. ": v4 is negative")
+        local t = string.format("%s %d %d %d %d\n", v.t, v.v1, v.v2, v.v3, v.v4)
+        local b = { string.byte(t, 1, -1) }
+        for _, v in pairs(b) do
+            table.insert(bytes, v)
+        end
+    end
+    local head = 0x023CA5E6
+    local n = #bytes
+    lib.warr(head, bytes)
+    local i = head + n
+    while true do
+        if r8(i) == 0 then return end
+        w8(i, 0)
+        i = i + 1
+    end
+end
+
+---@param data VT_Unit[]
+local function print_vt(data)
+    for i, v in pairs(data) do
+        local t = string.format("[%02d] \"%s\" (%d %d %d %d)", i, v.t, v.v1, v.v2, v.v3, v.v4)
+        print(t)
+    end
+end
+
+---@param data [string, int, int, int, int][]
+---@return VT_Unit[]
+local function vt(data)
+    local ret = {}
+    for _, v in pairs(data) do
+        ret[#ret+1] = {
+            t = v[1],
+            v1 = v[2],
+            v2 = v[3],
+            v3 = v[4],
+            v4 = v[5],
+        }
+    end
+    return ret
+end
+
+---@generic T
+---@param arr T[]
+---@param n int
+---@return T[]
+local function array_loop(arr, n)
+    local ret = {}
+    for i = 1, n do
+        for _, v in pairs(arr) do
+            table.insert(ret, v)
+        end
+    end
+    return ret
+end
+```
+
+## テキスト改変テスト処理
+
+```lua
+local ryori = require "misc/ryori"
+
+-- print_vt(get_vt())
+ryori.set_vt(ryori.vt(
+Array.flat(
+    Array.map(Array.seq(60), function()
+        return {
+            {"oishi-umeshu", 0, rand(0, 5)*10, 0, 0},
+            -- {"dashijiru", 0, rand(0, 5)*10, 0, 0},
+        }
+    end)
+)
+    
+    -- array_loop({
+    -- {"nijiru", 0, 30, 0, 0},
+    -- {"dashijiru", 0, 40, 0, 0},
+    -- }, 8)
+))
 ```
