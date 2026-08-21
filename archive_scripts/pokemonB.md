@@ -4509,3 +4509,534 @@ lib.warr(0x0225B1B8, lib.htob(l1))
 lib.warr(0x0225B1D4, lib.htob(l2))
 lib.warr(0x0225B1E6, lib.htob(l3))
 ```
+
+## ゲーチス戦BGM変更
+
+アドレス `0x021DB5FC`
+
+## ゲーチス顔いじりテスト用
+
+```lua
+
+CLS()
+local addr = 0xAF4C210
+local d = lib.image.lz77.decompress(addr)
+local len = 8256
+assert(#d == len)
+
+-- 1    2    3    4    6    8    12
+-- 8256 4128 2752 2064 1376 1032 688
+-- 
+-- 16   24   32   43   48   64   86
+-- 516  344  258  192  172  129  96
+
+local W = 64
+assert(len % W == 0)
+local H = len // W
+
+local function pos(x, y)
+    -- return lib.pos.Raster(x, y, W) + 1
+    -- return lib.pos.Morton(x, y, 8, 0x20, W * 0x20 // 8) + 1
+    return lib.pos.Morton(x, y, 4, 0x20, W * 0x20 // 4) + 9
+end
+
+local d2 = {}
+
+local img = lib.image.filterObj()
+:width(W):height(H)
+:go(function(x, y)
+    local a = pos(x, y)
+    -- if within(x, 40, 42) and within(y, 10, 12) then
+    -- if within(y, 10, 16) then
+    --     d2[a] = 0x11
+    -- end
+    if within(y, 10, 50) then
+        local _x = x
+        _x = clamp((_x - 30) * 2 + 30, 0, W-1)
+        local _a = pos(_x, y)
+        d2[a] = d[_a]
+    end
+
+
+    -- if within(y, 10, 38) then
+    --     -- d2[a] = 0
+    --     local _x = x
+    --     _x = clamp((_x - 30) * 2 + 30, 0, W-1)
+    --     -- _x = (_x - 30) // 2 + 31
+    --     -- local _a = pos(x, (y-10)//2 + 10)
+    --     local _a = pos(_x, y)
+    --     -- local _a = pos(x, (y-10)//2 + 31)
+    --     d2[a] = d[_a]
+    -- elseif within(y, 30, 50) then
+    --     local _x = x
+    --     _x = clamp((_x - 30) * 2 + 30, 0, W-1)
+    --     -- _x = (_x - 30) // 2 + 31
+    --     local _y = y
+    --     local _a = pos(_x, _y)
+    --     d2[a] = d[_a]
+    -- end
+    -- local _a = pos(x, y//2)
+    -- d2[a] = d[_a]
+end)
+-- 8, 0x20
+-- 0x311(785) -- 0x330(816) bound: 32
+-- for i = 0x311, 0x330 do
+--     d2[i] = 0x11
+-- end
+
+for i = 1, len do
+    d2[i] = d2[i] or d[i]
+end
+lib.warr(addr, lib.image.lz77.compress(d2), ROM_DOMAIN_NAME)
+```
+
+## video17 ゲーチスにしきがお その1 ホゲー
+
+```lua
+CLS()
+local addr = 0xAF4C210
+local d = lib.image.lz77.decompress(addr)
+local len = 8256
+assert(#d == len)
+
+local W = 64
+assert(len % W == 0)
+local H = len // W
+
+local function pos(x, y)
+    return lib.pos.Morton(x, y, 4, 0x20, W * 0x20 // 4) + 9
+end
+
+local d2 = {}
+
+local img = lib.image.filterObj()
+:width(W):height(H)
+:go(function(x, y)
+    local a = pos(x, y)
+    if within(y, 10, 40) then
+        local _a = pos(x, (y-10)//2 + 31)
+        d2[a] = d[_a]
+    end
+end)
+for i = 1, len do
+    d2[i] = d2[i] or d[i]
+end
+lib.warr(addr, lib.image.lz77.compress(d2), ROM_DOMAIN_NAME)
+
+local update_gechis_name = (function()
+    local done = false
+    local hogee = "db30b230fc30FFFF"
+    -- 0x0226EED0: ゲーチスの名前
+    local m = lib.at(0x0226EED0)
+    return function()
+        if done then return end
+        if m:r32() == 0x30FC30B2 then
+            print("GECHIS NAME CHANGED")
+            m:warr(lib.htob(hogee))
+            done = true
+        end
+    end
+end)()
+
+local update_timers = (function()
+    local a1 = 0x023553F4 -- 黒背景&ゲーチスのanimation time
+    local a2 = 0x02355478 -- 電撃のanimation time
+    local a3 = 0x023554E8 -- hata to name no animation time & 画面遷移もこれでブロックできる
+    local a4 = 0x023556E8 -- 中心の青帯のanimation time & 画面遷移ブロック
+    local r = RC(30)
+    -- 551D -> 00で旗が黒くなる
+    local function _w(a, min)
+        w32(a, math.min(r32(a), min))
+    end
+    local c = Cnt(6)
+    return function()
+        w8(0x02355480, 0) -- 電撃を消す
+        if c() then
+        _w(a1, 0x45000)
+        end
+        w32(a2, 16 * 0x4000)
+        _w(a3, 0x45000)
+        _w(a4, 0x45000)
+        w32(0x023531A4, 0x70000)
+    end
+end)()
+
+function loop()
+    update_gechis_name()
+    update_timers()
+end
+
+-- ========================================
+-- ↓ゲーチスのBGMが再生された直後に送信する
+-- ========================================
+
+lib.irume.start(function()
+    local head = 0x03eba730
+    local as = {}
+    local prevs = {}
+    for i = 0, 19 do
+        as[i] = head + 0x40*i
+        prevs[i] = 0
+    end
+    local __p = 24
+    local ps = {
+        __p, __p, __p, __p, __p, __p, __p, __p,
+        __p, __p, __p, __p, __p, __p, __p, __p,
+        __p, __p, __p, __p, __p, __p, __p, __p,
+    }
+    local chis = {}
+    local chis2 = {}
+    for i, addr in pairs(as) do chis[i] = false chis2[i] = rand(0, 1) == 1 end
+    local r = RC(60)
+    local r2 = RC(60)
+    return function()
+        for i, a in pairs(as) do
+            if r() then
+                add8(a + 0x2c, rand(-8, 0), 1)
+            end
+            if r() then
+                w8(a + 0x23, rand(0, 5))
+            end
+            if r() then
+                chis[i] = not chis[i]
+                chis2[i] = rand(0, 1) == 1
+            end
+            if r2() then
+                w8(a + 0x1f, stou8(ps[i+1] + rand(-12, 12)))
+            end
+            w32(a + 0x0c, chis[i] and 0x00647FC1 or 0x00667FC1)
+            w16(a + 0x17, 0x0060)
+        end
+    end
+end)
+```
+
+## video17 ゲーチスにしきがお その2 細長顔
+
+```lua
+CLS()
+local addr = 0xAF4C210
+local d = lib.image.lz77.decompress(addr)
+local len = 8256
+assert(#d == len)
+
+local W = 64
+assert(len % W == 0)
+local H = len // W
+
+local function pos(x, y)
+    return lib.pos.Morton(x, y, 4, 0x20, W * 0x20 // 4) + 9
+end
+
+local d2 = {}
+
+local img = lib.image.filterObj()
+:width(W):height(H)
+:go(function(x, y)
+    local a = pos(x, y)
+    if within(y, 3, 14) then
+        d2[a] = 0
+        return
+    end
+    if within(y,0,2) and x >= 8 then
+        d2[a] = 0
+        return
+    end
+    if y == 15 then
+        d2[a] = 0
+        return
+    end
+    if y == 18 and within(x, 20, 30) then
+        d2[a] = 0
+        return
+    end
+    if y == 19 and within(x, 20, 29) then
+        d2[a] = 0
+        return
+    end
+    if within(y, 40, 62) and x < 30 then
+        if x < 8 then
+            d2[a] = 0
+            return
+        end
+        local _x = x - 8
+        _x = clamp(28-_x*2, 0, W-1)
+        local v = d[pos(_x, y)]
+        d2[a] = ((v&0xf) << 4)|((v&0xf0) >> 4)
+        return
+    end
+    if within(y, 3, 50) then
+        local _x = x
+        _x = clamp((_x - 30) * 2 + 30, 0, W-1)
+        local _a = pos(_x, y)
+        d2[a] = d[_a]
+        return
+    end
+end)
+
+for i = 1, len do
+    d2[i] = d2[i] or d[i]
+end
+lib.warr(addr, lib.image.lz77.compress(d2), ROM_DOMAIN_NAME)
+
+local gechis_start = false
+local update_gechis_name = (function()
+    local started = false
+    local timeout = 0
+    local timeout2 = 0
+    local t1 = "4230633000304851298f0030c130a330fc30c330b930" -- チィーッス
+    local t2 = "4230633000304851298f0030c130fc30fc30c330b930" -- チーーッス
+    local hogee = t1
+    -- 0x0226EED0: ゲーチスの名前
+    local m = lib.at(0x0226EED0)
+    return function()
+        if timeout < 0 then return end
+        if (not started) and m:r32() == 0x30FC30B2 then
+            print("GECHIS NAME CHANGED")
+            timeout = 3
+            timeout2 = 2
+            started = true
+        end
+        if timeout > 0 then
+            timeout2 = timeout2 - 1
+            w32(0x02353154, -0x1b000)
+            if timeout2 <= 0 then
+            m:warr(lib.htob(hogee .. "FFFF"))
+            end
+            timeout = timeout - 1
+            if timeout == 0 then
+                lib.warr(0x0226EEE4, lib.htob("44550000780000009CEE26026CEF260250004E196172635F7574696C"))
+                timeout = -1
+                gechis_start = true
+            end
+        end
+    end
+end)()
+w8(0x021DB5FC, 0x63) -- ゲーチス戦BGMをバックパッカーBGMに変更
+
+local update_timers = (function()
+    local a1 = 0x023553F4 -- 黒背景&ゲーチスのanimation time
+    local a2 = 0x02355478 -- 電撃のanimation time
+    local a3 = 0x023554E8 -- hata to name no animation time & 画面遷移もこれでブロックできる
+    local a4 = 0x023556E8 -- 中心の青帯のanimation time & 画面遷移ブロック
+    local r = RC(30)
+    local c = Cnt(1)
+    -- 551D -> 00で旗が黒くなる
+    return function()
+        w8(0x02355480, 0) -- 電撃を消す
+        c()
+        if r() or c.fired then
+            w32(a1, 17 * 0x4000)
+        end
+        if r() or c.fired then
+            w32(a2, 16 * 0x4000)
+        end
+        if r() or c.fired then
+            w32(a3, 18 * 0x4000)
+        end
+        if r() or c.fired then
+            w32(a4, 0 * 0x4000)
+        end
+    end
+end)()
+-- テキストゆがみ: 2348E4Aあたり
+-- 旗のゆがみ: 2348ED4から
+local update_gechis_pos = (function()
+    local y = ValueUpdater(30, -0x1000, 0, "icos")
+    :w32(0x0235316C)
+    return function()
+        if not gechis_start then return end
+        y()
+    end
+end)()
+
+local update_flag_pos = (function()
+    local vdef = 0xffffce02 - 0x100000000
+    local d = 0x10000
+    local vy = ValueUpdater(106, vdef-d, vdef+d, "parabola")
+    :step(4)
+    :w32(0x023531A8)
+    vy.i = 40
+    return function()
+        if not gechis_start then return end
+        vy()
+    end
+end)()
+
+local update_text_bind = (function()
+    local v = ValueUpdater(1, 0xd8, 0xe8)
+    :init(0xe0)
+    :calc(VUO.addrand(-2, 2))
+    :w8(0x02348e4d)
+    local rl = RL(180)
+    return function()
+        if not gechis_start then return end
+        if rl() then v() end
+    end
+end)()
+
+function loop()
+    update_gechis_name()
+    update_timers()
+    update_flag_pos()
+    update_gechis_pos()
+    update_text_bind()
+end
+```
+
+
+---
+
+<details>
+<summary>old version1</summary>
+<div>
+
+```lua
+CLS()
+local addr = 0xAF4C210
+local d = lib.image.lz77.decompress(addr)
+local len = 8256
+assert(#d == len)
+
+local W = 64
+assert(len % W == 0)
+local H = len // W
+
+local function pos(x, y)
+    return lib.pos.Morton(x, y, 4, 0x20, W * 0x20 // 4) + 9
+end
+
+local d2 = {}
+
+local img = lib.image.filterObj()
+:width(W):height(H)
+:go(function(x, y)
+    local a = pos(x, y)
+    if within(y, 3, 50) then
+        local _x = x
+        _x = clamp((_x - 30) * 2 + 30, 0, W-1)
+        local _a = pos(_x, y)
+        d2[a] = d[_a]
+    end
+end)
+
+for i = 1, len do
+    d2[i] = d2[i] or d[i]
+end
+lib.warr(addr, lib.image.lz77.compress(d2), ROM_DOMAIN_NAME)
+```
+
+</div>
+</details>
+
+<details>
+<summary>old version2</summary>
+<div>
+
+```lua
+CLS()
+local addr = 0xAF4C210
+local d = lib.image.lz77.decompress(addr)
+local len = 8256
+assert(#d == len)
+
+local W = 64
+assert(len % W == 0)
+local H = len // W
+
+local function pos(x, y)
+    return lib.pos.Morton(x, y, 4, 0x20, W * 0x20 // 4) + 9
+end
+
+local d2 = {}
+
+local img = lib.image.filterObj()
+:width(W):height(H)
+:go(function(x, y)
+    local a = pos(x, y)
+    if within(y, 3, 14) then
+        d2[a] = 0
+        return
+    end
+    if within(y,0,1) and within(x, W-32, W-1) then
+        d2[a] = 0
+        return
+    end
+    if y == 15 then
+        d2[a] = 0
+        return
+    end
+    if y == 18 and within(x, 20, 30) then
+        d2[a] = 0
+        return
+    end
+    if y == 19 and within(x, 20, 29) then
+        d2[a] = 0
+        return
+    end
+    if within(y, 40, 62) and x < 30 then
+        -- if x < 21 then
+        if x < 14 then
+            d2[a] = 0
+            return
+        end
+        local _x = x
+        -- _x = clamp((_x - 35) * 2 + 35, 0, W-1)
+        _x = clamp((50 - _x) * 2 - 40, 0, W-1)
+        local _a = pos(_x, y)
+        d2[a] = d[_a]
+        return
+    end
+    if within(y, 3, 50) then
+        local _x = x
+        _x = clamp((_x - 30) * 2 + 30, 0, W-1)
+        local _a = pos(_x, y)
+        d2[a] = d[_a]
+        return
+    end
+end)
+
+for i = 1, len do
+    d2[i] = d2[i] or d[i]
+end
+lib.warr(addr, lib.image.lz77.compress(d2), ROM_DOMAIN_NAME)
+
+local update_gechis_name = (function()
+    local started = false
+    local timeout = 0
+    local timeout2 = 0
+    local t1 = "4230633000304851298f0030c130a330fc30c330b930" -- チィーッス
+    local t2 = "4230633000304851298f0030c130fc30fc30c330b930" -- チーーッス
+    local hogee = t1
+    -- 0x0226EED0: ゲーチスの名前
+    local m = lib.at(0x0226EED0)
+    return function()
+        if timeout < 0 then return end
+        if (not started) and m:r32() == 0x30FC30B2 then
+            print("GECHIS NAME CHANGED")
+            timeout = 3
+            timeout2 = 2
+            started = true
+        end
+        if timeout > 0 then
+            timeout2 = timeout2 - 1
+            w32(0x02353154, -0x1b000)
+            if timeout2 <= 0 then
+            m:warr(lib.htob(hogee .. "FFFF"))
+            end
+            timeout = timeout - 1
+            if timeout == 0 then
+                lib.warr(0x0226EEE4, lib.htob("44550000780000009CEE26026CEF260250004E196172635F7574696C"))
+                timeout = -1
+            end
+        end
+    end
+end)()
+
+function loop()
+    update_gechis_name()
+end
+```
+
+</div>
+</details>
