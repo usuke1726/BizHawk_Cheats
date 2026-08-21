@@ -2206,6 +2206,121 @@ x軸回転: 0x026C4870 (2byte)
 アニメーション時間: 26CA984
 ```
 
+### ポリゴンをいじるテスト
+
+```lua
+-- ゼクロムのポリゴンをいじる その1
+
+local begin = 0x02AA6000
+local inclusiveEnd = 0x02AB5FFF
+--8900
+
+local vs = {
+0x2322,
+0x2223,
+-- 0x2320,
+0x2225,
+0x2822,
+0x1B14,
+0x2022,
+0x0222,
+0x2820,
+0x2822,
+0x2823,
+0x2240,
+0x4041,
+0x2728,
+}
+local function found(v)
+    local function ok(_v)
+        for _, __v in pairs(vs) do
+            if __v == _v then return true end
+        end
+        return false
+        -- return _v == 0x2322 or _v == 0x2822
+        -- return _v == 0x2322 or _v == 0x1B14
+    end
+    local v1 = v & 0xffff
+    local v2 = (v >> 16) & 0xffff
+    return ok(v1) and ok(v2)
+end
+
+local _i = 0
+function loop()
+    _i = (_i + 1) % 60
+    -- local d = math.round(math.sin((_i < 30 and 1 or -1) * _i * 2 * math.pi / 30) * 0x300)
+    local d = math.round(math.cos(_i * 2 * math.pi / 30) * 0x300)
+    -- local d = rand(-0x1, 0x1) * 0x300
+    local i = begin
+    while i <= inclusiveEnd do
+        if found(r32(i)) then
+            for j = 1, 3 do
+                i = i + 4
+                if j == 3 then
+                add32(i, d)
+                end
+            end
+        end
+        i = i + 4
+    end
+end
+
+--[[
+2AA717E: 霧のエフェクト
+7200: 後ろの青い光?
+7270: 煙?
+
+2AA7A50あたりで連番になっているデータをいじるとかたまりごとにずれてくれるが、4byteでないし、フリーズする箇所もある
+=>
+66 ** の後は4byte
+26 ** の後は3byte
+
+
+7DCCあたり、テクスチャっぽい
+
+26C459C: ゼクロムX座標(4byte signed LE)
+26C45A8: ゼクロムZ座標(4byte signed LE)
+26C45B4: ゼクロム上半身Y座標(4byte signed LE)
+]]
+
+-- ゼクロムのポリゴンをいじる その2
+local function main()
+    local begin = 0x02AA79D0
+    local inclusiveEnd = 0x02AA7A8F
+    local i = begin
+    local cnt = 0
+    local d = rand(-1, 1) * 5
+    while i <= inclusiveEnd do
+        local v1 = r8(i)
+        i = i + 1
+        if v1 == 0x26 or v1 == 0x66 then
+            local v2 = r8(i)
+            i = i + 1
+            if v2 == cnt then
+                if v1 == 0x26 then
+                    for j = 1, 3 do
+                        add8(i, d)
+                        i = i + 1
+                    end
+                    cnt = cnt + 1
+                elseif v1 == 0x66 then
+                    for j = 1, 4 do
+                        add8(i, d)
+                        i = i + 1
+                    end
+                    cnt = cnt + 1
+                end
+            end
+        end
+    end
+end
+function loop()
+    main()
+end
+
+```
+
+
 ## video11 ゼクロムを楽しそうにダンスさせる
 
 ```lua
