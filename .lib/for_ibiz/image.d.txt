@@ -39,7 +39,25 @@ function ImageFilterObj:go(filter_func) end
 ---@return ImageFilterObj
 local function filterObj() end
 
+---@class LZ77Lib
+---@field silent bool
+local lz77 = {
+    silent = false
+}
+---@param addr int
+---@param is_ram? bool
+---@return int[] bytes
+local function lz77_decompress(addr, is_ram) end
+
+---@param bytes int[]
+---@return int[]
+local function lz77_compress(bytes) end
+
+lz77.decompress = lz77_decompress
+lz77.compress = lz77_compress
+
 ---@class ImageLib
 local __image_lib = {
     filterObj = filterObj,
+    lz77 = lz77,
 }

@@ -101,6 +101,153 @@ local function filterObj()
     })
 end
 
+---@class LZ77Lib
+---@field silent bool
+local lz77 = {
+    silent = false
+}
+
+---@param addr int
+---@param is_ram? bool
+---@return int[] bytes
+local function lz77_decompress(addr, is_ram)
+    local function _r32(m)
+        local v1 = m:r8() m:step()
+        local v2 = m:r8() m:step()
+        local v3 = m:r8() m:step()
+        local v4 = m:r8() m:step()
+        return (v1) | (v2 << 8) | (v3 << 16) | (v4 << 24)
+    end
+    local function _r16(m)
+        local v1 = m:r8() m:step()
+        local v2 = m:r8() m:step()
+        return (v1) | (v2 << 8)
+    end
+    local m = is_ram and lib.at(addr) or lib.romat(addr)
+    local header = _r32(m)
+    if (header & 0xff) ~= 0x10 then
+        error(string.format("WRONG ADDRESS (0x%08X):\n    compressed data must start with the byte 0x10", addr))
+    end
+    local length = header >> 8
+    local buffer = {}
+    local bytes_written = 0
+    local read_length = 4
+    while bytes_written < length do
+        local flags = m:r8() m:step(1)
+        read_length = read_length + 1
+        for i = 0, 7 do
+            if bytes_written >= length then break end
+            if (flags & (0x80 >> i)) == 0 then
+                bytes_written = bytes_written + 1
+                buffer[bytes_written] = m:r8() m:step(1)
+                read_length = read_length + 1
+            else
+                local value = _r16(m)
+                read_length = read_length + 2
+                local disp = ((value & 0xf) << 8) | (value >> 8)
+                local n = (value >> 4) & 0xf
+                for j = 0, n + 2 do
+                    bytes_written = bytes_written + 1
+                    buffer[bytes_written] = buffer[bytes_written-disp-1]
+                end
+            end
+        end
+    end
+    if (not lz77.silent) then
+        print(string.format("  compressed bytes length: 0x%x (%d)", read_length, read_length))
+        print(string.format("decompressed bytes length: 0x%x (%d)", bytes_written, bytes_written))
+        local size = #buffer
+        print(string.format("buffer size: 0x%x (%d)", size, size))
+    end
+    return buffer
+end
+
+---@param bytes int[]
+---@param offset int
+---@param input_len int
+---@param length int
+---@package
+local function token_with_length(bytes, offset, input_len, length)
+    if offset + length > input_len then return 0 end
+    for ptr = offset - 8, 0, -1 do
+        local delta = ptr - offset
+        local encoded_delta = -delta - 1
+        if encoded_delta > 0xfff then return 0 end
+        local match = true
+        for i = 0, length - 1 do
+            if bytes[ptr+i+1] ~= bytes[offset+i+1] then
+                match = false
+                break
+            end
+        end
+        if match then return delta end
+    end
+    return 0
+end
+
+---@param bytes int[]
+---@return int[]
+local function lz77_compress(bytes)
+    local bytes_written = 0
+    local input_len = #bytes
+    local header = (input_len << 8) | 0x10
+    local out = {
+        header & 0xff,
+        (header >> 8) & 0xff,
+        (header >> 16) & 0xff,
+        (header >> 24) & 0xff,
+    }
+    local processed_len = 0
+    local num_flag_bits = 0
+    local last_flag_pos = 0
+    local flags = 0
+    while processed_len < input_len do
+        if num_flag_bits == 0 then
+            bytes_written = bytes_written + 1
+            out[bytes_written + 4] = 0x37
+            last_flag_pos = bytes_written
+        end
+        if token_with_length(bytes, processed_len, input_len, 3) ~= 0 then
+            local token_size = 0
+            local token_delta = 0
+            for att = 3, 18 do
+                local d = token_with_length(bytes, processed_len, input_len, att)
+                if d ~= 0 then
+                    token_size = att
+                    token_delta = d
+                else break
+                end
+            end
+            local flipped_token_delta = -token_delta - 1
+            bytes_written = bytes_written + 1
+            out[bytes_written + 4] = (((token_size-3) & 0xf) << 4) | ((flipped_token_delta & 0xf00) >> 8)
+            bytes_written = bytes_written + 1
+            out[bytes_written + 4] = flipped_token_delta & 0xff
+            processed_len = processed_len + token_size
+            flags = flags | (0x80 >> num_flag_bits)
+        else
+            bytes_written = bytes_written + 1
+            processed_len = processed_len + 1
+            out[bytes_written + 4] = bytes[processed_len]
+        end
+        num_flag_bits = num_flag_bits + 1
+        if num_flag_bits == 8 or processed_len >= input_len then
+            num_flag_bits = 0
+            out[last_flag_pos + 4] = flags
+            flags = 0
+        end
+    end
+    if (not lz77.silent) then
+        print(string.format(" compressing bytes length: 0x%x (%d)", input_len, input_len))
+        print(string.format("  compressed bytes length: 0x%x (%d)", bytes_written, bytes_written))
+    end
+    return out
+end
+
+lz77.decompress = lz77_decompress
+lz77.compress = lz77_compress
+
 return {
     filterObj = filterObj,
+    lz77 = lz77,
 }
