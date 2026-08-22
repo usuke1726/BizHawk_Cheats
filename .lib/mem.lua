@@ -768,19 +768,18 @@ local function replace32r(begin, inclusiveEnd, before, after)
     replace32(begin, inclusiveEnd, before, after, ROM_DOMAIN_NAME)
 end
 
----@param addr int
----@param val int?
----@param domain string
+---@param val int
+---@param query int?
 ---@return bool
-local function _eval_byte(addr, val, domain)
-    if val == nil then return true
-    elseif val > 0xff then return _r8(addr, domain) ~= (val & 0xff)
-    else return _r8(addr, domain) == val
+local function _eval_byte(val, query)
+    if query == nil then return true
+    elseif query > 0xff then return val ~= (query & 0xff)
+    else return val == query
     end
 end
 ---`arr`のバイト列を一つ検索する。
----@param begin int
----@param inclusiveEnd int
+---@param begin int アドレスは補正される
+---@param inclusiveEnd int アドレスは補正される
 ---@param arr (int?)[] バイト列
 --- - `nil`を指定した場合は、その箇所は任意の値でよいことを意味するものとする。
 --- - `0xff`より大きい値を指定した場合は、その値と`0xff`とのbitwise andに相当する値以外の任意値を検索するものとする。
@@ -810,19 +809,24 @@ local function find(begin, inclusiveEnd, arr, domain, silent)
     local idx = non_nil_st
     local baseAddr
     begin = begin + non_nil_st - 1
-    for i = begin, inclusiveEnd do
-        if _eval_byte(i, arr[idx], domain) then
-            if idx == non_nil_st then baseAddr = i end
-            idx = idx + 1
-            if idx > n then
-                baseAddr = baseAddr - non_nil_st + 1
-                if (not silent) then
-                    print(string.format("[mem.find] == FOUND from 0x%08X", baseAddr))
+    begin = begin & 0xfffffffc
+    inclusiveEnd = inclusiveEnd | 0x3
+    for i = begin, inclusiveEnd, 4 do
+        local v = _r32(i, domain)
+        for j = 0, 3 do
+            if _eval_byte(v >> 8*j & 0xff, arr[idx]) then
+                if idx == non_nil_st then baseAddr = i + j end
+                idx = idx + 1
+                if idx > n then
+                    baseAddr = baseAddr - non_nil_st + 1
+                    if (not silent) then
+                        print(string.format("[mem.find] == FOUND from 0x%08X", baseAddr))
+                    end
+                    return true, baseAddr
                 end
-                return true, baseAddr
+            else
+                idx = non_nil_st
             end
-        else
-            idx = non_nil_st
         end
     end
     if (not silent) then
