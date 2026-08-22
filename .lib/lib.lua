@@ -111,6 +111,7 @@ return {
     image = image_lib,
     recorder = recorder,
     fill_in = mem.fill_in,
+    fill_inr = mem.fill_inr,
     fill_in_arr = mem.fill_in_arr,
     romfill_in_arr = mem.romfill_in_arr,
     warr = mem.warr,

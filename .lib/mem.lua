@@ -922,6 +922,7 @@ __mem_lib = {
     romw32 = _rom_w32,
     print_range = _print_range,
     fill_in = _fill_in,
+    fill_inr = _fill_inr,
     fill_in_arr = fill_in_arr,
     romfill_in_arr = romfill_in_arr,
     warr = warr,

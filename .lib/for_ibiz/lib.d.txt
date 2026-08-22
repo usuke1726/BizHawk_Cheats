@@ -46,6 +46,7 @@ lib = {
     find_all = find_all,
     find_allr = find_allr,
     fill_in = fill_in,
+    fill_inr = fill_inr
     fill_in_arr = fill_in_arr,
     romfill_in_arr = romfill_in_arr,
     warr = warr,
