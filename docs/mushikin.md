@@ -394,3 +394,132 @@ E3A0rsvv
 E5<奇数> => LDR
 E5<偶数> => STR
 ```
+
+## 立ち絵を変更する
+
+`0x218686C`から6*4=24byte分を、その前の`0x218683C`からの24byte分の値でコピーすると、レイカ表情01がシンの邪悪そうな立ち絵に変わる。
+
+```
+0x218686Cからのデータ
+3C061800 94160000
+00000000 00080000
+D01C1800 00020000
+
+ここのデータは、GBAののときのデータ(以下みたいな)に似ている！
+lib.warr(0x08894E04, lib.htob("A496E009140F000038DFBE09000800003C62E30960000000")) -- タクま対戦時表情を01にする
+lib.warr(0x088950D4, lib.htob("D483E109C40D000038DFBE0900080000DC67E30960000000")) -- アキラ対戦時表情を09にする
+
+恐らく、立ち絵のドットデータ、カラーパレットデータなどのアドレスとバイト長などを指定しているものと思われる。
+
+つまり、
+3C061800              94160000
+ドットデータ          ドットデータの長さ
+00000000              00080000
+タイルデータ          タイルデータの長さ
+D01C1800              00020000
+カラーパレット        カラーパレットの長さ
+
+という構造。(これはGBAと同じ?)
+```
+
+- `0x0218692C`がレイカの対戦時表情(表情09)
+- `0x02186884`が対戦後勝利立ち絵(表情02)
+- `0x021868CC`が対戦後敗北立ち絵(表情05)
+
+どうやら、GC1のキャラはアドレスが少し離れている模様。
+
+ひなみ: `0x0218A35C`から:
+- 01: `0x0218A35C`
+- 02: `0x0218A374`
+- 04: `0x0218A3A4`
+- 06: `0x0218A3D4`
+- 08: `0x0218A404`
+- 09: `0x0218A41C`
+- 0C: `0x0218A464`
+- 0F: `0x0218A4AC`
+- 15: `0x0218A53C`
+- 16: `0x0218A554`
+
+変更用スクリプト
+
+```lua
+local function reika(expr)
+    return 0x218686C + (expr-1)*0x18
+end
+local function hinami(expr)
+    return 0x0218A35C + (expr-1)*0x18
+end
+
+local function change_battle_face(addr1, addr2)
+    for j = 0, 5 do
+        w32(addr1+4*j, r32(addr2+4*j))
+    end
+end
+
+change_battle_face(reika(0x09), hinami(0x08))
+change_battle_face(reika(0x02), hinami(0x01))
+change_battle_face(reika(0x05), hinami(0x16))
+```
+
+<details>
+<summary>立ち絵アドレス調査用スクリプト</summary>
+<div>
+
+```lua
+CLS()
+
+local reika = 0x218686C
+local hinami = 0x218A35C
+local function go(i)
+    local head = hinami + i*24
+    if r32(head) == 0 then
+        return false
+    end
+    print(string.format("0x%08X   (i: %d)", head, i))
+    for j = 0, 5 do
+        w32(reika + j*4, r32(head + j*4))
+    end
+    return true
+end
+
+local i = -60
+local done = false
+local function main()
+    while true do
+        i = i + 1
+        if reika + i*24 >= 0x21898a4 then
+            done = true
+            print("== DONE ==")
+            return
+        end
+        if go(i) then return end
+    end
+end
+
+local timeout = 0
+local button = DS.key.lis("L"):on("down", function()
+    savestate.loadslot(7)
+    timeout = 5
+end)
+function loop()
+    button()
+    if timeout > 0 then
+        timeout = timeout - 1
+        if timeout == 0 then
+            main()
+        end
+    end
+end
+```
+
+
+</div>
+</details>
+
+## 立ち絵をバグらせる
+
+- ROM `0x1242A3C`: レイカ01表情のlz10圧縮データ
+    - 付近に他のキャラの圧縮画像があるかも
+- ROM `0x10C2400`: 左立ち絵のタイル配置情報
+- ROM `0x10C2C20`: 右立ち絵のタイル配置情報
+- ROM `0x10C3420`: 謎。もしかしてスチルのタイル配置情報?
