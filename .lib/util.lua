@@ -73,6 +73,7 @@ stou32 = _stou32
 ---@param bytes_str string
 ---@return int[] bytes
 local function _htob(bytes_str)
+    bytes_str = bytes_str:gsub(" ", "")
     local pr = string.sub(bytes_str, 1, 2)
     if pr == "0x" or pr == "0X" then bytes_str = string.sub(bytes_str, 3) end
     local n = #bytes_str
