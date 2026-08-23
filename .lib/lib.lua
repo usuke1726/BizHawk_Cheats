@@ -19,6 +19,7 @@ local _sjis = require "sjis"
 local ds_button = require "ds_button"
 local recorder = require "recording"
 local image_lib = require "image"
+local asm_lib = require "asm"
 
 ---@type fun()?
 loop = nil
@@ -105,6 +106,7 @@ return {
     util = util,
     array = array_lib,
     mem = mem,
+    asm = asm_lib,
     timer = timer,
     irume = irume,
     sjis = _sjis,

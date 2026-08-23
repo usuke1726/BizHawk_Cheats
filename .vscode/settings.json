@@ -19,6 +19,7 @@
             "file:./.lib/for_ibiz/ds_button.d.txt",
             "file:./.lib/for_ibiz/recording.d.txt",
             "file:./.lib/for_ibiz/image.d.txt",
+            "file:./.lib/for_ibiz/asm.d.txt",
             "file:./.lib/for_ibiz/lib.d.txt",
         ],
         ""

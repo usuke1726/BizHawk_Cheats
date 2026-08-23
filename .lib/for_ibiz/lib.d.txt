@@ -30,6 +30,7 @@ lib = {
     array = Array,
     irume = __irume,
     image = __image_lib,
+    asm = _asm,
     recorder = __recorder,
     path = __path_lib,
     mfilter8 = mfilter8,

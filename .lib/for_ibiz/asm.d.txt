@@ -1,0 +1,49 @@
+
+---アドレス `from` から アドレス `to` へジャンプする B命令のLittle Endian値を生成する
+---
+---B命令は https://github.com/akatsuki105/gba-docs-ja/blob/main/arm7tdmi/arm/branch.md を参考.
+---@param from int
+---@param to int
+---@return int
+local function make_B(from, to) end
+
+---アドレス `from` から アドレス `to` へジャンプする B命令のLittle Endian値を生成する
+---
+---B命令は https://github.com/akatsuki105/gba-docs-ja/blob/main/arm7tdmi/arm/branch.md を参考.
+---@param from int
+---@param to int
+---@return int
+local function make_BL(from, to) end
+
+---アドレス `from` に アドレス `to` へジャンプする B命令を書き込む。
+---
+---書き込みたくない場合は `make_B` を使えばよい。
+---@param from int
+---@param to int
+---@param domain? string
+---@return int prev_value
+local function jump(from, to, domain) end
+
+---アドレス `from` に アドレス `to` へジャンプする BL命令を書き込む。
+---
+---書き込みたくない場合は `make_BL` を使えばよい。
+---@param from int
+---@param to int
+---@param domain? string
+---@return int prev_value
+local function BL(from, to, domain) end
+
+---アドレス `addr` (補正付き)にあるB/BL命令のジャンプ先アドレスを計算する。
+---@param addr int
+---@param domain? string
+---@return int
+local function BLtarget(addr, domain) end
+
+local _asm = {
+    make_B = make_B,
+    make_BL = make_BL,
+    jump = jump,
+    BL = BL,
+    BLtarget = BLtarget,
+}
+asm = _asm
