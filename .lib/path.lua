@@ -14,8 +14,32 @@ local function output(filename)
     return output_path_cache .. "/" .. filename
 end
 
+--- ファイル出力か標準出力を容易に切り替えられるファイルオブジェクトのラッパーを生成する。
+--- 
+--- 例:
+--- ```lua
+--- local use_file = true -- or false
+--- local file = lib.path.w(use_file and "output.txt")
+--- -- 以後、画一的に file:write("...") -> file:close() と実行できる。
+--- ```
+---@param filename? string | boolean `string`型なら`io.open`、`true/false/nil`なら標準出力
+---@return {write: fun(self, s: string), close: fun(self), flush: fun(self)}
+local function writer(filename)
+    if type(filename) == "string" then
+        return assert(io.open(output(filename), "w"), "ファイル " .. filename .. "のオープンに失敗しました")
+    else
+        return {
+            ---@param s string
+            write = function(self, s) print(s) end,
+            close = function(self) end,
+            flush = function(self) end,
+        }
+    end
+end
+
 __path_lib = {
     output = output,
+    w = writer,
 }
 
 return __path_lib

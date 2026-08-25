@@ -3,21 +3,6 @@
 local sjis = require "misc/sjis"
 
 ---@param use_file bool
----@param filename string
----@return {write: fun(self, s: string), close: fun(self)}
-local function get_file(use_file, filename)
-    if use_file then
-        return assert(io.open(lib.path.output(filename), "w"), "ファイル "..filename.." のオープンに失敗しました")
-    else
-        return {
-            ---@param s string
-            write = function(self, s) print(s) end,
-            close = function(self) end,
-        }
-    end
-end
-
----@param use_file bool
 ---@return fun(t: string): string
 local function format(use_file)
     if use_file then
@@ -66,7 +51,7 @@ local function dump_text(output, addr, options)
     if not use_file then CLS() end
     local i = 0
     local buf = ""
-    local file = get_file(use_file, filename)
+    local file = lib.path.w(use_file and filename)
     while true do
         for c in iter:it() do
             if c ~= "\\0" then
