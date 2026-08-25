@@ -456,7 +456,7 @@ local function is_maybe_kanji(code)
 end
 local invalid_char = "_"
 
----@alias SJisIterSpecialReader fun(addr: integer): {t: string, len: integer, valid?: boolean, is_char?: boolean}?
+---@alias SJisIterSpecialReader fun(addr: integer, first_char_found: boolean): {t: string, len: integer, valid?: boolean, is_char?: boolean}?
 
 ---@class SJISOptions
 ---@field silent bool
@@ -508,7 +508,7 @@ local function iter_array(data)
     local next = function(self)
         self.valid = true
         self.len = 1
-        local s = special_reader(self.idx)
+        local s = special_reader(self.idx, false)
         if s then
             self.idx = self.idx + s.len
             return s.valid and s.t or invalid_char
@@ -578,7 +578,7 @@ local function iter_addr(addr, is_ram)
             self.addr = self.addr + 1
         end
         is_first = false
-        local s = special_reader(self.addr)
+        local s = special_reader(self.addr, first_char_found)
         if s then
             self.valid = s.valid ~= false
             self.len = s.len
