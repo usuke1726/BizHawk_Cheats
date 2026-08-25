@@ -1,6 +1,6 @@
 
 import sys
-from os import path
+from pathlib import Path
 sys.dont_write_bytecode = True
 args = sys.argv
 
@@ -57,9 +57,9 @@ mes = []
 full_text = []
 voice_mode = False
 
-basedir = path.dirname(__file__)
-infile = path.join(basedir, ".to_byte.txt")
-outfile = path.join(basedir, ".out.txt")
+basedir = Path(__file__, "..")
+infile = basedir / ".to_byte.txt"
+outfile = basedir / ".out.txt"
 
 with open(infile, "r", encoding="utf-8") as f:
     for line in f:

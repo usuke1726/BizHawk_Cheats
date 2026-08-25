@@ -6,6 +6,11 @@
     "BizHawkServer.stopCommand": [
         "RST:"
     ],
+    "[lua]": {
+        "editor.colorDecorators": false,
+        "editor.defaultColorDecorators": "never"
+    },
+    "notebook.lineNumbers": "on",
     "BizHawkServer.IBizNotebookTemplates": [
         [
             "---@meta",
