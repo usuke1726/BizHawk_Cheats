@@ -1,4 +1,7 @@
 
+local sjis = require "misc/sjis"
+local kanji_full_table = require "misc/_sjis_kanji_full_table"
+
 ---@class VT_Unit
 ---@field t string
 ---@field v1 int
@@ -103,10 +106,98 @@ local function vt(data)
     return ret
 end
 
+kanji_full_table[0x8770] = "㎝"
+
+local command_table = {
+    ["0000000001"] = "<C:B>",
+    ["0000000002"] = "<C:G>",
+    ["0000000003"] = "<C:R>",
+    ["100001"] = "<LF>",
+}
+
+---(デフォルトでRAM領域の)sjis領域のテキストを取得する
+---@param output "file" | "stdout"
+---@param addr int
+---@param options? {is_rom?: bool, bound?: int, end_addr?: int, filename?: string}
+local function dump_text(output, addr, options)
+    options = options or {}
+    local use_file = output == "file"
+    local is_rom = options.is_rom == true
+    local end_addr = options.end_addr or (addr + (options.bound or 0x800))
+    local filename = options.filename or "ryori_text.txt"
+    local _format = (function()
+        if use_file then
+            return function(s) return s .. "\n" end
+        else
+            return function(s) return s end
+        end
+    end)()
+    local _r32 = is_rom and r32r or r32
+    sjis.options.dbl_space_str = use_file and "　" or "<SP>"
+    sjis.options.half_space_str = use_file and " " or "<sp>"
+    sjis.options.special_table = kanji_full_table
+    sjis.options.silent = true
+    sjis.options.is_char = function(code) return code ~= 0 end
+    sjis.options.special_reader = function(_addr)
+        if r8(_addr) == 0x1a then
+            local len = r8(_addr + 1)
+            local s = ""
+            for j = 3, len do
+                s = s .. string.format("%02X", r8(_addr + j - 1))
+            end
+            s = command_table[s] or ("<COM:" .. s .. ">")
+            return {
+                t = s,
+                len = len,
+                valid = true,
+                is_char = true,
+            }
+        end
+    end
+
+    local iter = sjis.iter(addr, not is_rom)
+    if not use_file then CLS() end
+    local i = 0
+    local buf = ""
+    local file = lib.path.w(use_file and filename)
+    if use_file then
+        print("[dump_text] start")
+    end
+    while true do
+        for c in iter:it() do
+            if c ~= "\\0" then
+                buf = buf .. c
+            end
+        end
+        if buf == "DAT1" then
+            if use_file then
+                print("[dump_text] Detected \"DAT1\"")
+            end
+            -- 後続の4byteはテキスト領域の長さ(Big Endian)。このデータは無視する。
+            iter.addr = iter.addr + 4
+        elseif buf == "STR1" then
+            file:write("<EOF>\n\n")
+            buf = ""
+            break
+        end
+        file:write(string.format("0x%08X\n%s\n", iter.first_addr, _format(buf)))
+        buf = ""
+        if iter.addr >= end_addr then break end
+    end
+    if buf ~= "" then
+        file:write(string.format("0x%08X: %s\n", iter.first_addr, _format(buf)))
+    end
+    file:close()
+    if use_file then
+        print("[dump_text] done")
+    end
+end
+
 return {
     options = VT_options,
     vt = vt,
     print_vt = print_vt,
     get_vt = get_vt,
     set_vt = set_vt,
+    dump_text = dump_text,
 }
