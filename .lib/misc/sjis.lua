@@ -463,12 +463,14 @@ local invalid_char = "_"
 ---@field half_space_str string
 ---@field dbl_space_str string
 ---@field special_reader SJisIterSpecialReader
+---@field special_table table<int, string>
 ---@field is_char fun(code: integer): boolean
 local options = {
     silent = false,
     half_space_str = "<sp>",
     dbl_space_str = "<SP>",
     special_reader = function()end,
+    special_table = {},
     is_char = function(code) return code ~= 0 end,
 }
 
@@ -485,6 +487,7 @@ end
 ---@return string?
 local function to_char(code)
     return (
+        options.special_table[code] or
         table_special[code] or
         try_get_space(code) or
         table_half_width_from_20[code-0x20+1] or
