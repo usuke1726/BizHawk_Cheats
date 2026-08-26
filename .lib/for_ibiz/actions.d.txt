@@ -1,0 +1,73 @@
+
+---@alias Action fun(obj: ActionObj): fun(obj: ActionObj)?
+---@alias ActionUpdateKeyFunc fun(prev_stat: bool?, obj: ActionObj): bool?
+---@alias ActionsEntry (Action|Action[])[]
+
+---@param key DS_Keys
+---@return ActionUpdateKeyFunc
+local function KeyFunc_Button(key) end
+
+--- - `x`の範囲: `[0, 255]`
+--- - `y`の範囲: `[0, 191]` (下画面), `[-192, -1]` (上画面)
+---@param xmin? int
+---@param xmax? int
+---@param ymin? int
+---@param ymax? int
+---@return ActionUpdateKeyFunc
+local function KeyFunc_Touch(xmin, xmax, ymin, ymax) end
+
+local key_func_lib = {
+    button = KeyFunc_Button,
+    touch = KeyFunc_Touch,
+}
+
+---@class ActionObj
+---@field substate int
+---@field cooltime int `tmp_func`の実行を一旦停止させるためのクールタイム
+---@field timeout? int `cooltime`のエイリアス
+---@field name string
+---@field key_enable bool `register`で指定したキー関数によるaction移行を有効にする(デフォルトは`true`)
+---@field key_interval int `register`で指定したキー関数で移行した後、次の入力を有効にするまでのクールタイム
+---@field loop bool 最後のactionが終了した際に最初のactionに戻るか否か(デフォルトは`false`)
+---@field skip bool 速攻で次のactionに移行するフラグ
+---@field state_updating bool state更新timeoutが設定されているか否か
+local ActionObj = {}
+
+---次のactionに移行する。なお、無条件に速攻で移行させたい場合は、このメソッドではなく`skip`フィールドを使用すると記述が簡潔で良い。
+---@param delay? int 非正または`nil`の場合は即時更新
+function ActionObj:update_state(delay) end
+
+---自動で次のアクションに進む処理を行う。
+---@param cooltime int
+function ActionObj:SKP(cooltime) end
+---キー入力、`tmp_func`の実行諸々を停止する。
+function ActionObj:stop() end
+---キー入力、`tmp_func`の実行諸々を再開する。
+function ActionObj:start() end
+---最初のactionからやり直す。
+function ActionObj:restart() end
+---@param timeout int
+---@param firstTimeoutOrCallback integer
+---@param callback IntervalCallback
+---@overload fun(timeout: int, firstTimeoutOrCallback: IntervalCallback)
+function ActionObj:setInterval(timeout, firstTimeoutOrCallback, callback) end
+---@param timeout int
+---@param callback IntervalCallback
+function ActionObj:setTimeout(timeout, callback) end
+---@param callback fun(state: int)
+function ActionObj:onStateChanged(callback) end
+
+---@param name string
+---@param key_func ActionUpdateKeyFunc
+---@param actions ActionsEntry
+---@return ActionObj
+local function register(name, key_func, actions) end
+
+local function remove_all_actionObjs() end
+
+local __actions_lib = {
+    ---Key Func
+    KF = key_func_lib,
+    register = register,
+    remove_all = remove_all_actionObjs,
+}

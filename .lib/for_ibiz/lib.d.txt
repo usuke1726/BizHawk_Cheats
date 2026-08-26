@@ -31,6 +31,7 @@ lib = {
     irume = __irume,
     image = __image_lib,
     asm = _asm,
+    actions = __actions_lib,
     recorder = __recorder,
     path = __path_lib,
     mfilter8 = mfilter8,

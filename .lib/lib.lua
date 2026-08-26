@@ -20,6 +20,7 @@ local ds_button = require "ds_button"
 local recorder = require "recording"
 local image_lib = require "image"
 local asm_lib = require "asm"
+local actions_lib = require "actions"
 
 ---@type fun()?
 loop = nil
@@ -82,6 +83,7 @@ local function main()
     repl.main_loop()
     timer.__update()
     irume.__update()
+    actions_lib.__update()
     if loop and type(loop) == "function" then
         success, mes = pcall(loop)
         if not success then print(mes) loop = nil end
@@ -112,6 +114,7 @@ return {
     sjis = _sjis,
     image = image_lib,
     recorder = recorder,
+    actions = actions_lib,
     fill_in = mem.fill_in,
     fill_inr = mem.fill_inr,
     fill_in_arr = mem.fill_in_arr,
