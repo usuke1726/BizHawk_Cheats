@@ -146,6 +146,8 @@ w32r = _rom_w32
 ---@field addr int
 ---@field protected _first_domain string
 ---@field protected _first_addr int
+---@field protected _prev_val int
+---@field protected _prev_wx 1|2|3
 ---@operator add(int): AtObj
 ---@operator sub(int): AtObj
 ---@overload fun(new_addr: int?): AtObj
@@ -178,6 +180,41 @@ function AtObj:r16() return _r16(self.addr, self.domain) end
 ---登録されているアドレス(補正付き)から**Little Endianで**4バイト読み込む。
 ---@return int
 function AtObj:r32() return _r32(self.addr, self.domain) end
+
+---現在の値をキャッシュに逃がして書き込む。
+---@param value? int `nil`ならキャッシュに書き込むだけ
+---@return AtObj
+function AtObj:push8(value)
+    self._prev_val = _r8(self.addr, self.domain)
+    self._prev_wx = 1
+    if value then _w8(self.addr, value, self.domain) end
+    return self
+end
+---現在の値をキャッシュに逃がして書き込む。
+---@param value? int `nil`ならキャッシュに書き込むだけ
+---@return AtObj
+function AtObj:push16(value)
+    self._prev_val = _r16(self.addr, self.domain)
+    self._prev_wx = 2
+    if value then _w16(self.addr, value, self.domain) end
+    return self
+end
+---現在の値をキャッシュに逃がして書き込む。
+---@param value? int `nil`ならキャッシュに書き込むだけ
+---@return AtObj
+function AtObj:push32(value)
+    self._prev_val = _r32(self.addr, self.domain)
+    self._prev_wx = 3
+    if value then _w32(self.addr, value, self.domain) end
+    return self
+end
+---キャッシュに逃がした値に書き戻す。
+---@return AtObj
+function AtObj:pop()
+    local _w = ({_w8, _w16, _w32})[self._prev_wx]
+    _w(self.addr, self._prev_val, self.domain)
+    return self
+end
 
 ---@param value int
 ---@param min_? int
@@ -334,6 +371,8 @@ local function at(addr, domain)
         addr = addr,
         _first_domain = domain,
         _first_addr = addr,
+        _prev_val = 0,
+        _prev_wx = 1,
     }, {
         __index = AtObj,
         ---@param self AtObj

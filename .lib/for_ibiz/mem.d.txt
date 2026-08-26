@@ -280,6 +280,22 @@ function AtObj:r16() end
 ---@return int
 function AtObj:r32() end
 
+---現在の値をキャッシュに逃がして書き込む。
+---@param value? int `nil`ならキャッシュに書き込むだけ
+---@return AtObj
+function AtObj:push8(value) end
+---現在の値をキャッシュに逃がして書き込む。
+---@param value? int `nil`ならキャッシュに書き込むだけ
+---@return AtObj
+function AtObj:push16(value) end
+---現在の値をキャッシュに逃がして書き込む。
+---@param value? int `nil`ならキャッシュに書き込むだけ
+---@return AtObj
+function AtObj:push32(value) end
+---キャッシュに逃がした値に書き戻す。
+---@return AtObj
+function AtObj:pop() end
+
 ---@param value int
 ---@param min_? int
 ---@param max_? int
