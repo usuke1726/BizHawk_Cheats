@@ -26,6 +26,27 @@ local function ds_key_get(key) end
 ---@overload fun(info: table<DS_Keys, bool | int>)
 local function ds_key_set(key, on) end
 
+---現在のマウスの位置を返却する。
+---
+--- - `x`の範囲: `[0, 255]`
+--- - `y`の範囲: `[0, 191]` (下画面), `[-192, -1]` (上画面)
+---@return {x: int, y: int}
+local function ds_get_mouse_pos() end
+---画面をタッチしているなら現在のマウスの位置を返却。そうでないなら`nil`を返却する。
+---
+--- - `x`の範囲: `[0, 255]`
+--- - `y`の範囲: `[0, 191]` (下画面), `[-192, -1]` (上画面)
+---@return {x: int, y: int}?
+local function ds_mouse() end
+---指定した座標をタッチする。(引数無しならタッチペンを離す)
+---
+--- - `x`の範囲: `[0, 255]`
+--- - `y`の範囲: `[0, 191]` (下画面), `[-192, -1]` (上画面)
+---@param x int
+---@param y int
+---@overload fun()
+local function ds_touch(x, y) end
+
 
 ---@class ButtonLisObj
 ---@field key DS_Keys
@@ -106,4 +127,7 @@ local __ds_key_lib = {
     get = ds_key_get,
     set = ds_key_set,
     lis = _ButtonLis,
+    get_mouse_pos = ds_get_mouse_pos,
+    mouse = ds_mouse,
+    touch = ds_touch,
 }

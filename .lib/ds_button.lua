@@ -46,6 +46,42 @@ local function set(key, on)
         joypad.set({ [key] = type(on) == "boolean" and on or on ~= 0 })
     end
 end
+---現在のマウスの位置を返却する。
+---
+--- - `x`の範囲: `[0, 255]`
+--- - `y`の範囲: `[0, 191]` (下画面), `[-192, -1]` (上画面)
+---@return {x: int, y: int}
+local function get_mouse_pos()
+    local mouse_pos = input.getmouse()
+    return {
+        x = mouse_pos["X"],
+        y = mouse_pos["Y"]//2,
+    }
+end
+---画面をタッチしているなら現在のマウスの位置を返却。そうでないなら`nil`を返却する。
+---
+--- - `x`の範囲: `[0, 255]`
+--- - `y`の範囲: `[0, 191]` (下画面), `[-192, -1]` (上画面)
+---@return {x: int, y: int}?
+local function mouse()
+    local _touch  = joypad.get()["Touch"] --[[@as boolean]]
+    return _touch and get_mouse_pos() or nil
+end
+---指定した座標をタッチする。(引数無しならタッチペンを離す)
+---
+--- - `x`の範囲: `[0, 255]`
+--- - `y`の範囲: `[0, 191]` (下画面), `[-192, -1]` (上画面)
+---@param x int
+---@param y int
+---@overload fun()
+local function touch(x, y)
+    if x then
+        joypad.set({["Touch"] = true})
+        joypad.setanalog({["X"] = x, ["Y"] = y*2})
+    else
+        joypad.set({["Touch"] = false})
+    end
+end
 
 ---@enum ButtonLis_Statuses
 local ButtonLis_Statuses = {
@@ -219,5 +255,8 @@ __lib_ds_keys = {
     get = get,
     set = set,
     lis = _ButtonLis,
+    get_mouse_pos = get_mouse_pos,
+    mouse = mouse,
+    touch = touch,
 }
 return __lib_ds_keys
