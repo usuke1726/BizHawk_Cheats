@@ -1,5 +1,5 @@
 
----@alias Action fun(obj: ActionObj): fun(obj: ActionObj)?
+---@alias Action fun(obj: ActionObj): fun()?, fun()?
 ---@alias ActionUpdateKeyFunc fun(prev_stat: bool?, obj: ActionObj): bool?
 ---@alias ActionsEntry (Action|Action[])[]
 
@@ -63,7 +63,8 @@ local key_func_lib = {
 ---@field protected _key_func ActionUpdateKeyFunc
 ---@field protected _prev_key_func_stat bool?
 ---@field protected _state_updated bool
----@field protected _tmp_func fun(obj: ActionObj)?
+---@field protected _tmp_func fun()?
+---@field protected _tmp_cleanup fun()?
 ---@field protected _on_state_changed fun(state: int)?
 local ActionObj = {}
 ---@type table<int, ActionObj>
@@ -125,13 +126,14 @@ function ActionObj:_update()
                 return
             end
         end
+        if self._tmp_cleanup then self._tmp_cleanup() end
         if self._on_state_changed then
             self._on_state_changed(self._state)
         end
         local a = self._actions[self._state]
-        if a then self._tmp_func = a(self) end
+        if a then self._tmp_func, self._tmp_cleanup = a(self) end
     else
-        if self._tmp_func then self._tmp_func(self) end
+        if self._tmp_func then self._tmp_func() end
         for key, value in pairs(self._interval_callbacks) do
             value:_update()
         end
@@ -140,7 +142,7 @@ end
 ---@package
 function ActionObj:_setup()
     local a = self._actions[1]
-    if a then self._tmp_func = a(self) end
+    if a then self._tmp_func, self._tmp_cleanup = a(self) end
 end
 ---次のactionに移行する。なお、無条件に速攻で移行させたい場合は、このメソッドではなく`skip`フィールドを使用すると記述が簡潔で良い。
 ---@param delay? int 非正または`nil`の場合は即時更新
@@ -271,6 +273,7 @@ local function register(name, key_func, actions)
         _state_updated = false,
         _state_updating_reserved = false,
         _tmp_func = nil,
+        _tmp_cleanup = nil,
         _on_state_changed = nil,
     }, {
         __index = ActionObj,

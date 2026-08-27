@@ -1,5 +1,5 @@
 
----@alias Action fun(obj: ActionObj): fun(obj: ActionObj)?
+---@alias Action fun(obj: ActionObj): fun()?, fun()?
 ---@alias ActionUpdateKeyFunc fun(prev_stat: bool?, obj: ActionObj): bool?
 ---@alias ActionsEntry (Action|Action[])[]
 
