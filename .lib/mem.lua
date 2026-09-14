@@ -507,9 +507,15 @@ local function fill_in_arr(begin, inclusiveEnd, bytes, domain)
     local n1 = #_bytes + 1
     local m = #values + 1
     local s1 = begin + 4 - (begin % 4)
-    for i = begin, s1 do _w8(i, _bytes[(i - begin) % n1], domain) end
-    for i = s1, inclusiveEnd - 4, 4 do _w32(i, values[(i - begin) % m], domain) end
-    for i = math.max(begin, inclusiveEnd - 4), inclusiveEnd do _w8(i, _bytes[(i - begin) % n1], domain) end
+    if (begin & 0x3 == 0) and (inclusiveEnd & 0x3 == 0x3) then
+        for i = begin, inclusiveEnd, 4 do
+            _w32(i, values[(i - begin) % m], domain)
+        end
+    else
+        for i = begin, s1 do _w8(i, _bytes[(i - begin) % n1], domain) end
+        for i = s1, inclusiveEnd - 4, 4 do _w32(i, values[(i - begin) % m], domain) end
+        for i = math.max(begin, inclusiveEnd - 4), inclusiveEnd do _w8(i, _bytes[(i - begin) % n1], domain) end
+    end
 
     if _print_time_at_fill_in() then
         local t2 = os.clock()
