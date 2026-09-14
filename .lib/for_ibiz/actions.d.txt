@@ -39,7 +39,8 @@ function ActionObj:update_state(delay) end
 
 ---自動で次のアクションに進む処理を行う。
 ---@param cooltime int
-function ActionObj:SKP(cooltime) end
+---@param ignore_tmp_func? bool
+function ActionObj:SKP(cooltime, ignore_tmp_func) end
 ---キー入力、`tmp_func`の実行諸々を停止する。
 function ActionObj:stop() end
 ---キー入力、`tmp_func`の実行諸々を再開する。

@@ -168,10 +168,15 @@ function ActionObj:update_state(delay)
 end
 ---自動で次のアクションに進む処理を行う。
 ---@param cooltime int
-function ActionObj:SKP(cooltime)
+---@param ignore_tmp_func? bool
+function ActionObj:SKP(cooltime, ignore_tmp_func)
     self.key_enable = false
-    self.skip = true
-    self.cooltime = cooltime
+    if ignore_tmp_func then
+        self.skip = true
+        self.cooltime = cooltime
+    else
+        self:setTimeout(cooltime, function() self.skip = true end)
+    end
 end
 ---キー入力、`tmp_func`の実行諸々を停止する。
 function ActionObj:stop()
