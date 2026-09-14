@@ -245,10 +245,11 @@ end
 
 local actions_count = 0
 ---@param name string
----@param key_func ActionUpdateKeyFunc
+---@param key_func? ActionUpdateKeyFunc
 ---@param actions ActionsEntry
 ---@return ActionObj
 local function register(name, key_func, actions)
+    key_func = key_func or function() end
     local _actions = flat_actions(actions)
     actions_count = actions_count + 1
     local obj = setmetatable({

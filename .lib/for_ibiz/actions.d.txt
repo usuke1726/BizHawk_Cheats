@@ -58,7 +58,7 @@ function ActionObj:setTimeout(timeout, callback) end
 function ActionObj:onStateChanged(callback) end
 
 ---@param name string
----@param key_func ActionUpdateKeyFunc
+---@param key_func? ActionUpdateKeyFunc
 ---@param actions ActionsEntry
 ---@return ActionObj
 local function register(name, key_func, actions) end
