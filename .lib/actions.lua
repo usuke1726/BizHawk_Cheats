@@ -131,7 +131,7 @@ function ActionObj:_update()
             self._on_state_changed(self._state)
         end
         local a = self._actions[self._state]
-        if a then self._tmp_func, self._tmp_cleanup = a(self) end
+        if a then self._tmp_func, self._tmp_cleanup = a(self) self:_print_state_message() end
     else
         if self._tmp_func then self._tmp_func() end
         for key, value in pairs(self._interval_callbacks) do
@@ -140,9 +140,18 @@ function ActionObj:_update()
     end
 end
 ---@package
+function ActionObj:_print_state_message()
+    local s = string.format("[A %s] state %d", self._obj_name, self._state)
+    if self.name ~= "" then
+        s = s .. " <" .. self.name .. ">"
+    end
+    print(s)
+end
+---@package
 function ActionObj:_setup()
     local a = self._actions[1]
     if a then self._tmp_func, self._tmp_cleanup = a(self) end
+    self:_print_state_message()
 end
 ---次のactionに移行する。なお、無条件に速攻で移行させたい場合は、このメソッドではなく`skip`フィールドを使用すると記述が簡潔で良い。
 ---@param delay? int 非正または`nil`の場合は即時更新
@@ -157,7 +166,6 @@ function ActionObj:update_state(delay)
         return
     end
     self._state = self._state + 1
-    print(string.format("[A %s] state %d", self._obj_name, self._state))
     self.substate = 0
     self._tmp_func = nil
     self._state_updated = true
