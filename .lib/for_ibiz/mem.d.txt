@@ -185,11 +185,12 @@ local function replace32r(begin, inclusiveEnd, before, after) end
 ---@param arr (int?)[] バイト列
 --- - `nil`を指定した場合は、その箇所は任意の値でよいことを意味するものとする。
 --- - `0xff`より大きい値を指定した場合は、その値と`0xff`とのbitwise andに相当する値以外の任意値を検索するものとする。
+---@param length int?
 ---@param domain string?
 ---@param silent? bool
 ---@return bool found 検索バイト列が見つかったか否か
 ---@return int address 見つかったアドレス
-local function find(begin, inclusiveEnd, arr, domain, silent) end
+local function find(begin, inclusiveEnd, arr, length, domain, silent) end
 
 ---ROM領域から`arr`のバイト列を一つ検索する。
 ---@param begin int
@@ -197,29 +198,32 @@ local function find(begin, inclusiveEnd, arr, domain, silent) end
 ---@param arr (int?)[] バイト列
 --- - `nil`を指定した場合は、その箇所は任意の値でよいことを意味するものとする。
 --- - `0xff`より大きい値を指定した場合は、その値と`0xff`とのbitwise andに相当する値以外の任意値を検索するものとする。
+---@param length int?
 ---@param silent? bool
 ---@return bool found 検索バイト列が見つかったか否か
 ---@return int address 見つかったアドレス
-local function findr(begin, inclusiveEnd, arr, silent) end
+local function findr(begin, inclusiveEnd, arr, length, silent) end
 
 ---`arr`のバイト列をすべて取得する。
 ---@param begin int
 ---@param inclusiveEnd int
 ---@param arr (int?)[]
+---@param length int?
 ---@param domain string?
 ---@param silent? bool
 ---@return bool found 検索バイト列が見つかったか否か
 ---@return int[] addresses 見つかったアドレス
-local function find_all(begin, inclusiveEnd, arr, domain, silent) end
+local function find_all(begin, inclusiveEnd, arr, length, domain, silent) end
 
 ---`arr`のバイト列をすべて取得する。
 ---@param begin int
 ---@param inclusiveEnd int
 ---@param arr (int?)[]
+---@param length int?
 ---@param silent? bool
 ---@return bool found 検索バイト列が見つかったか否か
 ---@return int[] addresses 見つかったアドレス
-local function find_allr(begin, inclusiveEnd, arr, silent) end
+local function find_allr(begin, inclusiveEnd, arr, length, silent) end
 
 __mfilter8 = mfilter8
 __mfilter16 = mfilter16

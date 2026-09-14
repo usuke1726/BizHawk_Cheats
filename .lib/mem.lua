@@ -822,15 +822,16 @@ end
 ---@param arr (int?)[] バイト列
 --- - `nil`を指定した場合は、その箇所は任意の値でよいことを意味するものとする。
 --- - `0xff`より大きい値を指定した場合は、その値と`0xff`とのbitwise andに相当する値以外の任意値を検索するものとする。
+---@param length int?
 ---@param domain string?
 ---@param silent? bool
 ---@return bool found 検索バイト列が見つかったか否か
 ---@return int address 見つかったアドレス
-local function find(begin, inclusiveEnd, arr, domain, silent)
+local function find(begin, inclusiveEnd, arr, length, domain, silent)
     begin, inclusiveEnd = _check_range(begin, inclusiveEnd)
     domain = domain or get_domain(begin)
-    local n = #arr
-    if n == 0 then
+    local n = length or #arr
+    if n <= 0 then
         if (not silent) then
             print("[mem.find] arr is empty")
         end
@@ -848,24 +849,33 @@ local function find(begin, inclusiveEnd, arr, domain, silent)
     local idx = non_nil_st
     local baseAddr
     begin = begin + non_nil_st - 1
-    begin = begin & 0xfffffffc
+    local abegin = (begin + 4) & 0xfffffffc
     inclusiveEnd = inclusiveEnd | 0x3
-    for i = begin, inclusiveEnd, 4 do
+    local function eval_main(_i, v)
+        if _eval_byte(v, arr[idx]) then
+            if idx == non_nil_st then baseAddr = _i end
+            idx = idx + 1
+            if idx > n then
+                baseAddr = baseAddr - non_nil_st + 1
+                if (not silent) then
+                    print(string.format("[mem.find] == FOUND from 0x%08X", baseAddr))
+                end
+                return true, baseAddr
+            end
+        else
+            idx = non_nil_st
+        end
+        return false, 0
+    end
+    for i = begin, math.min(inclusiveEnd, abegin-1) do
+        local f, addr = eval_main(i, _r8(i, domain))
+        if f then return true, addr end
+    end
+    for i = abegin, inclusiveEnd, 4 do
         local v = _r32(i, domain)
         for j = 0, 3 do
-            if _eval_byte(v >> 8*j & 0xff, arr[idx]) then
-                if idx == non_nil_st then baseAddr = i + j end
-                idx = idx + 1
-                if idx > n then
-                    baseAddr = baseAddr - non_nil_st + 1
-                    if (not silent) then
-                        print(string.format("[mem.find] == FOUND from 0x%08X", baseAddr))
-                    end
-                    return true, baseAddr
-                end
-            else
-                idx = non_nil_st
-            end
+            local f, addr = eval_main(i + j, v >> 8*j & 0xff)
+            if f then return true, addr end
         end
     end
     if (not silent) then
@@ -882,23 +892,24 @@ end
 ---@param silent? bool
 ---@return bool found 検索バイト列が見つかったか否か
 ---@return int address 見つかったアドレス
-local function findr(begin, inclusiveEnd, arr, silent)
-    return find(begin, inclusiveEnd, arr, _ROM_DOMAIN_NAME, silent)
+local function findr(begin, inclusiveEnd, arr, length, silent)
+    return find(begin, inclusiveEnd, arr, length, _ROM_DOMAIN_NAME, silent)
 end
 ---`arr`のバイト列をすべて取得する。
 ---@param begin int
 ---@param inclusiveEnd int
 ---@param arr (int?)[]
+---@param length int?
 ---@param domain string?
 ---@param silent? bool
 ---@return bool found 検索バイト列が見つかったか否か
 ---@return int[] addresses 見つかったアドレス
-local function find_all(begin, inclusiveEnd, arr, domain, silent)
+local function find_all(begin, inclusiveEnd, arr, length, domain, silent)
     begin, inclusiveEnd = _check_range(begin, inclusiveEnd)
     domain = domain or get_domain(begin)
     local res = {}
     local addr = begin
-    local n = #arr
+    local n = length or #arr
     if n == 0 then
         if (not silent) then
             print("[mem.find] arr is empty")
@@ -906,7 +917,7 @@ local function find_all(begin, inclusiveEnd, arr, domain, silent)
         return false, {}
     end
     while true do
-        local f, newAddr = find(addr, inclusiveEnd, arr, domain, true)
+        local f, newAddr = find(addr, inclusiveEnd, arr, length, domain, true)
         if (not f) then break end
         res[#res + 1] = newAddr
         addr = newAddr + n
@@ -925,11 +936,12 @@ end
 ---@param begin int
 ---@param inclusiveEnd int
 ---@param arr (int?)[]
+---@param length int?
 ---@param silent? bool
 ---@return bool found 検索バイト列が見つかったか否か
 ---@return int[] addresses 見つかったアドレス
-local function find_allr(begin, inclusiveEnd, arr, silent)
-    return find_all(begin, inclusiveEnd, arr, _ROM_DOMAIN_NAME, silent)
+local function find_allr(begin, inclusiveEnd, arr, length, silent)
+    return find_all(begin, inclusiveEnd, arr, length, _ROM_DOMAIN_NAME, silent)
 end
 
 __mfilter8 = mfilter8
