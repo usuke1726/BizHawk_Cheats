@@ -3,6 +3,9 @@ _irume_active = false
 ---@package
 ---@type fun()?
 _irume_func = nil
+---@package
+---@type fun()?
+_irume_cleanup = nil
 
 local function _update()
     if (not _irume_active) then return end
@@ -11,7 +14,7 @@ local function _update()
     if not success then print(mes) _irume_func = nil _irume_active = false end
 end
 ---イルーム処理を開始する
----@param get_callback fun() : fun()?
+---@param get_callback fun() : fun()?, fun()?
 ---@param timeout? int
 local function start_irume(get_callback, timeout)
     if timeout then
@@ -21,7 +24,10 @@ local function start_irume(get_callback, timeout)
         return
     end
     _irume_active = true
-    _irume_func = get_callback()
+    if _irume_cleanup then
+        _irume_cleanup()
+    end
+    _irume_func, _irume_cleanup = get_callback()
 end
 ---イルーム処理を停止(あるいは終了)する。(再開は`restart_irume`)
 ---@param timeout? int
@@ -33,6 +39,10 @@ local function stop_irume(timeout)
         return
     end
     _irume_active = false
+    if _irume_cleanup then
+        _irume_cleanup()
+        _irume_cleanup = nil
+    end
 end
 ---イルーム処理を再開する。
 ---@param timeout? int

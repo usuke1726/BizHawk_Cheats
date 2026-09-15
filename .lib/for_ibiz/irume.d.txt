@@ -1,6 +1,6 @@
 
 ---イルーム処理を開始する
----@param get_callback fun() : fun()?
+---@param get_callback fun() : fun()?, fun()?
 ---@param timeout? int
 local function start_irume(get_callback, timeout) end
 ---イルーム処理を停止(あるいは終了)する。(再開は`restart_irume`)
