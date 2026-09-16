@@ -50,7 +50,7 @@ end
 
 ---@class VUO
 ---@field add fun(d: int): VUO_calc 現在の値に`d`だけ加算する関数を返却する
----@field addrand fun(min: int, max: int): VUO_calc 現在の値に`rand(min, max)`だけ加算する関数を返却する
+---@field addrand fun(min: int, max: int, scale: int?): VUO_calc 現在の値に`rand(min, max)`だけ加算する関数を返却する
 ---
 ---calc関数を生成するユーティリティ
 VUO = {
@@ -59,9 +59,10 @@ VUO = {
             return obj.v + d
         end
     end,
-    addrand = function(min, max)
+    addrand = function(min, max, scale)
+        scale = scale or 1
         return function(obj)
-            return obj.v + rand(min, max)
+            return obj.v + rand(min, max) * scale
         end
     end,
 }
