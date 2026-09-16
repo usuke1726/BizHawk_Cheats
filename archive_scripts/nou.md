@@ -742,3 +742,295 @@ function loop()
 end
 ```
 
+## video17
+
+<details>
+<summary>画像データ</summary>
+<div>
+
+<img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAAXNSR0IB2cksfwAAAARnQU1BAACxjwv8YQUAAAAgY0hSTQAAeiYAAICEAAD6AAAAgOgAAHUwAADqYAAAOpgAABdwnLpRPAAAAAlwSFlzAAAuIwAALiMBeKU/dgAAAAd0SU1FB+oJDwMtJDAX4AQAAABsSURBVDjLtVJBDsAgCCvG4P+fCxd2gujmMHGzx1JrxZKIGDNjFxUAVDWI1togEJG1wf1Qj7eZG5fd6G68beD4bFABwMyCIKJBkM3+f8LshuM7KF6kvkz9X8/4xxKzwmQliwQr0fkdZF0/nuACWPciHowdyJgAAAAASUVORK5CYII=">
+<img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAAXNSR0IB2cksfwAAAARnQU1BAACxjwv8YQUAAAAgY0hSTQAAeiYAAICEAAD6AAAAgOgAAHUwAADqYAAAOpgAABdwnLpRPAAAAAlwSFlzAAAuIwAALiMBeKU/dgAAAAd0SU1FB+oJDwMuEDqOR3IAAABSSURBVDjLvZLBDgAgCEKx8f+/TKdulk4rzrI9BJMkNDTQFAHAzEpmSX2COxE8NE9e1H8Rdo/mCTkypwiiilk1LmpmDbuWRmV9qQjZbTA6eD7lCVxeHCeFhfnMAAAAAElFTkSuQmCC">
+<img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAAXNSR0IB2cksfwAAAARnQU1BAACxjwv8YQUAAAAgY0hSTQAAeiYAAICEAAD6AAAAgOgAAHUwAADqYAAAOpgAABdwnLpRPAAAAAlwSFlzAAAuIwAALiMBeKU/dgAAAAd0SU1FB+oJDwMuHUQ/O88AAABISURBVDjLzZFJCgAwCAPH4v+/nJ56KRaK0iXnZMDRJIlCHMDMloWZP3cbxbwHeHTnUYn/ObgrMXLl2eH2F446kJQHDG+tMgboJDUZJXHCL54AAAAASUVORK5CYII=">
+<img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAAXNSR0IB2cksfwAAAARnQU1BAACxjwv8YQUAAAAgY0hSTQAAeiYAAICEAAD6AAAAgOgAAHUwAADqYAAAOpgAABdwnLpRPAAAAAlwSFlzAAAuIwAALiMBeKU/dgAAAAd0SU1FB+oJDwMuK4uFrlYAAABVSURBVDjLxZNJDsAwCAMN4v9fnp4qRVH2pfWV1TYYgDYQkmRmS8WAXJv4v0G8XHqo6fQNhZZLMZpYsnCZQqrZWQ2AriN5fHqDXCevTRn9MZ9Z98ohPTj4IhM0TiEvAAAAAElFTkSuQmCC">
+
+<img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAAXNSR0IB2cksfwAAAARnQU1BAACxjwv8YQUAAAAgY0hSTQAAeiYAAICEAAD6AAAAgOgAAHUwAADqYAAAOpgAABdwnLpRPAAAAAlwSFlzAAAuIwAALiMBeKU/dgAAAAd0SU1FB+oJDwMVDWU6xJMAAABiSURBVFjD7ZfbCQAgDANNcf+V6wKCD9QgXD9F7dEoJMrMLMaKYi47QO0tSupuXlVr5h4kqLsHT8mEBAAAAAAAAADwrx84ZaZj1mhcn8Drxv89wlsBKpzNh7/gRWwU4dQN0ACCux07MUmRJwAAAABJRU5ErkJggg==">
+<img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAAXNSR0IB2cksfwAAAARnQU1BAACxjwv8YQUAAAAgY0hSTQAAeiYAAICEAAD6AAAAgOgAAHUwAADqYAAAOpgAABdwnLpRPAAAAAlwSFlzAAAuIwAALiMBeKU/dgAAAAd0SU1FB+oJDwQAI4sWOc0AAACTSURBVFjD7dfRDoAgCAVQcfz/L9NTGzZzJNdhE95aNQRPpiQiUgKDZ14ioubaUwN7EiOiRiYfduBLQsuzb9NUS3CED8CEcFa5ZWo4EmAaSANpYLkB2ABWGLiLSgNnGtAFnWlAd3RfhE94PQdWnCNDjNjze84J+68Do/YhPs9/rITo3ZA2wr2bVlSIQyp71n7EP+ICc9o6Z8Whe8gAAAAASUVORK5CYII=">
+
+</div>
+</details>
+
+
+```py
+from PIL import Image
+name = "SIMA"
+
+img = Image.open(f"./{name}.png").convert("RGB")
+
+data = f"local DATA_{name} = {{\n"
+size = img.size
+
+for y in range(0, size[1]):
+    s = ""
+    for x in range(0, size[0]):
+        r = img.getpixel((x, y))[0]
+        # 色は白(255,255,255)と黒(0,0,0)の2色のみを想定
+        c = "#" if r < 50 else "."
+        s += c
+    data += f"\"{s}\",\n"
+
+data += "}"
+
+with open(f"./out.txt", "w") as f:
+    f.write(data)
+```
+
+```lua
+-- 「カワシマ」などのフォントのドットデータをインポート
+-- データは、まずGimp等で32x32(漢字)あるいは16x16(カタカナ)のフォント画像を作成、
+-- その後、上のpythonスクリプトでluaデータを生成し、それを格納したのがこのデータファイル
+local data = require "misc/_kawashima_data"
+
+local function set_left_screen()
+
+
+local function pos(x, y)
+    return lib.pos.Morton(x, y, 4, 0x20, 0x400) + 0x06004000
+end
+
+local function IN(x, y)
+    x, y = y, 67-x
+    if within(y, 0, 1) or within(y, 66, 67) then
+        return false
+    end
+    y = y - 2
+    local d
+    if x < 16 then
+        if y < 16 then d = data.KA
+        elseif y < 32 then d = data.WA
+        elseif y < 48 then d = data.SI
+        else d = data.MA
+        end
+        y = y % 16
+    else
+        x = (x - 16) % 32
+        if y < 32 then d = data.KAWA
+        else d = data.SIMA
+        end
+        y = y % 32
+    end
+    local c = string.sub(d[y+1], x+1, x+1)
+    return c ~= "."
+end
+
+local function dot(x, y)
+    local n = 10
+    x = (x - 128) / 128
+    y = (y - 96) / 96
+    local r
+    if x == 0 then
+        r = math.pi / 2.0
+        if y < 0 then r = -r end
+    else r = math.atan(y/x)
+    end
+    r = clamp(r + math.pi / 2.0, 0.0, math.pi)
+    local _r = math.pi / n
+    while r >= _r do r = r - _r end
+    r = clamp(r, 0, _r)
+    return r < 0.3*_r and 1 or 0
+end
+
+-- width: 128(1byteに2dotなので実際はその2倍), height: 192
+lib.image.filterObj()
+:width(128):height(192)
+:go(function(x, y)
+    if within(x, 24, 57) then
+        local f1 = IN((x-24)*2, y)
+        local f2 = IN((x-24)*2+1, y)
+        if f1 == nil or f2 == nil then return end
+        f1 = f1 and 1 or 0
+        f2 = f2 and 1 or 0
+        local v = (f2 << 4) | f1
+        return pos(x, y), v
+    end
+    local x1 = x*2
+    local x2 = x*2 + 1
+    local v = (dot(x2, y) << 4) | dot(x1, y)
+    return pos(x, y), v
+end)
+
+end
+
+
+local function set_right_screen()
+
+local function pos(x, y)
+    return lib.pos.Morton(x, y, 4, 0x20, 0x400) + 0x06600460
+end
+
+local function pos2(x, y)
+    return lib.pos.Morton(x, y, 4, 0x20, 0x400) + 0x06204000
+end
+
+
+lib.image.filterObj()
+:width(128):height(192)
+:go(function(x, y)
+    local _x = (x - 40) % 15 + 40
+    local _y = (y - 9) % 27 + 9
+    return pos(x, y), r8(pos(_x, _y))
+end)
+:go(function(x, y)
+    if x < 112 then return end
+    local _x = x - 112 + 40
+    local _y = (y - 9) % 27 + 9
+    return pos2(x, y), r8(pos(_x, _y))
+end)
+
+end
+
+
+
+local update_rip = (function()
+    local c = Cnt(30, 2)
+    return function()
+        w8(0x02969376, c:next() == 0 and 0xce or 0x9e)
+    end
+end)()
+
+local update_eyes = (function()
+    local d = 0x80
+    local v1 = ValueUpdater(1, 0x06d0, 0x07ff, VUO.addrand(-d, d))
+    :init(0x0740)
+    :w32(0x296E5C0)
+    local v2 = ValueUpdater(1, 0x06d0, 0x07ff, VUO.addrand(-d, d))
+    -- local v2 = ValueUpdater(10, 0x06d0, 0x07ff, "pingpong")
+    :init(0x0740)
+    :w32(0x296E5A8)
+    -- local v3 = ValueUpdater(20, 0x06e0, 0x0840, "pingpong")
+    local v3 = ValueUpdater(20, 0x0680, 0x08f0, "lerp")
+    :w32(0x0296e550)
+    -- local v4 = ValueUpdater(20, 0x06e0, 0x0840, "pingpong")
+    local v4 = ValueUpdater(20, 0x0680, 0x08f0, "lerp")
+    :w32(0x0296e564)
+    local cooltime = 180
+    local r = RC(60)
+    return function()
+        v3()
+        v4()
+        if cooltime > 0 then
+            w32(0x296E5C0, 0x07ff)
+            w32(0x296E5A8, 0x07ff)
+            cooltime = cooltime - 1
+            return
+        end
+        if r() then v3.n = rand(5, 30) end
+        if r() then v4.n = rand(5, 30) end
+        v1()
+        v2()
+    end
+end)()
+
+local update_AGO = (function()
+    local cooltime = 280
+    local scale = 0x10
+    local r = RC(20)
+    return function()
+        if cooltime > 0 then
+            w32(0x0296E604, 0x10c)
+            cooltime = cooltime - 1
+            return
+        end
+        if r() then
+            w32(0x0296E604, rand(-0x100, 0x10fc))
+        end
+    end
+end)()
+
+local update_eye_color = (function()
+    local vs = {0x1fce0000, 0x11110000}
+    local r = RC(10)
+    local c = Cnt(#vs)
+    return function()
+        if r() then
+            w32(0x0296926C, vs[c:next()+1])
+        end
+    end
+end)()
+
+local update_time = (function()
+    local cooltime = 280
+    local scale = 0x1c
+    local c = Cnt(60)
+    -- local scale = 0x8
+    local v = ValueUpdater(20, -scale, scale, "pingpong")
+    :w32(0x02128768)
+    return function()
+        w16(0x02129050, 0)
+        if cooltime > 0 then
+            w16(0x02128768, 0)
+            cooltime = cooltime - 1
+            return
+        end
+        if c() then
+            v.n = clamp(v.n-1, 2, 20)
+        end
+        v()
+    end
+end)()
+
+local ready_m = lib.at(0x0210b024)
+local ready = false
+
+local function irume()
+    local head = 0x03EC8A00
+    local as = {}
+    local prev = {}
+    for i = 0, 18 do
+        as[i] = head + 0x40 * i
+        prev[i] = 0
+    end
+    local _t = 0x2c
+    local p2 = 0x18
+    local vol = 0x16
+    return function()
+        for i, a in pairs(as) do
+            w16(a+vol, 0x8000)
+            w16(a+p2, rand(-20,20)*0x8)
+            local t = r8(a + _t)
+            if prev[i] < t then
+                t = clamp(t*3, 0x20, 0xe0)
+            end
+            w8(a+_t, t)
+            prev[i] = t
+        end
+    end
+end
+
+function loop()
+    if not ready then
+        if ready_m:r32() == 0 then
+            return
+        end
+        print("== READY!! ==")
+        lib.irume.start(irume)
+        set_left_screen()
+        set_right_screen()
+        ready = true
+    end
+    w8(0x029692E2, 0) -- ハゲ
+    update_eye_color()
+    -- w32(0x029692F0, 0x77FF0000) -- 髪の毛ワイヤー
+    -- w32(0x0296926C, 0x11110000)
+    update_AGO()
+    update_time()
+
+    w16(0x029692B8, 0x1111)
+    w8(0x02969288, 0x11)
+    -- w8(0x029693bb, rand(0,0xff))
+    -- update_rip()
+    update_eyes()
+
+    w32(0x0296E4BC, 0x0a00)
+    w32(0x0296E4C0, 0xffffe800)
+end
+```
