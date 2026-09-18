@@ -39,6 +39,57 @@ function ImageFilterObj:go(filter_func) end
 ---@return ImageFilterObj
 local function filterObj() end
 
+
+---@class ImageFilterObj_HalfByte
+---@field vs int[][]
+---@field _width int?
+---@field _height int?
+---@field _reverse bool
+---@field _get_addr fun(x: int, y: int): int
+local ImageFilterObj_HalfByte = {}
+
+---@param width int
+---@return ImageFilterObj_HalfByte
+function ImageFilterObj_HalfByte:width(width) end
+---@param height int
+---@return ImageFilterObj_HalfByte
+function ImageFilterObj_HalfByte:height(height) end
+---1バイト内の2ピクセルの左右位置を反転させる。
+---@param not_reverse bool?
+---@return ImageFilterObj_HalfByte
+function ImageFilterObj_HalfByte:reverse(not_reverse) end
+--- `(x//2, y)`値からアドレスを返す関数を登録する。
+---@param fun fun(x: int, y: int): int
+---@return ImageFilterObj_HalfByte
+function ImageFilterObj_HalfByte:addr(fun) end
+
+---@param immediately? bool 非`true`の場合は `go` するまでお預け
+---@return ImageFilterObj_HalfByte
+function ImageFilterObj_HalfByte:save(immediately) end
+
+---@param filter_func fun(x: int, y: int, vs: int[][]): int?
+---@return ImageFilterObj_HalfByte
+function ImageFilterObj_HalfByte:go(filter_func) end
+
+---VRAM上などのピクセルデータにフィルタリングをかけるオブジェクト(ただし1バイト2ピクセル)を生成する。
+---
+---使用例：
+--- ```lua
+--- local function pos(x, y)
+---     return lib.pos.Morton(x, y, 0x04, 0x20, 0x400) + 0x06214000
+--- end
+--- lib.image.filterObj_HalfByte()
+--- :width(256):height(196):addr(pos):save()
+--- -- :reverse() -- 2ピクセルの左右位置が逆の場合
+--- :go(function(x, y, vs)
+---     local _x, _y = y, x
+---     return vs[_y][_x]
+--- end)
+--- ```
+---@param no_autosave_first? bool
+---@return ImageFilterObj_HalfByte
+local function filterObj_HalfByte(no_autosave_first) end
+
 ---@class LZ77Lib
 ---@field silent bool
 local lz77 = {
@@ -59,5 +110,6 @@ lz77.compress = lz77_compress
 ---@class ImageLib
 local __image_lib = {
     filterObj = filterObj,
+    filterObj_HalfByte = filterObj_HalfByte,
     lz77 = lz77,
 }

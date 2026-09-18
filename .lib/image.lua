@@ -101,6 +101,168 @@ local function filterObj()
     })
 end
 
+
+---@class ImageFilterObj_HalfByte
+---@field vs int[][]
+---@field _width int?
+---@field _height int?
+---@field _reverse bool
+---@field _get_addr fun(x: int, y: int): int
+---@field protected _save_reversed bool
+---@field protected _ready bool
+local ImageFilterObj_HalfByte = {}
+
+
+---@package
+function ImageFilterObj_HalfByte:update_ready()
+    self._ready = (self._width ~= nil) and (self._height ~= nil) and (self._get_addr ~= nil)
+end
+---@param width int
+---@return ImageFilterObj_HalfByte
+function ImageFilterObj_HalfByte:width(width)
+    assert(width % 2 == 0)
+    self._width = width
+    self:update_ready()
+    return self
+end
+---@param height int
+---@return ImageFilterObj_HalfByte
+function ImageFilterObj_HalfByte:height(height)
+    self._height = height
+    self:update_ready()
+    return self
+end
+---1バイト内の2ピクセルの左右位置を反転させる。
+---@param not_reverse bool?
+---@return ImageFilterObj_HalfByte
+function ImageFilterObj_HalfByte:reverse(not_reverse)
+    self._reverse = not_reverse ~= false
+    return self
+end
+--- `(x//2, y)`値からアドレスを返す関数を登録する。
+---@param fun fun(x: int, y: int): int
+---@return ImageFilterObj_HalfByte
+function ImageFilterObj_HalfByte:addr(fun)
+    self._get_addr = fun
+    self:update_ready()
+    return self
+end
+---@param immediately? bool 非`true`の場合は `go` するまでお預け
+---@return ImageFilterObj_HalfByte
+function ImageFilterObj_HalfByte:save(immediately)
+    if not immediately then
+        self._save_reversed = true
+        return self
+    end
+    self._save_reversed = false
+    if not self._ready then
+        error("[ImageFilterObj:save] Not ready")
+    end
+    local vs = {}
+    for y = 0, self._height-1 do
+        local _v = {}
+        for x = 0, self._width-1, 2 do
+            local v = r8(self._get_addr(x//2, y))
+            _v[x] = v >> 4
+            _v[x+1] = v & 0xf
+            if self._reverse then
+                _v[x+1], _v[x] = _v[x], _v[x+1]
+            end
+        end
+        vs[y] = _v
+    end
+    self.vs = vs
+    return self
+end
+
+---@package
+function ImageFilterObj_HalfByte:__read(x, y)
+    local v = r8(self._get_addr(x//2, y))
+    local even = x % 2 == 0
+    if self._reverse then
+        return (not even) and (v>>4) or (v&0xf)
+    else
+        return even and (v>>4) or (v&0xf)
+    end
+end
+
+---@param filter_func fun(x: int, y: int, vs: int[][]): int?
+---@return ImageFilterObj_HalfByte
+function ImageFilterObj_HalfByte:go(filter_func)
+    if not self._ready then
+        error("[ImageFilterObj:save] Not ready")
+    end
+    if self._save_reversed then
+        self:save(true)
+    end
+    local v = {}
+    for y = 0, self._height-1 do
+        for x = 0, self._width-1, 2 do
+            local v1, v2
+            v1 = filter_func(x, y, self.vs) or self:__read(x, y)
+            v2 = filter_func(x+1, y, self.vs) or self:__read(x+1, y)
+            v1 = v1 & 0xf
+            v2 = v2 & 0xf
+            local _v
+            if self._reverse then
+                _v = (v2 << 4) | v1
+            else
+                _v = (v1 << 4) | v2
+            end
+            v[self._get_addr(x//2, y)] = _v
+        end
+    end
+
+    local _used = {}
+    for a, _ in pairs(v) do
+        local _v = 0
+        if not _used[a] then
+            local _a = a & 0xfffffffc
+            for j = 0, 3 do
+                _used[_a+j] = true
+                _v = _v | ((v[_a+j] or r8(_a+j)) << (8*j))
+            end
+            w32(_a, _v)
+        end
+    end
+    return self
+end
+
+---VRAM上などのピクセルデータにフィルタリングをかけるオブジェクト(ただし1バイト2ピクセル)を生成する。
+---
+---使用例：
+--- ```lua
+--- local function pos(x, y)
+---     return lib.pos.Morton(x, y, 0x04, 0x20, 0x400) + 0x06214000
+--- end
+--- lib.image.filterObj_HalfByte()
+--- :width(256):height(196):addr(pos)
+--- -- :reverse() -- 2ピクセルの左右位置が逆の場合
+--- :go(function(x, y, vs)
+---     local _x, _y = y, x
+---     return vs[_y][_x]
+--- end)
+--- ```
+---@param no_autosave_first? bool
+---@return ImageFilterObj_HalfByte
+local function filterObj_HalfByte(no_autosave_first)
+    local obj = setmetatable({
+        _ready = false,
+        vs = {},
+        _width = nil,
+        _height = nil,
+        _get_addr = nil,
+        _reverse = false,
+        _save_reversed = false,
+    }, {
+        __index = ImageFilterObj_HalfByte,
+    })
+    if not no_autosave_first then
+        obj:save(false)
+    end
+    return obj
+end
+
 ---@class LZ77Lib
 ---@field silent bool
 local lz77 = {
@@ -249,5 +411,6 @@ lz77.compress = lz77_compress
 
 return {
     filterObj = filterObj,
+    filterObj_HalfByte = filterObj_HalfByte,
     lz77 = lz77,
 }
