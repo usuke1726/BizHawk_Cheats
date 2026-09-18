@@ -10,6 +10,7 @@ if($help){
     Write-Host "`tv <arg>`t`t辻libに渡す文字列として encode する`n`t`t`t(半角の ' を ’ にするなどの処理をはさむ)"
     Write-Host "`tfrom <arg>`tバイト列 arg をsjisとしてdecodeする"
     Write-Host "`tms [sep|]`tムシキングの .to_byte ファイルからバイト列書き込み処理を生成する`n`t`t`t(sepを指定すると1文字ごとにスペースが挿入される)"
+    Write-Host "`tr`t`tお料理ナビの to_byte.py を実行"
     return
 }
 if($command -eq $null -or $command -eq ""){
@@ -46,6 +47,9 @@ print(convert(`"$arg`").encode(encoding=`"sjis`").hex())
     }
     "ms" {
         python ./series/mushikin/to_byte.py $arg
+    }
+    "r" {
+        python ./series/ryori/to_byte.py $arg
     }
     default {
         Write-Host -ForegroundColor Red "不明なコマンド: $command"
