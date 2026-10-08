@@ -41,7 +41,7 @@ local function writer(filename)
         }
     else
         return {
-            write = function(self, s) io.stdout:write(s) end,
+            write = function(self, s) console.write(s) end,
             wl = function(self, s) print(s) end,
             close = function(self) end,
             flush = function(self) end,
