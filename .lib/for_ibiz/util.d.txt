@@ -51,6 +51,18 @@ function stou32(val) end
 ---@return int[] bytes
 function htob(bytes_str) end
 
+---バイト列を16進文字列に変換する。
+---@param bytes int[]
+---@param sep string?
+---@param prefix string?
+function btos(bytes, sep, prefix) end
+
+---ASCII文字列をバイト列に変換する。\
+---(`{string.byte(str, 1, #str)}` を返却する)
+---@param str string
+---@return int[]
+function ascii(str) end
+
 ---`value`を[`min_`, `max_`]の範囲に収める
 ---@param value int
 ---@param min_ int?

@@ -99,16 +99,36 @@ local function _htob(bytes_str)
     return ret
 end
 htob = _htob
+
+---バイト列を16進文字列に変換する。
+---@param bytes int[]
+---@param sep string?
+---@param prefix string?
+local function _btos(bytes, sep, prefix)
+    prefix = prefix or ""
+    sep = sep or ""
+    local s = {}
+    for i, v in pairs(bytes) do s[#s+1] = prefix .. string.format("%02X", v) end
+    return table.concat(s, sep)
+end
+btos = _btos
+
 ---文字列で記述されたバイト列を、luaコードとしてコピペ可能な配列文字列に変換して出力する。
 ---
 ---例: `"00001B4359"` -> 文字列 `{0x00, 0x00, 0x1B, 0x43, 0x59}` が出力される
 ---@param bytes_str string
 local function print_htob(bytes_str)
-    local arr = _htob(bytes_str)
-    local s = {}
-    for i, v in arr do s[#s+1] = string.format("%02X", v) end
-    console:log("{" .. table.concat(s, ", ") .. "}")
+    console:log("{" .. _btos(_htob(bytes_str), ", ", "0x") .. "}")
 end
+
+---ASCII文字列をバイト列に変換する。\
+---(`{string.byte(str, 1, #str)}` を返却する)
+---@param str string
+---@return int[]
+local function _ascii(str)
+    return { string.byte(str, 1, #str) }
+end
+ascii = _ascii
 
 ---`value`を[`min_`, `max_`]の範囲に収める
 ---@param value int
@@ -521,7 +541,9 @@ __util = {
     stou16 = _stou16,
     stou32 = _stou32,
     htob = _htob,
+    btos = _btos,
     print_htob = print_htob,
+    ascii = _ascii,
     clamp = _clamp,
     clamp8 = _clamp8,
     clamp16 = _clamp16,
