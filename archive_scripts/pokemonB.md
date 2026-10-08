@@ -5040,3 +5040,160 @@ end
 
 </div>
 </details>
+
+## video18 OP 高速引き伸ばし
+
+```lua
+-- 雑多メモ
+for i = 0x06080000, 0x0609ffff, 4 do
+-- for i = 0x060a0000, 0x060bffff, 4 do
+    -- w32(i, r32(i) | 0x001e001e) -- => これで赤くするフィルターがかかる
+    -- w32(i, r32(i ~ 0x1ff))
+    -- 1pixel 2byte (恐らくARGBがそのまま)
+
+    -- w32(i, 0x82008200)
+    -- 80ff -> 赤 1000 0000 1111 1111
+    -- f000 -> 青 1111 0000 0000 0000
+    -- 8f00 -> 緑 1000 1111 0000 0000
+    -- 8880 -> 暗い緑 
+    -- 8800 -> 黒 => 恐らく2byte目の先頭1bitは見ない
+    -- 先頭1bitは恐らくalpha値(0:表示しない,1:表示する)
+    -- その後 3bit:B, 4bit:G, 4bit: R
+    -- ABBB B*GG GG*R RRR* という構造か？
+end
+```
+
+```lua
+local function pos(x, y)
+    return lib.pos.Raster(x, y, 0x100)*2 + 0x06081600
+end
+local function pos2(x, y)
+    return lib.pos.Raster(x, y, 0x100)*2 + 0x060a1600
+end
+
+local W = 256 -- 0x100
+local H = 170 -- 0xaa
+---@param go fun(x: int, y: int): int?, int?
+local function main(go)
+    local vs = {}
+    for y = 0, H-1 do
+        for x = 0, W-1 do
+            local a, v = go(x, y)
+            if a and v then
+                vs[a] = v
+            end
+        end
+    end
+    local used = {}
+    for a, v in pairs(vs) do
+        local a1, a2 = a & 0xfffffffc, a | 0x3
+        if not used[a1] then
+            used[a1] = true
+            local v1 = vs[a1] or r16(a1)
+            local v2 = vs[a1+2] or r16(a1+2)
+            w32(a1, (v2 << 16) | v1)
+        end
+    end
+end
+
+local st = 55
+local xd = 0x20
+
+function loop()
+    main(function(x, y)
+        if y >= st then
+            local _x = math.abs((x % xd) - xd//2) // 2
+            local _y = math.round((y-st) * 0.7) + st + _x
+            return pos(x, y), r16(pos(x, _y))
+        else
+            local _y = st - math.round((st-y) * 0.8)
+            return pos(x, y), r16(pos(x, _y))
+        end
+    end)
+    main(function(x, y)
+        if y >= st then
+            local _x = math.abs((x % xd) - xd//2) // 2
+            local _y = math.round((y-st) * 0.7) + st + _x
+            return pos2(x, y), r16(pos2(x, _y))
+        else
+            local _y = st - math.round((st-y) * 0.8)
+            return pos2(x, y), r16(pos2(x, _y))
+        end
+    end)
+end
+```
+
+## video18 OP 改良版 (カーソル位置でパラメータを調節する)
+
+```lua
+
+local function pos(x, y)
+    return lib.pos.Raster(x, y, 0x100)*2 + 0x06081600
+end
+local function pos2(x, y)
+    return lib.pos.Raster(x, y, 0x100)*2 + 0x060a1600
+end
+
+local W = 256 -- 0x100
+local H = 170 -- 0xaa
+---@param go fun(x: int, y: int): int?, int?
+local function main(go)
+    local vs = {}
+    for y = 0, H-1 do
+        for x = 0, W-1 do
+            local a, v = go(x, y)
+            if a and v then
+                vs[a] = v
+            end
+        end
+    end
+    local used = {}
+    for a, v in pairs(vs) do
+        local a1, a2 = a & 0xfffffffc, a | 0x3
+        if not used[a1] then
+            used[a1] = true
+            local v1 = vs[a1] or r16(a1)
+            local v2 = vs[a1+2] or r16(a1+2)
+            w32(a1, (v2 << 16) | v1)
+        end
+    end
+end
+
+local st = 55
+local xd = 0x20
+
+local function update_xds()
+    local mouse = DS.key.get_mouse_pos()
+    st = clamp(mouse.y, 0, 191)
+    local x = clamp(mouse.x, 0, 255)
+    xd = clamp(round(x * 0.4), 0x14, 190)
+end
+local c = Cnt(2)
+
+function loop()
+    update_xds()
+    if c() then
+    main(function(x, y)
+        if y >= st then
+            local _x = math.abs((x % xd) - xd//2) // 2
+            local _y = math.round((y-st) * 0.7) + st + _x
+            return pos(x, y), r16(pos(x, _y))
+        else
+            local _y = st - math.round((st-y) * 0.8)
+            return pos(x, y), r16(pos(x, _y))
+        end
+    end)
+else
+    main(function(x, y)
+        if y >= st then
+            local _x = math.abs((x % xd) - xd//2) // 2
+            local _y = math.round((y-st) * 0.7) + st + _x
+            return pos2(x, y), r16(pos2(x, _y))
+        else
+            local _y = st - math.round((st-y) * 0.8)
+            return pos2(x, y), r16(pos2(x, _y))
+        end
+    end)
+end
+end
+```
