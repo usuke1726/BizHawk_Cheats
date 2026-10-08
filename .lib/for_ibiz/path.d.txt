@@ -4,6 +4,12 @@
 ---@return string
 local function output(filename) end
 
+---@class Writer
+---@field write fun(self: Writer, s: string)
+---@field wl fun(self: Writer, s: string)
+---@field close fun(self: Writer)
+---@field flush fun(self: Writer)
+
 --- ファイル出力か標準出力を容易に切り替えられるファイルオブジェクトのラッパーを生成する。
 --- 
 --- 例:
@@ -13,7 +19,7 @@ local function output(filename) end
 --- -- 以後、画一的に file:write("...") -> file:close() と実行できる。
 --- ```
 ---@param filename? string | boolean `string`型なら`io.open`、`true/false/nil`なら標準出力
----@return {write: fun(self, s: string), close: fun(self), flush: fun(self)}
+---@return Writer
 local function writer(filename) end
 
 ---@class PathLib
