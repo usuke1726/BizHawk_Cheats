@@ -27,16 +27,16 @@ local newMemReader, GetNameList_u32 = ___nitro_lib.newMemReader, ___nitro_lib.Ge
 ---@field head_addr int
 ---@field flags TrackDataFlags
 ---@field target_index int
----@field CurveX_Const DataPos_u32
----@field CurveY_Const DataPos_u32
----@field CurveZ_Const DataPos_u32
----@field CurveRot_Const DataPos_u32
----@field CurveScaleX_Const1 DataPos_u32
----@field CurveScaleX_Const2 DataPos_u32
----@field CurveScaleY_Const1 DataPos_u32
----@field CurveScaleY_Const2 DataPos_u32
----@field CurveScaleZ_Const1 DataPos_u32
----@field CurveScaleZ_Const2 DataPos_u32
+---@field CurveX_Const DataPos_int
+---@field CurveY_Const DataPos_int
+---@field CurveZ_Const DataPos_int
+---@field CurveRot_Const DataPos_int
+---@field CurveScaleX_Const1 DataPos_int
+---@field CurveScaleX_Const2 DataPos_int
+---@field CurveScaleY_Const1 DataPos_int
+---@field CurveScaleY_Const2 DataPos_int
+---@field CurveScaleZ_Const1 DataPos_int
+---@field CurveScaleZ_Const2 DataPos_int
 ---@field CurveX SampledCurve
 ---@field CurveY SampledCurve
 ---@field CurveZ SampledCurve
@@ -172,7 +172,7 @@ local function read_Animation(begin, anim_idx, w)
     local basis_mat_off = mem:r32()
     local track_offs = {}
     local tracks = {}
-    w:wl(string.format("## Animation %d at 0x%08X\n  - %d frames, %d tracks\n  - pivot_mat => 0x%08X\n  - basis_mat => 0x%08X", anim_idx, begin, num_frames, num_tracks, begin + pivot_mat_off, begin + basis_mat_off))
+    w:wl(string.format("\n## Animation %d at 0x%08X\n  - %d frames, %d tracks\n  - pivot_mat => 0x%08X\n  - basis_mat => 0x%08X", anim_idx, begin, num_frames, num_tracks, begin + pivot_mat_off, begin + basis_mat_off))
     local function dataStr(is_constant, const, norm)
         if is_constant then return string.format("C%08X", const.addr)
         else return string.format("s%08X", norm.head_addr)

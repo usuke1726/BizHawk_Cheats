@@ -118,6 +118,9 @@ local function read_MDL0(begin, writer_query)
     w:wl(string.format("# MDL0\n  - range: 0x%08X -- 0x%08X (bound: 0x%X)\n  - %d Model%s\n", begin, begin + filesize, filesize, models.count, (models.count > 1 and "s" or "") ))
     for i = 1, models.count do
         local offset = models.data[i].v
+        if i > 1 then
+            w:wl("\n\n=====================================\n")
+        end
         read_Model(begin + offset, i, w)
     end
     w:close()

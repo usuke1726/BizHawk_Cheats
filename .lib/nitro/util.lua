@@ -1,5 +1,5 @@
 
----@class DataPos_u32
+---@class DataPos_int
 ---@field v int
 ---@field addr int
 
@@ -9,7 +9,7 @@
 
 ---@param v int
 ---@param addr int
----@return DataPos_u32
+---@return DataPos_int
 ---@overload fun(v: string, addr: int): DataPos_string
 local function DataPos(v, addr)
     return {v = v, addr = addr}
@@ -96,7 +96,7 @@ end
 ---@field header_vs int
 ---@field element_size int
 ---@field data_section_size int
----@field data DataPos_u32[]
+---@field data DataPos_int[]
 ---@field names DataPos_string[]
 
 
