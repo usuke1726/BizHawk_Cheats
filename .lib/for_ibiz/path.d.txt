@@ -18,12 +18,17 @@ local function output(filename) end
 --- local file = lib.path.w(use_file and "output.txt")
 --- -- 以後、画一的に file:write("...") -> file:close() と実行できる。
 --- ```
----@param filename? string | boolean `string`型なら`io.open`、`true/false/nil`なら標準出力
+---@param filename? string | boolean | Writer `string`型なら`io.open`、`true/false/nil`なら標準出力
 ---@return Writer
 local function writer(filename) end
+
+---何も出力しないWriterを用意する。
+---@return Writer
+local function dummy_writer() end
 
 ---@class PathLib
 local __path_lib = {
     output = output,
     w = writer,
+    dummy = dummy_writer,
 }

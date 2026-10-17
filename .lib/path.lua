@@ -20,6 +20,17 @@ end
 ---@field close fun(self: Writer)
 ---@field flush fun(self: Writer)
 
+---何も出力しないWriterを用意する。
+---@return Writer
+local function dummy_writer()
+    return {
+        write = function(self, s) end,
+        wl = function(self, s) end,
+        close = function(self) end,
+        flush = function(self) end,
+    }
+end
+
 --- ファイル出力か標準出力を容易に切り替えられるファイルオブジェクトのラッパーを生成する。
 --- 
 --- 例:
@@ -28,7 +39,7 @@ end
 --- local file = lib.path.w(use_file and "output.txt")
 --- -- 以後、画一的に file:write("...") -> file:close() と実行できる。
 --- ```
----@param filename? string | boolean `string`型なら`io.open`、`true/false/nil`なら標準出力
+---@param filename? string | boolean | Writer `string`型なら`io.open`、`true/false/nil`なら標準出力
 ---@return Writer
 local function writer(filename)
     if type(filename) == "string" then
@@ -39,19 +50,21 @@ local function writer(filename)
             close = function(self) f:close() end,
             flush = function(self) f:flush() end,
         }
-    else
+    elseif type(filename) == "boolean" or filename == nil then
         return {
             write = function(self, s) console.write(s) end,
             wl = function(self, s) print(s) end,
             close = function(self) end,
             flush = function(self) end,
         }
+    else return filename
     end
 end
 
 __path_lib = {
     output = output,
     w = writer,
+    dummy = dummy_writer,
 }
 
 return __path_lib
