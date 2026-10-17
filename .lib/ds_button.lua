@@ -69,6 +69,8 @@ local function mouse()
 end
 ---指定した座標をタッチする。(引数無しならタッチペンを離す)
 ---
+---※この方法でタッチするには、`Config/Controllers` から、`Analog Controls` の `Touch X`, `Touch Y`を**unbind**しておく必要がある！
+---
 --- - `x`の範囲: `[0, 255]`
 --- - `y`の範囲: `[0, 191]` (下画面), `[-192, -1]` (上画面)
 ---@param x int
@@ -77,7 +79,7 @@ end
 local function touch(x, y)
     if x then
         joypad.set({["Touch"] = true})
-        joypad.setanalog({["X"] = x, ["Y"] = y*2})
+        joypad.setanalog({["Touch X"] = x, ["Touch Y"] = y})
     else
         joypad.set({["Touch"] = false})
     end
