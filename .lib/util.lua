@@ -113,6 +113,21 @@ local function _btos(bytes, sep, prefix)
 end
 btos = _btos
 
+---巨大データ`bytes`に対して`string.char(table.unpack(bytes))`を`chunk_size`バイトずつ行う
+---@param bytes int[]
+---@param chunk_size? int
+---@return string
+local function _longchars(bytes, chunk_size)
+    chunk_size = chunk_size or 256
+    local s = {}
+    local n = #bytes
+    for i = 1, n, chunk_size do
+        table.insert(s, string.char(table.unpack(bytes, i, math.min(i+chunk_size-1, n))))
+    end
+    return table.concat(s, "")
+end
+longchars = _longchars
+
 ---文字列で記述されたバイト列を、luaコードとしてコピペ可能な配列文字列に変換して出力する。
 ---
 ---例: `"00001B4359"` -> 文字列 `{0x00, 0x00, 0x1B, 0x43, 0x59}` が出力される

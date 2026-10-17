@@ -57,6 +57,12 @@ function htob(bytes_str) end
 ---@param prefix string?
 function btos(bytes, sep, prefix) end
 
+---巨大データ`bytes`に対して`string.char(table.unpack(bytes))`を`chunk_size`バイトずつ行う
+---@param bytes int[]
+---@param chunk_size? int
+---@return string
+function longchars(bytes, chunk_size) end
+
 ---ASCII文字列をバイト列に変換する。\
 ---(`{string.byte(str, 1, #str)}` を返却する)
 ---@param str string
