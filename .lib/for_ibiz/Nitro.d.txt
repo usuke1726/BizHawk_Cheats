@@ -1,0 +1,36 @@
+
+---@alias JNT0ReadResult { addrs_tr: int[], addrs_rot: int[], addrs_scl: int[] }
+---@alias AddrsMeshRange {begin: int, iend: int}
+---@alias MDL0ReadResult { addrs_mat: int[], addrs_bone: int[], addrs_mesh: AddrsMeshRange[] }
+
+---アニメーションデータの情報をダンプする
+---@param begin int `"JNT0"`があるアドレス
+---@param writer_query? string | bool | Writer ファイル名(`string`)または標準出力(`bool?`)
+---@return JNT0ReadResult
+local function read_JNT0(begin, writer_query) end
+
+---モデルデータの情報をダンプする
+--- - https://github.com/scurest/nsbmd_docs/blob/master/nsbmd_docs.txt#L164
+---@param begin int `"MDL0"`があるアドレス
+---@param writer_query? string | bool | Writer ファイル名(`string`)または標準出力(`bool?`)
+---@return MDL0ReadResult
+local function read_MDL0(begin, writer_query) end
+
+---@param begin? int
+---@param inclusiveEnd? int
+---@param silent? bool
+---@return bool, int
+local function find_MDL0(begin, inclusiveEnd, silent) end
+
+---@param begin? int
+---@param inclusiveEnd? int
+---@param silent? bool
+---@return bool, int
+local function find_JNT0(begin, inclusiveEnd, silent) end
+
+Nitro = {
+    read_JNT0 = read_JNT0,
+    read_MDL0 = read_MDL0,
+    find_MDL0 = find_MDL0,
+    find_JNT0 = find_JNT0,
+}

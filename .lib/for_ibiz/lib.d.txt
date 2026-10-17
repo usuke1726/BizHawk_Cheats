@@ -61,4 +61,5 @@ lib = {
     range = range,
     romrange = romrange,
     pos = __pos_lib,
+    Nitro = Nitro,
 }

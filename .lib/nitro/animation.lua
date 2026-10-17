@@ -158,7 +158,10 @@ end
 ---@param begin int
 ---@param anim_idx int
 ---@param w Writer
-local function read_Animation(begin, anim_idx, w)
+---@param addrs_tr int[]
+---@param addrs_rot int[]
+---@param addrs_scl int[]
+local function read_Animation(begin, anim_idx, w, addrs_tr, addrs_rot, addrs_scl)
     local mem = newMemReader(begin)
     local stamp = string.char(mem:r(4))
     if stamp ~= "J\x00AC" then
@@ -174,8 +177,8 @@ local function read_Animation(begin, anim_idx, w)
     local tracks = {}
     w:wl(string.format("\n## Animation %d at 0x%08X\n  - %d frames, %d tracks\n  - pivot_mat => 0x%08X\n  - basis_mat => 0x%08X", anim_idx, begin, num_frames, num_tracks, begin + pivot_mat_off, begin + basis_mat_off))
     local function dataStr(is_constant, const, norm)
-        if is_constant then return string.format("C%08X", const.addr)
-        else return string.format("s%08X", norm.head_addr)
+        if is_constant then return string.format("C%08X", const.addr), const.addr
+        else return string.format("s%08X", norm.head_addr), norm.head_addr
         end
     end
     for i = 1, num_tracks do
@@ -188,22 +191,29 @@ local function read_Animation(begin, anim_idx, w)
             local _printed = false
             if not track.flags.no_translation_channels then
                 _printed = true
-                local x = dataStr(track.flags.translation_x_constant, track.CurveX_Const, track.CurveX)
-                local y = dataStr(track.flags.translation_y_constant, track.CurveY_Const, track.CurveY)
-                local z = dataStr(track.flags.translation_z_constant, track.CurveZ_Const, track.CurveZ)
+                local x, ax = dataStr(track.flags.translation_x_constant, track.CurveX_Const, track.CurveX)
+                local y, ay = dataStr(track.flags.translation_y_constant, track.CurveY_Const, track.CurveY)
+                local z, az = dataStr(track.flags.translation_z_constant, track.CurveZ_Const, track.CurveZ)
                 w:wl(string.format("[TR] %s %s %s", x, y, z))
+                table.insert(addrs_tr, ax)
+                table.insert(addrs_tr, ay)
+                table.insert(addrs_tr, az)
             end
             if not track.flags.no_rotation_channel then
                 _printed = true
-                local rot = dataStr(track.flags.rotation_constant, track.CurveRot_Const, track.CurveRot)
+                local rot, arot = dataStr(track.flags.rotation_constant, track.CurveRot_Const, track.CurveRot)
                 w:wl(string.format("[Rot] %s", rot))
+                table.insert(addrs_rot, arot)
             end
             if not track.flags.no_scale_channels then
                 _printed = true
-                local x = dataStr(track.flags.scale_x_constant, track.CurveScaleX_Const1, track.CurveScaleX)
-                local y = dataStr(track.flags.scale_y_constant, track.CurveScaleY_Const1, track.CurveScaleY)
-                local z = dataStr(track.flags.scale_z_constant, track.CurveScaleZ_Const1, track.CurveScaleZ)
+                local x, ax = dataStr(track.flags.scale_x_constant, track.CurveScaleX_Const1, track.CurveScaleX)
+                local y, ay = dataStr(track.flags.scale_y_constant, track.CurveScaleY_Const1, track.CurveScaleY)
+                local z, az = dataStr(track.flags.scale_z_constant, track.CurveScaleZ_Const1, track.CurveScaleZ)
                 w:wl(string.format("[SCL] %s %s %s", x, y, z))
+                table.insert(addrs_scl, ax)
+                table.insert(addrs_scl, ay)
+                table.insert(addrs_scl, az)
             end
             if not _printed then
                 w:wl("[Nothing]")
@@ -212,33 +222,55 @@ local function read_Animation(begin, anim_idx, w)
     end
 end
 
----@param begin int
----@param writer_query? string | bool
+---@alias JNT0ReadResult { addrs_tr: int[], addrs_rot: int[], addrs_scl: int[] }
+
+---アニメーションデータの情報をダンプする
+---@param begin int `"JNT0"`があるアドレス
+---@param writer_query? string | bool | Writer ファイル名(`string`)または標準出力(`bool?`)
+---@return JNT0ReadResult
 local function read_JNT0(begin, writer_query)
     local w = lib.path.w(writer_query)
     local mem = newMemReader(begin)
     local stamp = string.char(mem:r(4))
+    local empty_res = {addrs_tr = {}, addrs_rot = {}, addrs_scl = {}}
     if stamp ~= "JNT0" then
         local _b = btos({string.byte(stamp, 1, #stamp)})
         w:wl(string.format("wrong addr: \"JNT0\" is not contained at 0x%08X (value: %s)", begin, _b))
         w:close()
-        return
+        return empty_res
     end
     local filesize = mem:r32()
     local animations = GetNameList_u32(mem)
     if not animations then
         w:close()
-        return
+        return empty_res
     end
     w:wl(string.format("# JNT0\n  - range: 0x%08X -- 0x%08X (bound: 0x%X)\n  - %d Animation%s\n", begin, begin + filesize, filesize, animations.count, (animations.count > 1 and "s" or "") ))
+    local addrs_tr, addrs_rot, addrs_scl = {}, {}, {}
     for i = 1, animations.count do
         local offset = animations.data[i].v
-        read_Animation(begin + offset, i, w)
+        read_Animation(begin + offset, i, w, addrs_tr, addrs_rot, addrs_scl)
     end
     w:close()
+    return {
+        addrs_tr = addrs_tr,
+        addrs_rot = addrs_rot,
+        addrs_scl = addrs_scl,
+    }
+end
+
+---@param begin? int
+---@param inclusiveEnd? int
+---@param silent? bool
+---@return bool, int
+local function find_JNT0(begin, inclusiveEnd, silent)
+    begin = begin or 0x02000000
+    inclusiveEnd = inclusiveEnd or (begin + 0x003fffff)
+    return lib.find(begin, inclusiveEnd, ascii("JNT0"), 4, nil, silent)
 end
 
 return {
-    read_JNT0 = read_JNT0
+    read_JNT0 = read_JNT0,
+    find_JNT0 = find_JNT0,
 }
 

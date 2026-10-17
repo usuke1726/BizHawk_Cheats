@@ -78,7 +78,8 @@ end
 ---@param begin int
 ---@param bone_idx int
 ---@param w Writer
-local function read_Bone(begin, bone_idx, w)
+---@param addrs_bone int[]
+local function read_Bone(begin, bone_idx, w, addrs_bone)
     w:wl(string.format((
         "\n### Bone %d at 0x%08X"
     ), bone_idx, begin
@@ -87,10 +88,15 @@ local function read_Bone(begin, bone_idx, w)
     local bone = get_Bone(begin)
     if not bone.flags.t then
         w:wl(string.format("[TR] %08X %08X %08X", bone.tr_x.addr, bone.tr_y.addr, bone.tr_z.addr))
+        table.insert(addrs_bone, bone.tr_x.addr)
+        table.insert(addrs_bone, bone.tr_y.addr)
+        table.insert(addrs_bone, bone.tr_z.addr)
         _printed = true
     end
     if bone.flags.rp then
         w:wl(string.format("[Rot] %08X %08X", bone.a.addr, bone.b.addr))
+        table.insert(addrs_bone, bone.a.addr)
+        table.insert(addrs_bone, bone.b.addr)
         _printed = true
     elseif not bone.flags.rm then
         w:wl(string.format((
@@ -102,10 +108,17 @@ local function read_Bone(begin, bone_idx, w)
         bone.ms[1].addr, bone.ms[4].addr, bone.ms[7].addr,
         bone.ms[2].addr, bone.ms[5].addr, bone.ms[8].addr
         ))
+        table.insert(addrs_bone, bone.m0.addr)
+        for i = 1, 8 do
+            table.insert(addrs_bone, bone.ms[i].addr)
+        end
         _printed = true
     end
     if not bone.flags.s then
         w:wl(string.format("[SCL] %08X %08X %08X", bone.sc_x.addr, bone.sc_y.addr, bone.sc_z.addr))
+        table.insert(addrs_bone, bone.sc_x.addr)
+        table.insert(addrs_bone, bone.sc_y.addr)
+        table.insert(addrs_bone, bone.sc_z.addr)
         _printed = true
     end
     if not _printed then
@@ -113,27 +126,33 @@ local function read_Bone(begin, bone_idx, w)
     end
 end
 
+---@alias AddrsMeshRange {begin: int, iend: int}
+
 ---@param begin int
 ---@param mesh_idx int
 ---@param w Writer
-local function read_Mesh(begin, mesh_idx, w)
+---@param addrs_mesh AddrsMeshRange[]
+local function read_Mesh(begin, mesh_idx, w, addrs_mesh)
     local mem = newMemReader(begin)
     local dummy = mem:r16()
     local size = mem:r16()
     local unknown = mem:r32()
     local cmds_off = mem:r32()
     local cmds_len = mem:r32()
+    local cmds_begin, cmds_iend = begin + cmds_off, begin + cmds_off + cmds_len - 1
     w:wl(string.format((
         "\n### Mesh %d at 0x%08X\n  - size: %d\n" ..
         "  - cmds => %08X -- %08X"
-    ), mesh_idx, begin, size, begin + cmds_off, begin + cmds_off + cmds_len - 1
+    ), mesh_idx, begin, size, cmds_begin, cmds_iend
     ))
+    table.insert(addrs_mesh, {begin = cmds_begin, iend = cmds_iend})
 end
 
 ---@param begin int
 ---@param mat_idx int
 ---@param w Writer
-local function read_Material(begin, mat_idx, w)
+---@param addrs_mat int[]
+local function read_Material(begin, mat_idx, w, addrs_mat)
     local mem = newMemReader(begin)
     local dummy = mem:r16()
     local size = mem:r16()
@@ -158,11 +177,14 @@ local function read_Material(begin, mat_idx, w)
         texture_width.v, texture_height.v,
         dif_amb.addr
     ))
+    table.insert(addrs_mat, texture_width.addr)
+    table.insert(addrs_mat, texture_height.addr)
 end
 
 ---@param begin int
 ---@param w Writer
-local function read_MaterialList(begin, w)
+---@param addrs_mat int[]
+local function read_MaterialList(begin, w, addrs_mat)
     local mem = newMemReader(begin)
     local texture_pairings_off = mem:r16()
     local palette_pairings_off = mem:r16()
@@ -176,14 +198,17 @@ local function read_MaterialList(begin, w)
     ), begin + texture_pairings_off, begin + palette_pairings_off, materialList.count))
     for i = 1, materialList.count do
         local offset = materialList.data[i].v
-        read_Material(begin + offset, i, w)
+        read_Material(begin + offset, i, w, addrs_mat)
     end
 end
 
 ---@param begin int
 ---@param model_idx int
 ---@param w Writer
-local function read_Model(begin, model_idx, w)
+---@param addrs_mat int[]
+---@param addrs_bone int[]
+---@param addrs_mesh AddrsMeshRange[]
+local function read_Model(begin, model_idx, w, addrs_mat, addrs_bone, addrs_mesh)
     local mem = newMemReader(begin)
     local filesize = mem:r32()
     local render_cmds_off = mem:r32()
@@ -241,47 +266,68 @@ local function read_Model(begin, model_idx, w)
     ))
     for i = 1, boneList.count do
         local offset = boneList.data[i].v
-        read_Bone(boneList_head + offset, i, w)
+        read_Bone(boneList_head + offset, i, w, addrs_bone)
     end
     w:wl("\n")
     for i = 1, meshList.count do
         local offset = meshList.data[i].v
-        read_Mesh(meshList_head + offset, i, w)
+        read_Mesh(meshList_head + offset, i, w, addrs_mesh)
     end
-    read_MaterialList(materialList_head, w)
+    read_MaterialList(materialList_head, w, addrs_mat)
 end
+
+---@alias MDL0ReadResult { addrs_mat: int[], addrs_bone: int[], addrs_mesh: AddrsMeshRange[] }
 
 ---モデルデータの情報をダンプする
 --- - https://github.com/scurest/nsbmd_docs/blob/master/nsbmd_docs.txt#L164
----@param begin int
----@param writer_query? string | bool
+---@param begin int `"MDL0"`があるアドレス
+---@param writer_query? string | bool | Writer ファイル名(`string`)または標準出力(`bool?`)
+---@return MDL0ReadResult
 local function read_MDL0(begin, writer_query)
     local w = lib.path.w(writer_query)
     local mem = newMemReader(begin)
     local stamp = string.char(mem:r(4))
+    local empty_res = {addrs_mat = {}, addrs_bone = {}, addrs_mesh = {}}
     if stamp ~= "MDL0" then
         local _b = btos({string.byte(stamp, 1, #stamp)})
         w:wl(string.format("wrong addr: \"MDL0\" is not contained at 0x%08X (value: %s)", begin, _b))
         w:close()
-        return
+        return empty_res
     end
     local filesize = mem:r32()
     local models = GetNameList_u32(mem)
     if not models then
         w:close()
-        return
+        return empty_res
     end
     w:wl(string.format("# MDL0\n  - range: 0x%08X -- 0x%08X (bound: 0x%X)\n  - %d Model%s\n", begin, begin + filesize, filesize, models.count, (models.count > 1 and "s" or "") ))
+    local addrs_mat, addrs_bone, addrs_mesh = {}, {}, {}
     for i = 1, models.count do
         local offset = models.data[i].v
         if i > 1 then
             w:wl("\n\n=====================================\n")
         end
-        read_Model(begin + offset, i, w)
+        read_Model(begin + offset, i, w, addrs_mat, addrs_bone, addrs_mesh)
     end
     w:close()
+    return {
+        addrs_mat = addrs_mat,
+        addrs_bone = addrs_bone,
+        addrs_mesh = addrs_mesh,
+    }
+end
+
+---@param begin? int
+---@param inclusiveEnd? int
+---@param silent? bool
+---@return bool, int
+local function find_MDL0(begin, inclusiveEnd, silent)
+    begin = begin or 0x02000000
+    inclusiveEnd = inclusiveEnd or (begin + 0x003fffff)
+    return lib.find(begin, inclusiveEnd, ascii("MDL0"), 4, nil, silent)
 end
 
 return {
-    read_MDL0 = read_MDL0
+    read_MDL0 = read_MDL0,
+    find_MDL0 = find_MDL0,
 }
