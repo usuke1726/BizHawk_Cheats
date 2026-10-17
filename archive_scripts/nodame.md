@@ -1809,3 +1809,109 @@ function loop()
     update()
 end
 ```
+
+## video19 荒ぶり
+
+
+```lua
+
+lib.find_all(0x02000000, 0x023fffff, ascii("JNT0"))
+
+-- chiaki ver
+-- local JNT_addrs = {
+-- 0x022330DC,
+-- 0x02233A84,
+-- 0x0223459C,
+-- 0x022358B0,
+-- 0x02237414,
+-- 0x0223876C,
+-- 0x0223B614,
+-- 0x0223F694,
+-- 0x022455A8,
+-- 0x02248B80,
+-- 0x0224A2C4,
+-- 0x0228ABF0,
+-- }
+
+-- nodame ver
+local JNT_addrs = {
+0x022330DC,
+0x02233A84,
+0x0223459C,
+0x022358B0,
+0x02237414,
+0x0223876C,
+0x0223B614,
+0x0223F694,
+0x0224548C,
+0x02248D0C,
+0x0224A450,
+0x02265138,
+0x0228EB14,
+}
+
+-- Nitro.read_JNT0(addrs[1], "nodame_JNT.txt")
+local addrs = lib.array.flat(lib.array.map(JNT_addrs, function(a)
+    local res = Nitro.read_JNT0(a, lib.path.dummy())
+    return lib.array.flat({
+        -- res.addrs_tr,
+        -- res.addrs_scl,
+        res.addrs_rot,
+    })
+end))
+
+local origs = {}
+for _, a in pairs(addrs) do
+    origs[a] = r8(a)
+    origs[a+1] = r8(a+1)
+end
+
+-- local r = RC(5)
+local r = RC(20)
+local r2 = RC(30)
+SET_LOOP("MOVE", function()
+    for _, a in pairs(addrs) do
+        if r() then
+            add8(a + rand(0,4), rand(-3, 3)*(0x10 << rand(0,3)))
+        end
+        if r2() then w8(a, origs[a]) end
+        if r2() then w8(a+1, origs[a+1]) end
+    end
+end)
+
+lib.irume.start(function()
+    local head = 0x03eb8660
+    local as = {}
+    local p1 = 0x13
+    local p2 = 0x06
+    local vol = 0x0b
+    local ps = {}
+    for i = 0, 14 do
+        as[i] = head + 0x40*i
+        ps[i] = 0
+    end
+    local r = RC(10)
+    local r2 = RC(60)
+    local ok = false
+    return function()
+        if r2() then
+            ok = not ok
+        end
+        for i, a in pairs(as) do
+            w8(a+vol, 0x44)
+            w8(a+vol+1, 0x44)
+            if ok then
+                ps[i] = (ps[i] + 1) % 0x40
+                local v = ps[i]
+                w16(a+p2, (v<<8) | v)
+            elseif r() then
+                local v = rand(0, 0x40)
+                ps[i] = v
+                w16(a+p2, (v<<8) | v)
+            end
+        end
+    end
+end)
+```
+
+

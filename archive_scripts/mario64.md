@@ -1357,3 +1357,53 @@ irume_mode_2 = true
 -- 0x02480486 をいじる(最初17固定 -> 土管直前で12 -> 15、あと走るところで適当に値を大きくする(30くらいまで))
 
 ```
+
+## video19
+
+```lua
+local m2 = lib.at(0x02480487)
+function loop()
+    m2:w8(0x16)
+end
+
+lib.irume.start(function()
+    local head = 0x03e07d40
+    local prev = 0
+    local as = {}
+    local p1 = 0x17
+    local p2 = 0x10
+    local t = 0x24
+    local modes = {}
+    local ds = {}
+    for i = 0, 19 do
+        as[i] = head + i*0x40
+        modes[i] = 0
+        ds[i] = 4
+    end
+    local r = RC(30)
+    local m = lib.at(0x03000000)
+    return function()
+        for i, a in pairs(as) do
+            if r() then
+                modes[i] = rand(0, 2)
+                ds[i] = rand(1, 10) * 4
+            end
+            if modes[i] == 0 and rand(1,1)==1 then
+                w16(a+p2, rand(-10, 10)*0x10)
+            elseif modes[i] == 1 then
+                add16(a+p2, ds[i])
+                if within(r16(a+p2), 0x800, 0x8ff) then
+                    w16(a+p2, 0xf800)
+                end
+            elseif modes[i] == 2 then
+                add16(a+p2, -ds[i])
+                if within(r16(a+p2), 0xf700, 0xf7ff) then
+                    w16(a+p2, 0x800)
+                end
+            end
+            w8(a+p1, rand(-4, 4))
+            m:with(a+t):T8(16, 16)
+        end
+    end
+end)
+```

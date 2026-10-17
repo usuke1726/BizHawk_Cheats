@@ -1034,3 +1034,70 @@ function loop()
     w32(0x0296E4C0, 0xffffe800)
 end
 ```
+
+## video19
+
+```lua
+
+local _, JNT_addrs = lib.find_all(0x02000000, 0x023fffff, ascii("JNT0"), nil, nil, true)
+
+local addrs = lib.array.flat(lib.array.map(JNT_addrs, function(a)
+    local res = Nitro.read_JNT0(a, lib.path.dummy())
+    return lib.array.flat({
+        -- res.addrs_tr,
+        res.addrs_scl,
+        res.addrs_rot,
+    })
+end))
+
+local origs = {}
+for _, a in pairs(addrs) do
+    origs[a] = r8(a)
+    origs[a+1] = r8(a+1)
+end
+
+local r = RC(5)
+-- local r = RC(20)
+local r2 = RC(30)
+SET_LOOP("MOVE", function()
+    for _, a in pairs(addrs) do
+        if r() then
+            -- add8(a + rand(0,1), rand(-3, 3)*(0x4 << rand(0,2)))
+            add8(a + rand(0,0), rand(-3, 3)*0x4)
+        end
+        if r2() then w8(a, origs[a]) end
+        if r2() then w8(a+1, origs[a+1]) end
+    end
+end)
+
+w32(0x04000350, 0x99990099) -- 上画面の背景を赤くする
+
+lib.irume.start(function()
+    local head = 0x03EC8A00
+    local as = {}
+    local prev = {}
+    local ps = {}
+    for i = 0, 18 do
+        as[i] = head + 0x40 * i
+        prev[i] = 0
+        ps[i] = 0
+    end
+    local _t = 0x2c
+    local p1 = 0x1f
+    local p2 = 0x18
+    local vol = 0x16
+    return function()
+        for i, a in pairs(as) do
+            w16(a+vol, 0x8000)
+            ps[i] = (ps[i] + 0x10) % 0x800
+            w16(a+p2, ps[i] - 0x400)
+            local t = r8(a + _t)
+            if prev[i] < t then
+                t = clamp(t*3, 0x20, 0xe0)
+            end
+            w8(a+_t, t)
+            prev[i] = t
+        end
+    end
+end)
+```
