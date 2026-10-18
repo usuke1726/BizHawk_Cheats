@@ -281,7 +281,7 @@ end
 ---モデルデータの情報をダンプする
 --- - https://github.com/scurest/nsbmd_docs/blob/master/nsbmd_docs.txt#L164
 ---@param begin int `"MDL0"`があるアドレス
----@param writer_query? string | bool | Writer ファイル名(`string`)または標準出力(`bool?`)
+---@param writer_query WriterQuery ファイル名(`string`)または標準出力(`bool?`)
 ---@return MDL0ReadResult
 local function read_MDL0(begin, writer_query)
     local w = lib.path.w(writer_query)

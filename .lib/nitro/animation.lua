@@ -226,7 +226,7 @@ end
 
 ---アニメーションデータの情報をダンプする
 ---@param begin int `"JNT0"`があるアドレス
----@param writer_query? string | bool | Writer ファイル名(`string`)または標準出力(`bool?`)
+---@param writer_query WriterQuery ファイル名(`string`)または標準出力(`bool?`)
 ---@return JNT0ReadResult
 local function read_JNT0(begin, writer_query)
     local w = lib.path.w(writer_query)

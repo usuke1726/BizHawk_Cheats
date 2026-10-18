@@ -31,6 +31,8 @@ local function dummy_writer()
     }
 end
 
+---@alias WriterQuery string | boolean | Writer | number | nil
+
 --- ファイル出力か標準出力を容易に切り替えられるファイルオブジェクトのラッパーを生成する。
 --- 
 --- 例:
@@ -39,9 +41,8 @@ end
 --- local file = lib.path.w(use_file and "output.txt")
 --- -- 以後、画一的に file:write("...") -> file:close() と実行できる。
 --- ```
----@param filename? string | boolean | Writer `string`型なら`io.open`、`true/false/nil`なら標準出力、`0`ならダミー
+---@param filename WriterQuery `string`型なら`io.open`、`true/false/nil`なら標準出力、`number`型ならダミー(何も出力しない)
 ---@return Writer
----@overload fun(filename: 0): Writer
 local function writer(filename)
     local t = type(filename)
     if t == "string" then
