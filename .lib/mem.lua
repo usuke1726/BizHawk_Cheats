@@ -852,24 +852,41 @@ local function find(begin, inclusiveEnd, arr, length, domain, silent)
             return false, 0
         end
     end
-    local idx = non_nil_st
-    local baseAddr
+    local idxs = {}
+    local addrs = {}
     begin = begin + non_nil_st - 1
     local abegin = (begin + 4) & 0xfffffffc
     inclusiveEnd = inclusiveEnd | 0x3
+    local function on_found(addr)
+        local baseAddr = addr - non_nil_st + 1
+        if (not silent) then
+            print(string.format("[mem.find] == FOUND from 0x%08X", baseAddr))
+        end
+        return true, baseAddr
+    end
     local function eval_main(_i, v)
-        if _eval_byte(v, arr[idx]) then
-            if idx == non_nil_st then baseAddr = _i end
-            idx = idx + 1
-            if idx > n then
-                baseAddr = baseAddr - non_nil_st + 1
-                if (not silent) then
-                    print(string.format("[mem.find] == FOUND from 0x%08X", baseAddr))
+        local removed = {}
+        for addr, _ in pairs(addrs) do
+            local idx = idxs[addr]
+            if _eval_byte(v, arr[idx]) then
+                idxs[addr] = idx + 1
+                if idx == n then
+                    return on_found(addr)
                 end
-                return true, baseAddr
+            else
+                removed[addr] = true
             end
-        else
-            idx = non_nil_st
+        end
+        for addr, _ in pairs(removed) do
+            idxs[addr] = nil
+            addrs[addr] = nil
+        end
+        if _eval_byte(v, arr[non_nil_st]) then
+            addrs[_i] = true
+            idxs[_i] = non_nil_st + 1
+            if non_nil_st == n then
+                return on_found(_i)
+            end
         end
         return false, 0
     end
