@@ -1914,4 +1914,171 @@ lib.irume.start(function()
 end)
 ```
 
+## video20 ペラペラ千秋
 
+```lua
+local res = Nitro.read_MDL0(0x02280A2C, 0)
+local mesh = res.addrs_mesh
+assert(#mesh == 2)
+Nitro.filter_mesh(mesh[1].begin, mesh[1].iend, function(addr, cmd, pnum, name)
+    if name ~= MESH_COMMANDS.VTX_16 then return end
+    assert(addr%2==0)
+    local x, y, z = r16(addr+0), r16(addr+2), r16(addr+4)
+    local _x, _y, _z
+    _x = intToFixFloat(x, 3, 12)
+    _y = intToFixFloat(y, 3, 12)
+    _z = intToFixFloat(z, 3, 12)
+    w16(addr+4, fixFloatToInt(invlerp(_z, -8, 2.1)*0.1, 3, 12))
+end)
+local vs = {}
+Nitro.filter_mesh(mesh[2].begin, mesh[2].iend, function(addr, cmd, pnum, name)
+    if name ~= MESH_COMMANDS.VTX_16 then return end
+    assert(addr%2==0)
+    local x, y, z = r16(addr+0), r16(addr+2), r16(addr+4)
+    local _x, _y, _z
+    _x = intToFixFloat(x, 3, 12)
+    _y = intToFixFloat(y, 3, 12)
+    _z = intToFixFloat(z, 3, 12)
+    vs[addr+4] = _z
+    -- w16(addr+4, fixFloatToInt(invlerp(_z, -8, 2.1)*0.1, 3, 12))
+end)
+local c = Cnt(31)
+function loop()
+    local i = c:next()
+    for a, z in pairs(vs) do
+        -- w16(a, fixFloatToInt(z * (1+0.3*math.sin01(i/c.n)) , 3, 12))
+        w16(a, fixFloatToInt(z * (1+0.5*math.sin01(i/c.n)) , 3, 12))
+    end
+end
+
+lib.irume.start(function()
+    local head = 0x03eb8660
+    local as = {}
+    local p1 = 0x13
+    local p2 = 0x06
+    local vol = 0x0a
+    -- local ps = {0x1111, 0x1129}
+    -- local ps = {0xf8f8}
+    -- local ps = {0xffff}
+    -- local ps = {0xf8f8, 0xf9f9, 0xfafa, 0xfbfb, 0xfcfc, 0xfdfd, 0xfefe, 0xfdfd, 0xfcfc, 0xfbfb, 0xfafa, 0xf9f9}
+    local ps = {0xf5f5, 0xf6f6, 0xf7f7, 0xf8f8, 0xf9f9, 0xfafa, 0xfbfb, 0xfafa, 0xf9f9, 0xf8f8, 0xf7f7, 0xf6f6}
+    local _p = 0xf8f8
+    local r = RC(10)
+    local c = Cnt(3, #ps)
+    for i = 0, 14 do
+        as[i] = head + 0x40*i
+    end
+    return function()
+        c()
+        -- if r() then _p = rand(0xfb, 0xff) _p = (_p<<8)|_p end
+        if r() then _p = rand(0x10a, 0x111) % 0x100 _p = (_p<<8)|_p end
+        for i, a in pairs(as) do
+            w8(a+vol, 0x20)
+            w8(a+vol+1, 0x0)
+            w16(a+p2, _p)
+        end
+        for i = 12, 12 do
+            w8(as[i]+vol, 0x66)
+            w8(as[i]+vol+1, 0x66)
+            w8(as[i]+vol+2, 0x66)
+            w16(as[i]+p2, ps[c.i+1])
+            w8(as[i]+0x19, 0x06)
+            w16(as[i]+0x1a, 0x6ff)
+        end
+    end
+end)
+```
+
+## video20 ブロック状収縮拡大(謎の踊り)
+
+```lua
+
+local res = Nitro.read_MDL0(0x02280A2C, 0)
+local mesh = res.addrs_mesh
+local vs = {}
+assert(#mesh == 2)
+Nitro.filter_mesh(mesh[1].begin, mesh[1].iend, function(addr, cmd, pnum, name)
+    if name ~= MESH_COMMANDS.VTX_16 then return end
+    assert(addr%2==0)
+    local x, y, z = r16(addr+0), r16(addr+2), r16(addr+4)
+    local _x, _y, _z
+    _x = intToFixFloat(x, 3, 12)
+    _y = intToFixFloat(y, 3, 12)
+    _z = intToFixFloat(z, 3, 12)
+    w16(addr+0, fixFloatToInt(invlerp(_x, -8, 2.1)*2, 3, 12))
+    -- w16(addr+2, fixFloatToInt(invlerp(_y, -8, 2.1)*2, 3, 12))
+    vs[addr+2] = _y
+    vs[addr+4] = _z
+    -- w16(addr+4, fixFloatToInt(invlerp(_z, -8, 2.1)*2, 3, 12))
+end)
+Nitro.filter_mesh(mesh[2].begin, mesh[2].iend, function(addr, cmd, pnum, name)
+    if name ~= MESH_COMMANDS.VTX_16 then return end
+    assert(addr%2==0)
+    local x, y, z = r16(addr+0), r16(addr+2), r16(addr+4)
+    local _x, _y, _z
+    _x = intToFixFloat(x, 3, 12)
+    _y = intToFixFloat(y, 3, 12)
+    _z = intToFixFloat(z, 3, 12)
+    -- vs[addr+4] = _z
+    w16(addr+0, fixFloatToInt(_x*3, 3, 12))
+    w16(addr+2, fixFloatToInt(_y*3, 3, 12))
+    w16(addr+4, fixFloatToInt(_z+0.5, 3, 12))
+    -- w16(addr+4, fixFloatToInt(invlerp(_z, -8, 2.1)*0.1, 3, 12))
+end)
+
+local c = Cnt(31)
+function loop()
+    local i = c:next()
+    local scl = 0.2+2.5*math.sin01(i/c.n)
+    -- local scl = 0.2
+    for a, z in pairs(vs) do
+        w16(a, fixFloatToInt(invlerp(z, -8, 2.1)*scl, 3, 12))
+    end
+end
+
+lib.irume.start(function()
+    local head = 0x03eb8660
+    local as = {}
+    local p1 = 0x13
+    local p2 = 0x06
+    local vol = 0x0a
+    local ps = {0x1111, 0x1129, 0x2222, 0x3333, 0xf5f5, 0xffff, 0xfbfb, 0xfcfc, 0x1212, 0x1919}
+    local _p = 0xf8f8
+    local _pv = 0x1111
+    local r = RC(10)
+    local r2 = RC(120)
+    local c = Cnt(20)
+    local poses = {}
+    local vols = {}
+    local vols_r = RC(60)
+    for i = 0, 14 do
+        as[i] = head + 0x40*i
+        vols[i] = 0x20
+    end
+    return function()
+        if c() then
+            _pv = ps[rand(1, #ps)]
+        end
+        if r() then _p = rand(0xfb, 0xff) _p = (_p<<8)|_p end
+        for i, a in pairs(as) do
+            if vols_r() then vols[i] = rand(-2, 16)*0x20 end
+            w16(a+vol, vols[i])
+            w16(a+p2, _p)
+
+            if not poses[i] or r2() then
+                poses[i] = r32(a + 0x28)
+            end
+            w32(a + 0x28, poses[i])
+        end
+        for i = 12, 12 do
+            w8(as[i]+vol, 0x66)
+            w8(as[i]+vol+1, 0x66)
+            w8(as[i]+vol+2, 0x66)
+            -- w16(as[i]+p2, ps[c.i+1])
+            w16(as[i]+p2, _pv)
+            w8(as[i]+0x19, 0x06)
+            w16(as[i]+0x1a, 0x6ff)
+        end
+    end
+end)
+```

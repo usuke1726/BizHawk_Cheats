@@ -1407,3 +1407,58 @@ lib.irume.start(function()
     end
 end)
 ```
+
+## video20 タイトルのマリオゲッダン
+
+```lua
+
+lib.irume.start(function()
+    local head = 0x03e07d40
+    local as = {}
+    local p1 = 0x17
+    local p2 = 0x10
+    local t = 0x24
+    for i = 0, 19 do
+        as[i] = head + i*0x40
+    end
+    local m = lib.at(0x03000000)
+    local ps = {-4, 0}
+    local c = Cnt(1, #ps)
+    return function()
+        c()
+        for i, a in pairs(as) do
+            m:with(a+t):T8(20, 20)
+            w16(a+p2, ps[c.i+1]*0x40)
+        end
+    end
+end)
+
+
+-- 少し待ってから実行
+w32(0x024805B8, 0)
+
+-- さらに待ってから実行
+local As = {0x100, 0x100000, 0x1000000}
+local vs = {}
+local diffs = {}
+local r = RC(120)
+local r2 = RC(90)
+local r3 = RC(30)
+
+local m2 = lib.at(0x02480487)
+function loop()
+    if r2() then m2:w8(rand(4, 0x16)) end
+    for i = 0x024805BC, 0x0248071F, 4 do
+        if not diffs[i] or r3() then diffs[i] = As[rand(1, #As)] end
+        if not vs[i] or r() then vs[i] = r32(i) end
+        if r2() then w32(i, vs[i]) end
+        add32(i, rand(-1, 1)*diffs[i])
+    end
+    for i = 0x02480730, 0x0248458F, 4 do
+        if not diffs[i] or r3() then diffs[i] = As[rand(1, #As)] end
+        if not vs[i] or r() then vs[i] = r32(i) end
+        if r2() then w32(i, vs[i]) end
+        add32(i, rand(-1, 1)*diffs[i])
+    end
+end
+```

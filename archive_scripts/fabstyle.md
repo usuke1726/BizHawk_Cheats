@@ -719,3 +719,251 @@ lib.warr(0x0215BB25, htob( -- 世界から 取り残されることにな...
 "90a28a45b6d70a8ee6d88e63bbdad9bac4c6c5d9050505"
 ))
 ```
+
+## フレミング 顔座標 & 机撤去
+
+```
+0x022A8B80 => y座標
+0x022A8B84 => z座標
+0x022A8B88 => x座標
+w32(0x023155C0, 0x100000) -- 机を撤去
+```
+
+## フレミング アニメーションアドレス
+
+```lua
+local fr_addrs = {
+0x022A8AA0, -- 冒頭
+0x022AF7C4, -- 諸君が英語をマスターしなければ...
+0x022B3BF0, -- 初めに言っておくが
+0x022B6244, -- さて、目標と時間は常にセット
+0x022B7CB0, -- 静かにしたまえ
+0x022BAC50, -- グローバルな視点なくして&世界から取り残される
+0x022C85FC, -- 初めに言っておくがのトゥース止めポーズ
+0x022CB2DC, -- グローバルな視点 の止めポーズ
+0x022C95A4, -- さて、目標と時間はの止めポーズ
+0x022CD7E4, -- グッドラック, おわかりかな
+0x022C1500, -- 結構 ものわかりがよい生徒で助かるよ
+0x022CCAFC, -- 結構 ものわかりがよい の止めポーズ
+0x022CE940, -- ゆっくりと名簿を読み上げましたの直後の主人公名を読む瞬間のポーズ(浜井…恵？)
+}
+```
+
+## video20 超笑顔 & パワーワード?
+
+```lua
+local addrs = {
+0x02281B30, -- 顔
+0x02287DE8, -- 髪
+0x0228B2A0,
+0x02318018,
+0x0231D658,
+}
+
+local res = Nitro.read_MDL0(addrs[1], 0)
+local mesh = res.addrs_mesh
+local vs = {}
+local count = {}
+local len = #mesh
+printf("len: %d", len)
+for i = 1, len do
+    printf("idx %d", i)
+    local xmin, xmax = 100000000, -100000000
+    local ymin, ymax = 100000000, -100000000
+    local zmin, zmax = 100000000, -100000000
+    Nitro.filter_mesh(mesh[i].begin, mesh[i].iend, function(addr, cmd, pnum, name)
+        count[name] = (count[name] or 0) + 1
+        if name ~= MESH_COMMANDS.VTX_16 then return end
+        assert(addr%2==0)
+        local x, y, z = r16(addr+0), r16(addr+2), r16(addr+4)
+        local _x, _y, _z
+        _x = intToFixFloat(x, 3, 12)
+        _y = intToFixFloat(y, 3, 12)
+        _z = intToFixFloat(z, 3, 12)
+        xmin = math.min(xmin, _x) xmax = math.max(xmax, _x)
+        ymin = math.min(ymin, _y) ymax = math.max(ymax, _y)
+        zmin = math.min(zmin, _z) zmax = math.max(zmax, _z)
+        local d = math.abs(_x) < 0.5 and 4*math.abs(_x) or 0
+        -- local d = 0
+        local __d = -8
+        if math.abs(_x-__d) < 0.5 then d = d + 4*math.abs(_x-__d) end
+        w16(addr+0, fixFloatToInt(_x*8, 3, 12))
+        w16(addr+2, fixFloatToInt(_y*4+(_y < 0 and 0.1 or -0.1)+d, 3, 12))
+        w16(addr+4, fixFloatToInt(_z*4+1, 3, 12))
+    end)
+    printf("x: [%f, %f]", xmin, xmax)
+    printf("y: [%f, %f]", ymin, ymax)
+    printf("z: [%f, %f]", zmin, zmax)
+end
+for name, c in pairs(count) do printf("%s: %d", name, c) end
+local fr_addrs = {
+0x022A8AA0, -- 冒頭
+0x022AF7C4, -- 諸君が英語をマスターしなければ...
+0x022B3BF0, -- 初めに言っておくが
+0x022B6244, -- さて、目標と時間は常にセット
+0x022B7CB0, -- 静かにしたまえ
+0x022BAC50, -- グローバルな視点なくして&世界から取り残される
+0x022C85FC, -- 初めに言っておくがのトゥース止めポーズ
+0x022CB2DC, -- グローバルな視点 の止めポーズ
+0x022C95A4, -- さて、目標と時間はの止めポーズ
+0x022CD7E4, -- グッドラック, おわかりかな
+0x022C1500, -- 結構 ものわかりがよい生徒で助かるよ
+0x022CCAFC, -- 結構 ものわかりがよい の止めポーズ
+0x022CE940, -- ゆっくりと名簿を読み上げましたの直後の主人公名を読む瞬間のポーズ(浜井…恵？)
+}
+for _, addr in pairs(fr_addrs) do
+    local res = Nitro.read_JNT0(addr, 0)
+    w32(res.tracks[1][5].CurveX_Const.addr, 0x1111)
+    w32(res.tracks[1][5].CurveY_Const.addr, 0x1111) -- 34011くらいでようやくdeskの前へ
+end
+-- w32(0x022A8B80, 0x1111)-- C022A8B84 C022A8B88
+-- w32(0x022B7D94, 0x1111)-- C022B7D98 C022B7D9C
+w32(0x023155C0, 0x100000) -- 机を撤去
+
+
+lib.irume.start(function()
+    local base = 0x03E18DD0
+    local p1 = 0x1b
+    local p2 = 0x14
+    local t = 0x28
+    local as = {}
+    local modes = {}
+    local ds = {}
+    local vol = 0x12
+    local p = 0
+    for i = 0, 16 do
+        as[i] = base + i*0x40
+        modes[i] = 0
+        ds[i] = 4
+    end
+    local r = RC(3)
+    local m = lib.at(0x03000000)
+    local _d = {-2,-1,1,2}
+    return function()
+        if r() then p = p + _d[rand(1, #_d)] * 0x40 end
+        for i, a in pairs(as) do
+            w16(a+vol, -0x40)
+            w16(a+p2, p)
+        end
+    end
+end)
+
+
+local update = (function()
+    local idx = 0
+local addrs = {
+-- VOICE 01(私日本語ダメなの)
+{0x08354600, 0x0835DB6F, 1},
+-- VOICE 02
+{0x0626B200, 0x06275C47, 1},
+-- VOICE 03
+{0x06275E00, 0x0627C2FF, 1},
+-- VOICE 04
+{0x0627C400, 0x06281819, 2},
+-- VOICE 05
+{0x06281A00, 0x06289CAD, 1},
+-- VOICE 06
+{0x06289E00, 0x0628E5F8, 1},
+-- VOICE 07
+{0x0628E600, 0x06298948, 1},
+-- VOICE 08
+{0x06298A00, 0x0629A72A, 2},
+-- 実際はここまで、09以降は撮らなかった
+-- VOICE 09
+{0x0629A800, 0x062A1A5A, 1},
+-- VOICE 10
+{0x062A1C00, 0x062AA4A6, 1},
+-- VOICE 11
+{0x062AA600, 0x062ACBAD, 1},
+-- VOICE 12
+{0x062ACC00, 0x062B3CF8, 1},
+-- VOICE 13
+{0x062B3E00, 0x062BF245, 1},
+-- VOICE 14
+{0x062BF400, 0x062C7A72, 1},
+}
+    return function()
+        idx = idx + 1
+        local path = lib.path.output(string.format("fab_voices/video20/o%02d.ahx", idx))
+        local voice = addrs[idx]
+        if not voice then print("voice out of bound") return end
+        local begin = assert(voice[1])
+        local rate_change = voice[3]
+        local file = io.open(path, "rb")
+        if not file then print("not found path " .. path) return end
+        local content = file:read("a")
+        file:close()
+        local bytes = {}
+        for i = 1, #content do
+            bytes[i] = content:byte(i)
+        end
+        for i = 1, 0x30 do
+            table.insert(bytes, 0xff)
+        end
+        lib.romwarr(begin, bytes)
+        if rate_change then
+            local i = begin + 10
+            local v = (r8r(i) << 8) | r8r(i+1)
+            if rate_change == 2 and v % 2 == 0 then
+                v = v // 2
+                w8r(i, v >> 8)
+                w8r(i+1, v & 0xff)
+            elseif rate_change == 3 and v % 3 == 0 then
+                v = v // 3
+                w8r(i, v >> 8)
+                w8r(i+1, v & 0xff)
+            elseif rate_change == 4 and v % 3 == 0 then
+                v = v * 2 // 3
+                w8r(i, v >> 8)
+                w8r(i+1, v & 0xff)
+            end
+        end
+        print(string.format("idx %d written", idx))
+    end
+end)()
+
+lib.actions.register("fab_video_20", lib.actions.KF.button("L"), {
+function()
+end,
+function()
+lib.warr(0x0215BA37, htob( -- 私、清水のバレンタイン・アキラ...
+"8e84814190b49085c91b4bcadedaddc0b2dd1b4881451b4bb1b7d70a8ef68bc681411b4bcdded9cca7d11b4894c497708d558c82c3de0a8989bcded7dad9d6b3c6c5d8c0b2c5050505"
+))
+end,
+function()
+lib.warr(0x0215BA65, htob( -- デービス・ノゾミにしたまえ 先...
+"1b4bc3de1b48815b1b4bcbdebd1b4881451b4bc9bfded01b48c6bcc0cfb40a90e69163c61b4bb1ccd8b61b488c6ec98c8cc6bdd98e9e8ad4ca0a89b4c0c1c6cab1afc3d381418a4f8e918c6e8b4395aa050505"
+))
+end,
+function()
+lib.warr(0x0215BA90, htob( -- 初めに「件名）お姉さん、大好き...
+"8f89d2c681758c8f96bc816ab58e6fbbdd814191e58d44b781490a1b4bbcddccdfd91b48c51b4bcbdebcdec8bd1b488aa0d80abadeafc21b4bbade1b48815b1b4bbcdeacbd1b48c51b4bcededadb1b48d4dd050505"
+))
+end,
+function()
+lib.warr(0x0215BABA, htob( -- あっという間にデヴ炎上してるよ...
+"b1afc4b2b38ad4c61b4bc3deb3de1b48898a8fe3bcc3d9d60a97a096caa68e86d4bdd8c3de8da18c8ecacfc0de0a94fcbcb2b58eab8b56a6bdd9c9c0de050505"
+))
+end,
+function()
+lib.warr(0x0215BAED, htob( -- 諸君が パンツ以外はいてないん...
+"8f948c4eb6de0a1b4bcadfddc21b4888c88a4fcab2c3c5b2ddc0ded6c881630a8dc296b192b489dfc4ca89bdc997aac0dedbb38148050505"
+))
+end,
+function()
+lib.warr(0x0215BB25, htob( -- 黄色ベースの選択肢を選ぶと 「...
+"89a990461b4bcdde1b48815b1b4bbd1b48c9914991f08e88a69149ccdec40a8175c5ddb690b688d38b43c0ded6c8816381760a90a2c9928681418ad488e1afc4d9dc8149050505"
+))
+end,
+function()
+lib.warr(0x0215BB3C, htob( -- 私との合コン大成功ですね ネバ...
+"8e84c4c98d871b4bbadd1b4891e590ac8cf7c3debdc80a1b4bc8cade1b48815b88e194bdc4bbdad91b4bc4deb2c21b48c90a91e58d718a438e9e91e31b4bb5b5c0c61b4881451b4bd6bcb8c6050505"
+))
+end,
+function()
+lib.warr(0x0215BB6F, htob( -- グッドだらしない服装 胸にジー...
+"1b4bb8deafc4de1b48c0ded7bcc5b2959e91950a8bb9c61b4bbcde1b48815b1b4bdd1b48c40a9497d9d3c9b6deb1d8cfbcc0050505"
+))
+end,
+}):onStateChanged(function()update() end)
+```
