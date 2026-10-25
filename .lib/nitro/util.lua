@@ -1,4 +1,8 @@
 
+---@class DataPos
+---@field v ValueDataBase
+---@field addr int
+
 ---@class DataPos_int
 ---@field v int
 ---@field addr int
@@ -11,6 +15,7 @@
 ---@param addr int
 ---@return DataPos_int
 ---@overload fun(v: string, addr: int): DataPos_string
+---@overload fun(v: ValueDataBase, addr: int): DataPos
 local function DataPos(v, addr)
     return {v = v, addr = addr}
 end
@@ -50,7 +55,14 @@ function MemReader:r16()
 end
 function MemReader:d16()
     local addr = self.i
-    return DataPos(self:r16(), addr)
+    return DataPos(___nitro_values.U16(self:r16()), addr)
+end
+---@param y int
+---@param z int
+function MemReader:f16(y, z)
+    assert(y + z + 1 == 16, "1 + y + z ~= 16")
+    local addr = self.i
+    return DataPos(___nitro_values.FixedFloat(self:r16(), y, z), addr)
 end
 ---LEで取得する
 ---@return int
@@ -59,7 +71,14 @@ function MemReader:r32()
 end
 function MemReader:d32()
     local addr = self.i
-    return DataPos(self:r32(), addr)
+    return DataPos(___nitro_values.U32(self:r32()), addr)
+end
+---@param y int
+---@param z int
+function MemReader:f32(y, z)
+    assert(y + z + 1 == 32, "1 + y + z ~= 32")
+    local addr = self.i
+    return DataPos(___nitro_values.FixedFloat(self:r32(), y, z), addr)
 end
 ---BEで取得する
 ---@return int
@@ -68,7 +87,14 @@ function MemReader:R16()
 end
 function MemReader:D16()
     local addr = self.i
-    return DataPos(self:R16(), addr)
+    return DataPos(___nitro_values.U16(self:R16()), addr)
+end
+---@param y int
+---@param z int
+function MemReader:F16(y, z)
+    assert(y + z + 1 == 16, "1 + y + z ~= 16")
+    local addr = self.i
+    return DataPos(___nitro_values.FixedFloat(self:R16(), y, z), addr)
 end
 ---BEで取得する
 ---@return int
@@ -77,7 +103,14 @@ function MemReader:R32()
 end
 function MemReader:D32()
     local addr = self.i
-    return DataPos(self:R32(), addr)
+    return DataPos(___nitro_values.U32(self:R32()), addr)
+end
+---@param y int
+---@param z int
+function MemReader:F32(y, z)
+    assert(y + z + 1 == 32, "1 + y + z ~= 32")
+    local addr = self.i
+    return DataPos(___nitro_values.FixedFloat(self:R32(), y, z), addr)
 end
 ---@param begin int
 ---@return MemReader

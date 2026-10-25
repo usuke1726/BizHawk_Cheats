@@ -1,5 +1,71 @@
 
----@alias JNT0ReadResult { addrs_tr: int[], addrs_rot: int[], addrs_scl: int[] }
+---@class ValueDataBase
+---@field v number
+---@field hex int
+---@operator add(number): ValueDataBase
+---@operator sub(number): ValueDataBase
+---@operator div(number): ValueDataBase
+---@operator mul(number): ValueDataBase
+---@operator unm:ValueDataBase
+---@field LE fun(self: ValueDataBase): int[]
+---@field BE fun(self: ValueDataBase): int[]
+
+---@class DataPos
+---@field v ValueDataBase
+---@field addr int
+
+---@class DataPos_int
+---@field v int
+---@field addr int
+
+---@class DataPos_string
+---@field v string
+---@field addr int
+
+---@class TrackDataFlags
+---@field no_channels bool
+---@field no_translation_channels bool
+---@field translation_x_constant bool
+---@field translation_y_constant bool
+---@field translation_z_constant bool
+---@field no_rotation_channel bool
+---@field rotation_constant bool
+---@field no_scale_channels bool
+---@field scale_x_constant bool
+---@field scale_y_constant bool
+---@field scale_z_constant bool
+
+---@class SampledCurve
+---@field head_addr int
+---@field start_frame int
+---@field end_frame int
+---@field width int
+---@field log_rate int
+---@field sample_off int
+
+---@class TrackData
+---@field head_addr int
+---@field flags TrackDataFlags
+---@field target_index int
+---@field CurveX_Const DataPos
+---@field CurveY_Const DataPos
+---@field CurveZ_Const DataPos
+---@field CurveRot_Const DataPos_int
+---@field CurveScaleX_Const1 DataPos
+---@field CurveScaleX_Const2 DataPos
+---@field CurveScaleY_Const1 DataPos
+---@field CurveScaleY_Const2 DataPos
+---@field CurveScaleZ_Const1 DataPos
+---@field CurveScaleZ_Const2 DataPos
+---@field CurveX SampledCurve
+---@field CurveY SampledCurve
+---@field CurveZ SampledCurve
+---@field CurveRot SampledCurve
+---@field CurveScaleX SampledCurve
+---@field CurveScaleY SampledCurve
+---@field CurveScaleZ SampledCurve
+
+---@alias JNT0ReadResult { addrs_tr: int[], addrs_rot: int[], addrs_scl: int[], tracks: TrackData[][] }
 ---@alias AddrsMeshRange {begin: int, iend: int}
 ---@alias MDL0ReadResult { addrs_mat: int[], addrs_bone: int[], addrs_mesh: AddrsMeshRange[] }
 
@@ -28,9 +94,51 @@ local function find_MDL0(begin, inclusiveEnd, silent) end
 ---@return bool, int
 local function find_JNT0(begin, inclusiveEnd, silent) end
 
+---@param begin? int
+---@param inclusiveEnd? int
+---@param silent? bool
+---@return bool, int[]
+local function find_all_MDL0(begin, inclusiveEnd, silent) end
+
+---@param begin? int
+---@param inclusiveEnd? int
+---@param silent? bool
+---@return bool, int[]
+local function find_all_JNT0(begin, inclusiveEnd, silent) end
+
+---Meshコマンドのパラメータに対してフィルタリング処理を行う。
+---@param begin int
+---@param iend int
+---@param vtx_callback? fun(addr: int, cmd: int, argnum: int, cmdName: string) `VTX`系の命令限定のcallback (`addr`は`arg`の開始アドレス)
+---@param callback? fun(addr: int, cmd: int, argnum: int, cmdName: string) 全命令に対するcallback (`addr`は`arg`の開始アドレス)
+local function filter_mesh(begin, iend, vtx_callback, callback) end
+
+---@enum Mesh_Commands
+local mesh_commands = {
+    NOP = "NOP",
+    MTX_RESTORE = "MTX_RESTORE",
+    MTX_SCALE = "MTX_SCALE",
+    COLOR = "COLOR",
+    NORMAL = "NORMAL",
+    TEXCOORD = "TEXCOORD",
+    VTX_16 = "VTX_16",
+    VTX_10 = "VTX_10",
+    VTX_XY = "VTX_XY",
+    VTX_XZ = "VTX_XZ",
+    VTX_YZ = "VTX_YZ",
+    VTX_DIFF = "VTX_DIFF",
+    BEGIN_VTXS = "BEGIN_VTXS",
+    END_VTXS = "END_VTXS",
+}
+MESH_COMMANDS = mesh_commands
+
 Nitro = {
     read_JNT0 = read_JNT0,
     read_MDL0 = read_MDL0,
     find_MDL0 = find_MDL0,
     find_JNT0 = find_JNT0,
+    find_all_MDL0 = find_all_MDL0,
+    find_all_JNT0 = find_all_JNT0,
+    filter_mesh = filter_mesh,
+    mesh_commands = mesh_commands,
 }

@@ -174,7 +174,7 @@ local function read_Material(begin, mat_idx, w, addrs_mat)
         "  - dif_amb => %08X"
     ), mat_idx, size,
         texture_width.addr, texture_height.addr,
-        texture_width.v, texture_height.v,
+        texture_width.v.v, texture_height.v.v,
         dif_amb.addr
     ))
     table.insert(addrs_mat, texture_width.addr)
@@ -327,7 +327,92 @@ local function find_MDL0(begin, inclusiveEnd, silent)
     return lib.find(begin, inclusiveEnd, ascii("MDL0"), 4, nil, silent)
 end
 
+---@param begin? int
+---@param inclusiveEnd? int
+---@param silent? bool
+---@return bool, int[]
+local function find_all_MDL0(begin, inclusiveEnd, silent)
+    begin = begin or 0x02000000
+    inclusiveEnd = inclusiveEnd or (begin + 0x003fffff)
+    return lib.find_all(begin, inclusiveEnd, ascii("MDL0"), 4, nil, silent)
+end
+
+---@enum Mesh_Commands
+local mesh_commands = {
+    NOP = "NOP",
+    MTX_RESTORE = "MTX_RESTORE",
+    MTX_SCALE = "MTX_SCALE",
+    COLOR = "COLOR",
+    NORMAL = "NORMAL",
+    TEXCOORD = "TEXCOORD",
+    VTX_16 = "VTX_16",
+    VTX_10 = "VTX_10",
+    VTX_XY = "VTX_XY",
+    VTX_XZ = "VTX_XZ",
+    VTX_YZ = "VTX_YZ",
+    VTX_DIFF = "VTX_DIFF",
+    BEGIN_VTXS = "BEGIN_VTXS",
+    END_VTXS = "END_VTXS",
+}
+MESH_COMMANDS = mesh_commands
+
+local commands = {
+[0x0] = {0, mesh_commands.NOP},
+[0x14] = {1, mesh_commands.MTX_RESTORE},
+[0x1b] = {3, mesh_commands.MTX_SCALE},
+[0x20] = {1, mesh_commands.COLOR},
+[0x21] = {1, mesh_commands.NORMAL},
+[0x22] = {1, mesh_commands.TEXCOORD},
+[0x23] = {2, mesh_commands.VTX_16},
+[0x24] = {1, mesh_commands.VTX_10},
+[0x25] = {1, mesh_commands.VTX_XY},
+[0x26] = {1, mesh_commands.VTX_XZ},
+[0x27] = {1, mesh_commands.VTX_YZ},
+[0x28] = {1, mesh_commands.VTX_DIFF},
+[0x40] = {1, mesh_commands.BEGIN_VTXS},
+[0x41] = {0, mesh_commands.END_VTXS},
+}
+local function is_mesh_command(value)
+    for j = 0, 3 do
+        if not commands[(value >> (8*j)) & 0xff] then
+            return false
+        end
+    end
+    return true
+end
+
+---Meshコマンドのパラメータに対してフィルタリング処理を行う。
+---@param begin int
+---@param iend int
+---@param vtx_callback? fun(addr: int, cmd: int, argnum: int, cmdName: string) `VTX`系の命令限定のcallback (`addr`は`arg`の開始アドレス)
+---@param callback? fun(addr: int, cmd: int, argnum: int, cmdName: string) 全命令に対するcallback (`addr`は`arg`の開始アドレス)
+local function filter_mesh(begin, iend, vtx_callback, callback)
+    vtx_callback = vtx_callback or function() end
+    callback = callback or function() end
+    local i = begin
+    while i <= iend do
+        local v = r32(i)
+        i = i + 4
+        if is_mesh_command(v) then
+            for j = 0, 3 do
+                local cmd = (v>>(8*j)) & 0xff
+                local cmd_detail = commands[cmd]
+                local pnum = cmd_detail[1]
+                local name = cmd_detail[2]
+                if within(cmd, 0x23, 0x28) then
+                    vtx_callback(i, cmd, pnum, name)
+                end
+                callback(i, cmd, pnum, name)
+                i = i + pnum * 4
+            end
+        end
+    end
+end
+
 return {
     read_MDL0 = read_MDL0,
     find_MDL0 = find_MDL0,
+    find_all_MDL0 = find_all_MDL0,
+    filter_mesh = filter_mesh,
+    mesh_commands = mesh_commands,
 }

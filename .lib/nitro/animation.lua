@@ -27,16 +27,16 @@ local newMemReader, GetNameList_u32 = ___nitro_lib.newMemReader, ___nitro_lib.Ge
 ---@field head_addr int
 ---@field flags TrackDataFlags
 ---@field target_index int
----@field CurveX_Const DataPos_int
----@field CurveY_Const DataPos_int
----@field CurveZ_Const DataPos_int
+---@field CurveX_Const DataPos
+---@field CurveY_Const DataPos
+---@field CurveZ_Const DataPos
 ---@field CurveRot_Const DataPos_int
----@field CurveScaleX_Const1 DataPos_int
----@field CurveScaleX_Const2 DataPos_int
----@field CurveScaleY_Const1 DataPos_int
----@field CurveScaleY_Const2 DataPos_int
----@field CurveScaleZ_Const1 DataPos_int
----@field CurveScaleZ_Const2 DataPos_int
+---@field CurveScaleX_Const1 DataPos
+---@field CurveScaleX_Const2 DataPos
+---@field CurveScaleY_Const1 DataPos
+---@field CurveScaleY_Const2 DataPos
+---@field CurveScaleZ_Const1 DataPos
+---@field CurveScaleZ_Const2 DataPos
 ---@field CurveX SampledCurve
 ---@field CurveY SampledCurve
 ---@field CurveZ SampledCurve
@@ -105,13 +105,13 @@ local function get_Track(begin)
     local CurveScaleY
     local CurveScaleZ
     if not flags_d.no_translation_channels then
-        if flags_d.translation_x_constant then CurveX_Const = mem:d32()
+        if flags_d.translation_x_constant then CurveX_Const = mem:f32(19, 12)
         else CurveX = SmpCrv(mem)
         end
-        if flags_d.translation_y_constant then CurveY_Const = mem:d32()
+        if flags_d.translation_y_constant then CurveY_Const = mem:f32(19, 12)
         else CurveY = SmpCrv(mem)
         end
-        if flags_d.translation_z_constant then CurveZ_Const = mem:d32()
+        if flags_d.translation_z_constant then CurveZ_Const = mem:f32(19, 12)
         else CurveZ = SmpCrv(mem)
         end
     end
@@ -121,13 +121,13 @@ local function get_Track(begin)
         end
     end
     if not flags_d.no_scale_channels then
-        if flags_d.scale_x_constant then CurveScaleX_Const1 = mem:d32() CurveScaleX_Const2 = mem:d32()
+        if flags_d.scale_x_constant then CurveScaleX_Const1 = mem:f32(19, 12) CurveScaleX_Const2 = mem:f32(19, 12)
         else CurveScaleX = SmpCrv(mem)
         end
-        if flags_d.scale_y_constant then CurveScaleY_Const1 = mem:d32() CurveScaleY_Const2 = mem:d32()
+        if flags_d.scale_y_constant then CurveScaleY_Const1 = mem:f32(19, 12) CurveScaleY_Const2 = mem:f32(19, 12)
         else CurveScaleY = SmpCrv(mem)
         end
-        if flags_d.scale_z_constant then CurveScaleZ_Const1 = mem:d32() CurveScaleZ_Const2 = mem:d32()
+        if flags_d.scale_z_constant then CurveScaleZ_Const1 = mem:f32(19, 12) CurveScaleZ_Const2 = mem:f32(19, 12)
         else CurveScaleZ = SmpCrv(mem)
         end
     end
@@ -161,12 +161,13 @@ end
 ---@param addrs_tr int[]
 ---@param addrs_rot int[]
 ---@param addrs_scl int[]
+---@return TrackData[]
 local function read_Animation(begin, anim_idx, w, addrs_tr, addrs_rot, addrs_scl)
     local mem = newMemReader(begin)
     local stamp = string.char(mem:r(4))
     if stamp ~= "J\x00AC" then
         w:wl(string.format("wrong addr: \"J\\0AC\" is not contained at 0x%08X", begin))
-        return
+        return {}
     end
     local num_frames = mem:r16()
     local num_tracks = mem:r16()
@@ -220,9 +221,10 @@ local function read_Animation(begin, anim_idx, w, addrs_tr, addrs_rot, addrs_scl
             end
         end
     end
+    return tracks
 end
 
----@alias JNT0ReadResult { addrs_tr: int[], addrs_rot: int[], addrs_scl: int[] }
+---@alias JNT0ReadResult { addrs_tr: int[], addrs_rot: int[], addrs_scl: int[], tracks: TrackData[][] }
 
 ---アニメーションデータの情報をダンプする
 ---@param begin int `"JNT0"`があるアドレス
@@ -246,16 +248,17 @@ local function read_JNT0(begin, writer_query)
         return empty_res
     end
     w:wl(string.format("# JNT0\n  - range: 0x%08X -- 0x%08X (bound: 0x%X)\n  - %d Animation%s\n", begin, begin + filesize, filesize, animations.count, (animations.count > 1 and "s" or "") ))
-    local addrs_tr, addrs_rot, addrs_scl = {}, {}, {}
+    local addrs_tr, addrs_rot, addrs_scl, tracks = {}, {}, {}, {}
     for i = 1, animations.count do
         local offset = animations.data[i].v
-        read_Animation(begin + offset, i, w, addrs_tr, addrs_rot, addrs_scl)
+        tracks[i] = read_Animation(begin + offset, i, w, addrs_tr, addrs_rot, addrs_scl)
     end
     w:close()
     return {
         addrs_tr = addrs_tr,
         addrs_rot = addrs_rot,
         addrs_scl = addrs_scl,
+        tracks = tracks,
     }
 end
 
@@ -269,8 +272,19 @@ local function find_JNT0(begin, inclusiveEnd, silent)
     return lib.find(begin, inclusiveEnd, ascii("JNT0"), 4, nil, silent)
 end
 
+---@param begin? int
+---@param inclusiveEnd? int
+---@param silent? bool
+---@return bool, int[]
+local function find_all_JNT0(begin, inclusiveEnd, silent)
+    begin = begin or 0x02000000
+    inclusiveEnd = inclusiveEnd or (begin + 0x003fffff)
+    return lib.find_all(begin, inclusiveEnd, ascii("JNT0"), 4, nil, silent)
+end
+
 return {
     read_JNT0 = read_JNT0,
     find_JNT0 = find_JNT0,
+    find_all_JNT0 = find_all_JNT0,
 }
 
