@@ -474,7 +474,7 @@ function RangeObj:diff(ignore) end
 ---@param inclusiveEnd int
 ---@param domain string?
 ---@return RangeObj
-local function range(begin, inclusiveEnd, domain) end
+local function mem_range(begin, inclusiveEnd, domain) end
 ---ROM領域内のステートロード・差分照会などを行うオブジェクトを生成する。
 ---@param begin int
 ---@param inclusiveEnd int
