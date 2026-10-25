@@ -21,14 +21,16 @@ _N, _N, _N, _N, _N, _N, _N, _N, _N, _N, "パ", "ピ", "プ", "ペ", "ポ", _N,
 
 ---@param addr int
 ---@param end_addr int?
+---@param bound_until_first_text int?
 ---@param is_ram bool?
 ---@return string
-local function read_text(addr, end_addr, is_ram)
+local function read_text(addr, end_addr, bound_until_first_text, is_ram)
     end_addr = end_addr or (addr + 0x2000)
+    bound_until_first_text = bound_until_first_text or 0xff
     local domain = (not is_ram) and ROM_DOMAIN_NAME or nil
     local is_katakana = false
-    local found, _first = lib.find(addr, addr+0x3f, {5,5,5}, 3, domain, true)
-    if not found then error("NOT FOUND TEXT DATA") end
+    local found, _first = lib.find(addr, addr+bound_until_first_text, {5,5,5}, 3, domain, true)
+    if not found then print("NOT FOUND TEXT DATA from " .. string.format("%08X", addr)) end
     local a = _first + 3
     local function _r()
         local v = r8(a, domain)
@@ -59,7 +61,7 @@ local function read_text(addr, end_addr, is_ram)
                 _s = _s .. tostring(v-0x30)
             end
         end
-        error(string.format("UNKNOWN SPECIAL SEQUENCE: \"1B %02X\" (at 0x%08X)", c2, a))
+        print(string.format("UNKNOWN SPECIAL SEQUENCE: \"1B %02X\" (at 0x%08X)", c2, a))
     end
     ---@type string?
     local addr_text = string.format("\n\n0x%08X\n", a)
@@ -77,7 +79,7 @@ local function read_text(addr, end_addr, is_ram)
             addr_text = nil
         end
         if c1 == 0x0a then s = s .. "\n"
-        elseif within(c1, 0x21, 0x7e) then
+        elseif within(c1, 0x20, 0x7e) then
             s = s .. string.char(c1)
         elseif c1 == 5 then
             a = a + 2
@@ -88,14 +90,18 @@ local function read_text(addr, end_addr, is_ram)
             local offset = c1 - 0xa0 + 1
             if is_katakana then offset = offset + 0x70 end
             local c2 = _r()
-            if c2 == 0xDE then offset = offset + 0x30
+            ---@type string | false
+            local char = false
+            if c2 == 0xDE and c1 == 0xB3 then char = "ヴ"
+            elseif c2 == 0xDE then offset = offset + 0x30
             elseif c2 == 0xDF then offset = offset + 0x40
             else a = a - 1
             end
-            local char = hiragana[offset]
+            char = char or hiragana[offset]
             if type(char) == "string" then
                 s = s .. char
-            else error(string.format("unknown hiragana %2x (at 0x%08X)", c1, a))
+            else print(string.format("unknown hiragana %2x (at 0x%08X)", c1, a))
+            s = s .. "_"
             end
         else
             local c2 = _r()
@@ -103,7 +109,7 @@ local function read_text(addr, end_addr, is_ram)
             local char = sjis.to_char(v)
             if char then
                 s = s .. char
-            else error(string.format("unknown kanji %04x (at 0x%08X)", v, a))
+            else print(string.format("unknown kanji %04x (at 0x%08X)", v, a)) s = s .. "_"
             end
         end
     end
@@ -112,10 +118,10 @@ end
 ---@param addr int
 ---@param end_addr int?
 ---@param is_ram bool?
----@param print_to_console? bool
-local function dump_text(addr, end_addr, is_ram, print_to_console)
-    local text = read_text(addr, end_addr, is_ram)
-    local file = lib.path.w(print_to_console or "fabstyle_text.txt")
+---@param writer_query WriterQuery ファイル名(`string`)または標準出力(`bool?`)
+local function dump_text(addr, end_addr, is_ram, writer_query)
+    local text = read_text(addr, end_addr, nil, is_ram)
+    local file = lib.path.w(writer_query)
     file:wl(text)
     file:close()
 end
