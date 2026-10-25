@@ -32,6 +32,17 @@ function _HEX(v, digits, no_prefix) end
 ---@param no_prefix? bool
 function _HEXP(v, digits, no_prefix) end
 
+---@param v number
+---@param y int
+---@param z int
+---@return int
+function fixFloatToInt(v, y, z) end
+---@param v int
+---@param y int
+---@param z int
+---@return number
+function intToFixFloat(v, y, z) end
+
 ---負値の可能性がある1バイト値`val`を非負にする。(負の場合は1byteオーバーフロー)
 ---@param val int
 ---@return int

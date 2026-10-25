@@ -18,6 +18,51 @@ local function print_hexstr(v, digits, no_prefix)
 end
 _HEXP = print_hexstr
 
+---@param v number
+---@param y int
+---@param z int
+---@return int
+local function _fixFloatToInt(v, y, z)
+    assert(y > 0 and z > 0, "y or z is negative")
+    local ret = 0
+    if v < 0 then v = -v ret = 1 end
+    local Y, _v, _f = math.floor(v) & ( (1<<y)-1 ), math.fmod(v, 1.0), 0
+    local Z = 0
+    for i = 1, z do
+        Z = Z << 1
+        _v = _v * 2.0
+        _f = math.floor(_v)
+        _v = math.fmod(_v, 1.0)
+        if _f ~= 0 then
+            Z = Z | 1
+        end
+    end
+    ret = (ret << y) | Y
+    ret = (ret << z) | Z
+    return ret
+end
+---@param v int
+---@param y int
+---@param z int
+---@return number
+local function _intToFixFloat(v, y, z)
+    assert(y > 0 and z > 0, "y or z is negative")
+    local sign = 1
+    if (v >> (y+z)) ~= 0 then sign = -1 end
+    local Y = (v >> z) & ( (1<<y)-1 )
+    local Z = 0
+    local _v = 1.0
+    local _i = 1 << z
+    for i = 1, z do
+        _v = _v * 0.5
+        _i = _i >> 1
+        if v & _i ~= 0 then Z = Z + _v end
+    end
+    return sign * (Y+Z)
+end
+fixFloatToInt = _fixFloatToInt
+intToFixFloat = _intToFixFloat
+
 ---`m`以上`n`以下の整数をランダムに取得する。
 ---@param m int
 ---@param n int
