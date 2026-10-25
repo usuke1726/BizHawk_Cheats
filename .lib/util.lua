@@ -264,10 +264,118 @@ end
 local function _ilerp(value, target, t)
     return _round(_lerp(value, target, t))
 end
+---`min`を0、`max`を1として、`v`がどの位置に属するか(区間`[0,1]`)を計算する。
+---
+---ただし、`v`が`[min, max]`の外にいる場合は、`[0, 1]`の外の値が返却される。
+---@param v number
+---@param min number
+---@param max number
+---@return number
+local function _invlerp(v, min, max)
+    assert(max > min, "max must be greater than min")
+    return (v - min) / (max - min)
+end
 lerp = _lerp
 ilerp = _ilerp
+invlerp = _invlerp
 math.lerp = _lerp
 math.ilerp = _ilerp
+math.invlerp = _invlerp
+
+local easing_back_c1 <const> = 1.70158
+local easing_back_c2 <const> = easing_back_c1 + 1.525
+local easing_back_c3 <const> = easing_back_c1 + 1
+---@type table<string, {in: (fun(x: number): number), out: (fun(x: number): number), inout: (fun(x: number): number), mid: (fun(x: number): number)}>
+local easing_functions = {
+    ["sin"] = {
+        ["in"] = function(x)
+            return 1 - math.cos(x*math.pi/2)
+        end,
+        ["out"] = function(x)
+            return math.sin(x*math.pi/2)
+        end,
+        ["inout"] = function(x)
+            return (1-math.cos(x*math.pi))/2
+        end,
+        ["mid"] = function(x)
+            x = x + 0.5
+            return x < 1.0 and -0.5*math.cos(x*math.pi) or 1+0.5*math.cos(x*math.pi)
+        end,
+    },
+    ["quad"] = {
+        ["in"] = function(x)
+            return x * x
+        end,
+        ["out"] = function(x)
+            x = 1 - x
+            return 1 - x * x
+        end,
+        ["inout"] = function(x)
+            local x2 = -2 * x + 2
+            return x < 0.5 and 2 * x * x or 1 - x2 * x2 / 2
+        end,
+        ["mid"] = function(x)
+            local f = (1 + (2*x-1)*(2*x-1)) / 2
+            return x < 0.5 and 1-f or f
+        end,
+    },
+    ["cubic"] = {
+        ["in"] = function(x)
+            return x * x * x
+        end,
+        ["out"] = function(x)
+            x = 1 - x
+            return 1 - x * x * x
+        end,
+        ["inout"] = function(x)
+            local x2 = -2 * x + 2
+            return x < 0.5 and 4 * x * x * x or 1 - x2 * x2 * x2 / 2
+        end,
+        ["mid"] = function(x)
+            local x2 = 2*x - 1
+            return (1 + x2*x2*x2) / 2
+        end,
+    },
+    ["back"] = {
+        ["in"] = function(x)
+            local x2 = x * x
+            return easing_back_c3 * x * x2 - easing_back_c1 * x2
+        end,
+        ["out"] = function(x)
+            x = x - 1
+            local x2 = x * x
+            return 1 + easing_back_c3 * x * x2 + easing_back_c1 * x2
+        end,
+        ["inout"] = function(x)
+            local a = (easing_back_c2 + 1)
+            local x2, b, c
+            if x < 0.5 then
+                x2 = 2 * x
+                b, c = -1, 0
+            else
+                x2 = 2 * x - 2
+                b, c = 1, 2
+            end
+            return (x2 * x2 * (
+                a*x2 + b*easing_back_c2
+            ) + c) / 2
+        end,
+        ["mid"] = function(x)
+            error("NOT IMPLEMENTED back.mid")
+            return 0.0
+        end,
+    }
+}
+
+---@param x number
+---@param type "sin" | "quad" | "cubic" | "back"
+---@param inout? "in" | "out" | "inout" | "mid" default: `"inout"`
+---@return number
+local function _ease(x, type, inout)
+    return assert(assert(easing_functions[type], "unknown ease type")[inout], "unknown inout")(x)
+end
+ease = _ease
+math.ease = _ease
 
 ---@generic T
 ---@class SetObj<T>
