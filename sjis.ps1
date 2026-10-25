@@ -5,12 +5,13 @@ Param(
     [string]$arg
 )
 if($help){
-    Write-Host "./sjis <enc <arg>|v <arg>|from <arg>|ms [sep|]>"
+    Write-Host "./sjis <enc <arg>|v <arg>|from <arg>|ms [sep|]|r|fab>"
     Write-Host "`tenc <arg>`t文字列 arg をsjisでencodeする"
     Write-Host "`tv <arg>`t`t辻libに渡す文字列として encode する`n`t`t`t(半角の ' を ’ にするなどの処理をはさむ)"
     Write-Host "`tfrom <arg>`tバイト列 arg をsjisとしてdecodeする"
     Write-Host "`tms [sep|]`tムシキングの .to_byte ファイルからバイト列書き込み処理を生成する`n`t`t`t(sepを指定すると1文字ごとにスペースが挿入される)"
     Write-Host "`tr`t`tお料理ナビの to_byte.py を実行"
+    Write-Host "`tfab`t`tFabstyleの to_byte.py を実行"
     return
 }
 if($command -eq $null -or $command -eq ""){
@@ -50,6 +51,14 @@ print(convert(`"$arg`").encode(encoding=`"sjis`").hex())
     }
     "r" {
         python ./series/ryori/to_byte.py $arg
+    }
+    "fab" {
+        python ./series/fabstyle/to_byte.py $arg
+#         $arg = $arg -replace "`"", "\`""
+#         python -c @"
+# import jaconv
+# print(jaconv.z2h(jaconv.hira2kata(`"$arg`"), kana=True, digit=True, ascii=True))
+# "@
     }
     default {
         Write-Host -ForegroundColor Red "不明なコマンド: $command"
