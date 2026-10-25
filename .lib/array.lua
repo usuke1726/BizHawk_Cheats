@@ -65,13 +65,48 @@ end
 ---@param n? int
 ---@param st? int default: `1`
 ---@return int[]
-local function seq(n, st)
+local function _seq(n, st)
     st = st or 1
     n = math.max(0, n or 0)
     local ret = {}
     for i = 0, n-1 do ret[i+1] = st+i end
     return ret
 end
+seq = _seq
+
+---`st`から`ed`までの順列を生成する。
+---@param st int
+---@param ed int
+---@return int[]
+local function _range(st, ed)
+    local ret = {}
+    for i = st, ed do ret[i-st+1] = i end
+    return ret
+end
+range = _range
+
+---配列`arr`から要素`indices`を抽出する。
+---@generic T
+---@param arr T[]
+---@param indices (int[] | int)[]
+---@return T[]
+local function _pick(arr, indices)
+    local ret = {}
+    local v
+    for _, _indices in pairs(indices) do
+        if type(_indices) == "number" then
+            v = arr[_indices]
+            if v then table.insert(ret, v) end
+        else
+            for _, i in pairs(_indices--[[@as (int[])]]) do
+                v = arr[i]
+                if v then table.insert(ret, v) end
+            end
+        end
+    end
+    return ret
+end
+pick = _pick
 
 ---配列の配列をすべてconcatする
 ---@generic T
@@ -139,7 +174,9 @@ local _arrayLib = {
     rep = rep,
     flat = flat,
     concat = concat,
-    seq = seq,
+    seq = _seq,
+    range = _range,
+    pick = _pick,
     insert_array = insert_array,
     slice = slice,
 }

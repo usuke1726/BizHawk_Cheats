@@ -36,7 +36,23 @@ local function rep(arr, n) end
 ---@param n? int
 ---@param st? int default: `1`
 ---@return int[]
-local function seq(n, st) end
+local function _seq(n, st) end
+seq = _seq
+
+---`st`から`ed`までの順列を生成する。
+---@param st int
+---@param ed int
+---@return int[]
+local function _range(st, ed) end
+range = _range
+
+---配列`arr`から要素`indices`を抽出する。
+---@generic T
+---@param arr T[]
+---@param indices (int[] | int)[]
+---@return T[]
+local function _pick(arr, indices) end
+pick = _pick
 
 ---配列の配列をすべてconcatする
 ---@generic T
@@ -74,7 +90,9 @@ Array = {
     rep = rep,
     flat = flat,
     concat = concat,
-    seq = seq,
+    seq = _seq,
+    range = _range,
+    pick = _pick,
     insert_array = insert_array,
     slice = slice,
 }
