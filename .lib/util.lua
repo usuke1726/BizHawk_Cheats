@@ -2,6 +2,12 @@
 ---出力画面をクリアする
 function CLS() console.clear() end
 
+---@param s string
+---@param ... any
+function printf(s, ...)
+    print(string.format(s, ...))
+end
+
 ---@param v int
 ---@param digits? int
 ---@param no_prefix? bool

@@ -2,6 +2,10 @@
 ---出力画面をクリアする
 function CLS() end
 
+---@param s string
+---@param ... any
+function printf(s, ...) end
+
 ---`m`以上`n`以下の整数をランダムに取得する。
 ---@param m int
 ---@param n int
