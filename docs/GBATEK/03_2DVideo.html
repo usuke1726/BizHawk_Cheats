@@ -1,0 +1,1291 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body,h2{font-size:12px}
+        pre,h3{font-size:11px}
+        h1,h2,h3{margin:0;display:inline;padding:0}
+        h1{font-weight:normal}
+        h2,h3{font-weight:bold}
+        body,h1,h2{font-family:Arial, Helvetica, sans-serif}
+        pre,h3{font-family:monospace, "Courier New", Courier}
+        body{max-width:50em}
+    </style>
+    <title>DS Video (2D)</title>
+</head>
+<body>
+<table width="100%" border="0" cellspacing="0" cellpadding="2"><tbody><tr bgcolor="#cccccc"><td width="100%"><font size="+2">
+  <a name="dsvideo"></a>
+  DS Video
+</font></td></tr></tbody></table>
+<br>
+The NDS has two 2D Video Engines, each basically the same as in GBA, see
+<br>
+
+<a href="./06_GBA_LCD_Video.html">GBA LCD Video Controller</a>
+<br>
+
+<br>
+
+<b>NDS Specific 2D Video Features</b>
+<br>
+
+<a href="#dsvideostuff">DS Video Stuff</a>
+<br>
+
+<a href="#dsvideobgmodescontrol">DS Video BG Modes / Control</a>
+<br>
+
+<a href="#dsvideoobjs">DS Video OBJs</a>
+<br>
+
+<a href="#dsvideoextendedpalettes">DS Video Extended Palettes</a>
+<br>
+
+<a href="#dsvideocaptureandmainmemorydisplaymode">DS Video Capture and Main Memory Display Mode</a>
+<br>
+
+<a href="#dsvideodisplaysystemblockdiagram">DS Video Display System Block Diagram</a>
+<br>
+
+<br>
+
+<b>NDS/DSi File Formats for 2D video</b>
+<br>
+
+<a href="#dsfiles2dvideo">DS Files - 2D Video</a>
+<br>
+
+<br>
+For Display Power Control (and Display Swap), and VRAM Allocation, see
+<br>
+
+<!-- <a href="#dspowercontrol">DS Power Control</a> -->
+DS Power Control
+<br>
+
+<!-- <a href="#dspowermanagementdevice">DS Power Management Device</a> -->
+DS Power Management Device
+<br>
+
+<!-- <a href="#dsmemorycontrolvram">DS Memory Control - VRAM</a> -->
+DS Memory Control - VRAM
+<br>
+
+<br>
+
+<br>
+
+
+<table width="100%" border="0" cellspacing="0" cellpadding="2"><tbody><tr bgcolor="#cccccc"><td width="100%"><font size="+2">
+  <a name="dsvideostuff"></a>
+  DS Video Stuff
+</font></td></tr></tbody></table>
+<br>
+
+<b>DS Display Dimensions / Timings</b>
+<br>
+Dot clock = 5.585664 MHz (=33.513982 MHz / 6)
+<br>
+H-Timing: 256 dots visible, 99 dots blanking, 355 dots total (15.7343KHz)
+<br>
+V-Timing: 192 lines visible, 71 lines blanking, 263 lines total (59.8261 Hz)
+<br>
+The V-Blank cycle for the 3D Engine consists of the 23 lines, 191..213.
+<br>
+Screen size 62.5mm x 47.0mm (each) (256x192 pixels)
+<br>
+Vertical space between screens 22mm (equivalent to 90 pixels)
+<br>
+
+<br>
+
+<b>400006Ch - NDS9 - MASTER_BRIGHT - 16bit - Master Brightness Up/Down</b>
+<br>
+
+<table border="0" cellspacing="0" cellpadding="0"><tbody><tr><td><pre>  0-4   Factor used for 6bit R,G,B Intensities (0-16, values &gt;16 same as 16)
+          Brightness up:   New = Old + (63-Old) * Factor/16
+          Brightness down: New = Old - Old      * Factor/16
+  5-13  Not used
+  14-15 Mode (0=Disable, 1=Up, 2=Down, 3=Reserved)
+  16-31 Not used
+</pre></td></tr></tbody></table>
+
+<br>
+
+<b>DISPSTAT/VCOUNT</b>
+<br>
+The LY and LYC values are in range 0..262, so LY/LYC values have been expanded
+to 9bit values: LY = VCOUNT Bit 0..8, and LYC=DISPSTAT Bit8..15,7.
+<br>
+VCOUNT register is write-able, allowing to synchronize linked DS consoles.
+<br>
+For proper synchronization:
+<br>
+
+<table border="0" cellspacing="0" cellpadding="0"><tbody><tr><td><pre>  write new LY values only in range of 202..212
+  write only while old LY values are in range of 202..212
+</pre></td></tr></tbody></table>
+DISPSTAT/VCOUNT supported by NDS9 (Engine A Ports, without separate Engine B
+Ports), and by NDS7 (allowing to synchronize NDS7 with display timings).
+<br>
+Similar as on GBA, the VBlank flag isn't set in the last line (ie. only in
+lines 192..261, but not in line 262).
+<br>
+Although the drawing time is only 1536 cycles (256*6), the NDS9 H-Blank flag is
+"0" for a total of 1606 cycles (and, for whatever reason, a bit longer, 1613
+cycles in total, on NDS7).
+<br>
+
+<br>
+
+<b>VRAM Waitstates</b>
+<br>
+The display controller performs VRAM-reads once every 6 clock cycles, a 1 cycle
+waitstate is generated if the CPU simultaneously accesses VRAM. With capture
+enabled, additionally VRAM-writes take place once every 6 cycles, so the total
+VRAM-read/write access rate is then once every 3 cycles.
+<br>
+
+<br>
+
+<b>DS Window Glitches</b>
+<br>
+The DS counts scanlines in range 0..262 (0..106h), of which only the lower 8bit
+are compared with the WIN0V/WIN1V register settings. Respectively, Y1
+coordinates 00h..06h will be triggered in scanlines 100h-106h by mistake. That
+means, the window gets activated within VBlank period, and will be active in
+scanline 0 and up (that is no problem with Y1=0, but Y1=1..6 will appear as if
+if Y1 would be 0). Workaround would be to disable the Window during VBlank, or
+to change Y1 during VBlank (to a value that does not occur during VBlank
+period, ie. 7..191).
+<br>
+Also, there's a problem to fit the 256 pixel horizontal screen resolution into
+8bit values: X1=00h is treated as 0 (left-most), X2=00h is treated as 100h
+(right-most). However, the window is not displayed if X1=X2=00h; the window
+width can be max 255 pixels.
+<br>
+
+<br>
+
+<b>2D Engines</b>
+<br>
+Includes two 2D Engines, called A and B. Both engines are accessed by the ARM9
+processor, each using different memory and register addresses:
+<br>
+
+<table border="0" cellspacing="0" cellpadding="0"><tbody><tr><td><pre>  Region______Engine A______________Engine B___________
+  I/O Ports   4000000h              4001000h
+  Palette     5000000h (1K)         5000400h (1K)
+  BG VRAM     6000000h (max 512K)   6200000h (max 128K)
+  OBJ VRAM    6400000h (max 256K)   6600000h (max 128K)
+  OAM         7000000h (1K)         7000400h (1K)
+</pre></td></tr></tbody></table>
+Engine A additionally supports 3D and large-screen 256-color Bitmaps, plus
+main-memory-display and vram-display modes, plus capture unit.
+<br>
+
+<br>
+
+<b>Viewing Angles</b>
+<br>
+The LCD screens are best viewed at viewing angles of 90 degrees. Colors may
+appear distorted, and may even become invisible at other viewing angles.
+<br>
+When the console is handheld, both screens can be turned into preferred
+direction. When the console is settled on a table, only the upper screen can be
+turned, but the lower screen is stuck into horizontal position - which results
+in rather bad visibility (unless the user moves his/her head directly above of
+it).
+<br>
+
+<br>
+
+<b>4000070h - NDS9 - TVOUTCNT - Unknown (W)</b>
+<br>
+
+<table border="0" cellspacing="0" cellpadding="0"><tbody><tr><td><pre>  Bit0-3  "COMMAND"  (?)
+  Bit4-7  "COMMAND2" (?)
+  Bit8-11 "COMMAND3" (?)
+</pre></td></tr></tbody></table>
+This register has been mentioned in an early I/O map from Nintendo, as far as I
+know, the register isn't used by any games/firmware/bios, not sure if it does
+really exist on release-version, or if it's been prototype stuff...?
+<br>
+
+<br>
+
+<b>DS-Lite Screens</b>
+<br>
+The screens in the DS-Lite seem to allow a wider range of vertical angles.
+<br>
+The bad news is that the colors of the DS-Lite are (no surprise) not backwards
+compatible with older NDS and GBA displays. The good news is that Nintendo has
+finally reached near-CRT-quality (without blurred colors), so one could hope
+that they won't show up with more displays with other colors in future.
+<br>
+Don't know if there's an official/recommended way to detect DS-Lite displays
+(?) possible methods would be whatever values in Firmware header, or by
+functionality of Power Managment device, or (not too LCD-related) by Wifi Chip
+ID.
+<br>
+
+<br>
+
+<br>
+
+
+
+<table width="100%" border="0" cellspacing="0" cellpadding="2"><tbody><tr bgcolor="#cccccc"><td width="100%"><font size="+2">
+  <a name="dsvideobgmodescontrol"></a>
+  DS Video BG Modes / Control
+</font></td></tr></tbody></table>
+<br>
+
+<b>4000000h - NDS9 - DISPCNT</b>
+<br>
+
+<table border="0" cellspacing="0" cellpadding="0"><tbody><tr><td><pre>  Bit  Engine Expl.
+  0-2   A+B   BG Mode
+  3     A     BG0 2D/3D Selection (instead CGB Mode) (0=2D, 1=3D)
+  4     A+B   Tile OBJ Mapping        (0=2D; max 32KB, 1=1D; max 32KB..256KB)
+  5     A+B   Bitmap OBJ 2D-Dimension (0=128x512 dots, 1=256x256 dots)
+  6     A+B   Bitmap OBJ Mapping      (0=2D; max 128KB, 1=1D; max 128KB..256KB)
+  7-15  A+B   Same as GBA
+  16-17 A+B   Display Mode (Engine A: 0..3, Engine B: 0..1, GBA: Green Swap)
+  18-19 A     VRAM block (0..3=VRAM A..D) (For Capture &amp; above Display Mode=2)
+  20-21 A+B   Tile OBJ 1D-Boundary   (see Bit4)
+  22    A     Bitmap OBJ 1D-Boundary (see Bit5-6)
+  23    A+B   OBJ Processing during H-Blank (was located in Bit5 on GBA)
+  24-26 A     Character Base (in 64K steps) (merged with 16K step in BGxCNT)
+  27-29 A     Screen Base (in 64K steps) (merged with 2K step in BGxCNT)
+  30    A+B   BG Extended Palettes   (0=Disable, 1=Enable)
+  31    A+B   OBJ Extended Palettes  (0=Disable, 1=Enable)
+</pre></td></tr></tbody></table>
+
+<br>
+
+<b>BG Mode</b>
+<br>
+Engine A BG Mode (DISPCNT LSBs) (0-6, 7=Reserved)
+<br>
+
+<table border="0" cellspacing="0" cellpadding="0"><tbody><tr><td><pre>  Mode  BG0      BG1      BG2      BG3
+  0     Text/3D  Text     Text     Text
+  1     Text/3D  Text     Text     Affine
+  2     Text/3D  Text     Affine   Affine
+  3     Text/3D  Text     Text     Extended
+  4     Text/3D  Text     Affine   Extended
+  5     Text/3D  Text     Extended Extended
+  6     3D       -        Large    -
+</pre></td></tr></tbody></table>
+Of which, the "Extended" modes are sub-selected by BGxCNT bits:
+<br>
+
+<table border="0" cellspacing="0" cellpadding="0"><tbody><tr><td><pre>  BGxCNT.Bit7 BGxCNT.Bit2 Extended Affine Mode Selection
+  0           CharBaseLsb rot/scal with 16bit bgmap entries (Text+Affine mixup)
+  1           0           rot/scal 256 color bitmap
+  1           1           rot/scal direct color bitmap
+</pre></td></tr></tbody></table>
+Engine B: Same as above, except that: Mode 6 is reserved (no Large screen
+bitmap), and BG0 is always Text (no 3D support).
+<br>
+Affine = formerly Rot/Scal mode (with 8bit BG Map entries)
+<br>
+Large Screen Bitmap = rot/scal 256 color bitmap (using all 512K of 2D VRAM)
+<br>
+
+<br>
+
+<b>Display Mode (DISPCNT.16-17):</b>
+<br>
+
+<table border="0" cellspacing="0" cellpadding="0"><tbody><tr><td><pre>  0  Display off (screen becomes white)
+  1  Graphics Display (normal BG and OBJ layers)
+  2  Engine A only: VRAM Display (Bitmap from block selected in DISPCNT.18-19)
+  3  Engine A only: Main Memory Display (Bitmap DMA transfer from Main RAM)
+</pre></td></tr></tbody></table>
+Mode 2-3 display a raw direct color bitmap (15bit RGB values, the upper bit in
+each halfword is unused), without any further BG,OBJ,3D layers, these modes are
+completely bypassing the 2D/3D engines as well as any 2D effects, however the
+Master Brightness effect can be applied to these modes. Mode 2 is particulary
+useful to display captured 2D/3D images (in that case it can indirectly use the
+2D/3D engine).
+<br>
+
+<br>
+
+<b>BGxCNT</b>
+<br>
+character base extended from bit2-3 to bit2-5 (bit4-5 formerly unused)
+<br>
+
+<table border="0" cellspacing="0" cellpadding="0"><tbody><tr><td><pre>  engine A screen base: BGxCNT.bits*2K + DISPCNT.bits*64K
+  engine B screen base: BGxCNT.bits*2K + 0
+  engine A char base: BGxCNT.bits*16K + DISPCNT.bits*64K
+  engine B char base: BGxCNT.bits*16K + 0
+</pre></td></tr></tbody></table>
+char base is used only in tile/map modes (not bitmap modes)
+<br>
+screen base is used in tile/map modes,
+<br>
+screen base used in bitmap modes as BGxCNT.bits*16K, without DISPCNT.bits*64K
+<br>
+screen base however NOT used at all for Large screen bitmap mode
+<br>
+
+<table border="0" cellspacing="0" cellpadding="0"><tbody><tr><td><pre>  bgcnt size  text     rotscal    bitmap   large bmp
+  0           256x256  128x128    128x128  512x1024
+  1           512x256  256x256    256x256  1024x512
+  2           256x512  512x512    512x256  -
+  3           512x512  1024x1024  512x512  -
+</pre></td></tr></tbody></table>
+bitmaps that require more than 128K VRAM are supported on engine A only.
+<br>
+
+<br>
+For BGxCNT.Bit7 and BGxCNT.Bit2 in Extended Affine modes, see above BG Mode
+description (extended affine doesn't include 16-color modes, so color depth bit
+can be used for mode selection. Also, bitmap modes do not use charbase, so
+charbase.0 can be used for mode selection as well).
+<br>
+
+<br>
+
+<table border="0" cellspacing="0" cellpadding="0"><tbody><tr><td><pre>  for BG0CNT, BG1CNT only: bit13 selects extended palette slot
+                           (BG0: 0=Slot0, 1=Slot2, BG1: 0=Slot1, 1=Slot3)
+</pre></td></tr></tbody></table>
+
+<br>
+Direct Color Bitmap BG, and Direct Color Bitmap OBJ
+<br>
+BG/OBJ Supports 32K colors (15bit RGB value) - so far same as GBAs BG.
+<br>
+However, the upper bit (Bit15) is used as Alpha flag. That is,
+Alpha=0=Transparent, Alpha=1=Normal (ie. on the NDS, Direct Color values
+0..7FFFh are NOT displayed).
+<br>
+
+<br>
+Unlike GBA bitmap modes, NDS bitmap modes are supporting the Area Overflow bit
+(BG2CNT and BG3CNT, Bit 13).
+<br>
+
+<br>
+
+<br>
+
+
+<table width="100%" border="0" cellspacing="0" cellpadding="2"><tbody><tr bgcolor="#cccccc"><td width="100%"><font size="+2">
+  <a name="dsvideoobjs"></a>
+  DS Video OBJs
+</font></td></tr></tbody></table>
+<br>
+
+<b>DS OBJ Priority</b>
+<br>
+The GBA has been assigning OBJ priority in respect to the 7bit OAM entry
+number, regardless of the OBJs 2bit BG-priority attribute (which allowed to
+specify invalid priority orders). That problem has been fixed in DS mode by
+combining the above two values into a 9bit priority value.
+<br>
+
+<br>
+
+<b>OBJ Tile Mapping (DISPCNT.4,20-21):</b>
+<br>
+
+<table border="0" cellspacing="0" cellpadding="0"><tbody><tr><td><pre>  Bit4  Bit20-21  Dimension Boundary Total ;Notes
+  0     x         2D        32       32K   ;Same as GBA 2D Mapping
+  1     0         1D        32       32K   ;Same as GBA 1D Mapping
+  1     1         1D        64       64K
+  1     2         1D        128      128K
+  1     3         1D        256      256K  ;Engine B: 128K max
+</pre></td></tr></tbody></table>
+TileVramAddress = TileNumber * BoundaryValue
+<br>
+Even if the boundary gets changed, OBJs are kept composed of 8x8 tiles.
+<br>
+
+<br>
+
+<b>Bitmap OBJ Mapping (DISPCNT.6,5,22):</b>
+<br>
+Bitmap OBJs are 15bit Direct Color data, plus 1bit Alpha flag (in bit15).
+<br>
+
+<table border="0" cellspacing="0" cellpadding="0"><tbody><tr><td><pre>  Bit6 Bit5 Bit22 Dimension    Boundary   Total ;Notes
+  0    0    x     2D/128 dots  8x8 dots   128K  ;Source Bitmap width 128 dots
+  0    1    x     2D/256 dots  8x8 dots   128K  ;Source Bitmap width 256 dots
+  1    0    0     1D           128 bytes  128K  ;Source Width = Target Width
+  1    0    1     1D           256 bytes  256K  ;Engine A only
+  1    1    x     Reserved
+</pre></td></tr></tbody></table>
+In 1D mapping mode, the Tile Number is simply multiplied by the boundary value.
+<br>
+
+<table border="0" cellspacing="0" cellpadding="0"><tbody><tr><td><pre>  1D_BitmapVramAddress = TileNumber(0..3FFh) * BoundaryValue(128..256)
+  2D_BitmapVramAddress = (TileNo AND MaskX)*10h + (TileNo AND NOT MaskX)*80h
+</pre></td></tr></tbody></table>
+In 2D mode, the Tile Number is split into X and Y indices, the X index is
+located in the LSBs (ie. MaskX=0Fh, or MaskX=1Fh, depending on DISPCNT.5).
+<br>
+
+<br>
+
+<b>OBJ Attribute 0 and 2</b>
+<br>
+Setting the OBJ Mode bits (Attr 0, Bit10-11) to a value of 3 has been
+prohibited in GBA, however, in NDS it selects the new Bitmap OBJ mode; in that
+mode, the Color depth bit (Attr 0, Bit13) should be set to zero; also in that
+mode, the color bits (Attr 2, Bit 12-15) are used as Alpha-OAM value (instead
+of as palette setting).
+<br>
+
+<br>
+
+<b>OBJ Vertical Wrap</b>
+<br>
+On the GBA, a large OBJ (with 64pix height, scaled into double-size region of
+128pix height) located near the bottom of the screen has been wrapped to the
+top of the screen (and was NOT displayed at the bottom of the screen).
+<br>
+This problem has been "corrected" in the NDS (except in GBA mode), that is, on
+the NDS, the OBJ appears BOTH at the top and bottom of the screen. That isn't
+necessarily better - the advantage is that one can manually enable/disable the
+OBJ in the desired screen-half on IRQ level; that'd be required only if the
+wrapped portion is non-transparent.
+<br>
+
+<br>
+
+<br>
+
+
+<table width="100%" border="0" cellspacing="0" cellpadding="2"><tbody><tr bgcolor="#cccccc"><td width="100%"><font size="+2">
+  <a name="dsvideoextendedpalettes"></a>
+  DS Video Extended Palettes
+</font></td></tr></tbody></table>
+<br>
+
+<b>Extended Palettes</b>
+<br>
+When allocating extended palettes, the allocated memory is not mapped to the
+CPU bus, so the CPU can access extended palette only when temporarily
+de-allocating it.
+<br>
+
+<br>
+Color 0 of all standard/extended palettes is transparent, color 0 of BG
+standard palette 0 is used as backdrop. extended palette memory must be
+allocated to VRAM.
+<br>
+
+<br>
+BG Extended Palette enabled in DISPCNT Bit 30, when enabled,
+<br>
+
+<table border="0" cellspacing="0" cellpadding="0"><tbody><tr><td><pre> standard palette --&gt; 16-color tiles (with 16bit bgmap entries) (text)
+                      256-color tiles (with 8bit bgmap entries) (rot/scal)
+                      256-color bitmaps
+                      backdrop-color (color 0)
+ extended palette --&gt; 256-color tiles (with 16bit bgmap entries)(text,rot/scal)
+</pre></td></tr></tbody></table>
+Allocated VRAM is split into 4 slots of 8K each (32K used in total), normally
+BG0..3 are using Slot 0..3, however BG0 and BG1 can be optionally changed to
+BG0=Slot2, and BG1=Slot3 via BG0CNT and BG1CNT.
+<br>
+
+<br>
+OBJ Extended Palette enabled in DISPCNT Bit 31, when enabled,
+<br>
+
+<table border="0" cellspacing="0" cellpadding="0"><tbody><tr><td><pre> 16 colors x 16 palettes --&gt; standard palette memory (=256 colors)
+ 256 colors x 16 palettes --&gt; extended palette memory (=4096 colors)
+</pre></td></tr></tbody></table>
+Extended OBJ palette memory must be allocated to VRAM F, G, or I (which are
+16K) of which only the first 8K are used for extended palettes (=1000h 16bit
+entries).
+<br>
+
+<br>
+
+<br>
+
+
+<table width="100%" border="0" cellspacing="0" cellpadding="2"><tbody><tr bgcolor="#cccccc"><td width="100%"><font size="+2">
+  <a name="dsvideocaptureandmainmemorydisplaymode"></a>
+  DS Video Capture and Main Memory Display Mode
+</font></td></tr></tbody></table>
+<br>
+
+<b>4000064h - NDS9 - DISPCAPCNT - 32bit - Display Capture Control Register (R/W)</b>
+<br>
+Capture is supported for Display Engine A only.
+<br>
+
+<table border="0" cellspacing="0" cellpadding="0"><tbody><tr><td><pre>  0-4   EVA               (0..16 = Blending Factor for Source A)
+  5-7   Not used
+  8-12  EVB               (0..16 = Blending Factor for Source B)
+  13-15 Not used
+  16-17 VRAM Write Block  (0..3 = VRAM A..D) (VRAM must be allocated to LCDC)
+  18-19 VRAM Write Offset (0=00000h, 0=08000h, 0=10000h, 0=18000h)
+  20-21 Capture Size      (0=128x128, 1=256x64, 2=256x128, 3=256x192 dots)
+  22-23 Not used
+  24    Source A          (0=Graphics Screen BG+3D+OBJ, 1=3D Screen)
+  25    Source B          (0=VRAM, 1=Main Memory Display FIFO)
+  26-27 VRAM Read Offset  (0=00000h, 0=08000h, 0=10000h, 0=18000h)
+  28    Not used
+  29-30 Capture Source    (0=Source A, 1=Source B, 2/3=Sources A+B blended)
+  31    Capture Enable    (0=Disable/Ready, 1=Enable/Busy)
+</pre></td></tr></tbody></table>
+Notes:
+<br>
+VRAM Read Block (VRAM A..D) is selected in DISPCNT Bits 18-19.
+<br>
+VRAM Read Block can be (or must be ?) allocated to LCDC (MST=0).
+<br>
+VRAM Read Offset is ignored (zero) in VRAM Display Mode (DISPCNT.16-17).
+<br>
+VRAM Read/Write Offsets wrap to 00000h when exceeding 1FFFFh (max 128K).
+<br>
+Capture Sizes less than 256x192 capture the upper-left portion of the screen.
+<br>
+Blending factors EVA and EVB are used only if "Source A+B blended" selected.
+<br>
+After setting the Capture Enable bit, capture starts at next line 0, and the
+capture enable/busy bit is then automatically cleared (in line 192, regardless
+of the capture size).
+<br>
+
+<br>
+Capture data is 15bit color depth (even when capturing 18bit 3D-images).
+<br>
+Capture A:  Dest_Intensity = SrcA_Intensitity ; Dest_Alpha=SrcA_Alpha.
+<br>
+Capture B:  Dest_Intensity = SrcB_Intensitity ; Dest_Alpha=SrcB_Alpha.
+<br>
+Capture A+B (blending):
+<br>
+
+<table border="0" cellspacing="0" cellpadding="0"><tbody><tr><td><pre> Dest_Intensity = (  (SrcA_Intensitity * SrcA_Alpha * EVA)
+                   + (SrcB_Intensitity * SrcB_Alpha * EVB) ) / 16
+ Dest_Alpha = (SrcA_Alpha AND (EVA&gt;0)) OR (SrcB_Alpha AND EVB&gt;0))
+</pre></td></tr></tbody></table>
+
+<br>
+Capture provides a couple of interesting effects.
+<br>
+For example, 3D Engine output can be captured via source A (to LCDC-allocated
+VRAM), in the next frame, either Graphics Engine A or B can display the
+captured 3D image in VRAM image as BG2, BG3, or OBJ (from BG/OBJ-allocated
+VRAM); this method requires to switch between LCDC- and BG/OBJ-allocation.
+<br>
+Another example would be to capture Engine A output, the captured image can be
+displayed (via VRAM Display mode) in the following frames, simultaneously the
+new Engine A output can be captured, blended with the old captured image; in
+that mode moved objects will leave traces on the screen; this method works with
+a single LCDC-allocated VRAM block.
+<br>
+
+<a href="#dsvideodisplaysystemblockdiagram">DS Video Display System Block Diagram</a>
+<br>
+
+<br>
+
+<b>4000068h - NDS9 - DISP_MMEM_FIFO - 32bit - Main Memory Display FIFO (R?/W)</b>
+<br>
+Intended to send 256x192 pixel 32K color bitmaps by DMA directly
+<br>
+
+<table border="0" cellspacing="0" cellpadding="0"><tbody><tr><td><pre> - to Screen A             (set DISPCNT to Main Memory Display mode), or
+ - to Display Capture unit (set DISPCAPCNT to Main Memory Source).
+</pre></td></tr></tbody></table>
+The FIFO can receive 4 words (8 pixels) at a time, each pixel is a 15bit RGB
+value (the upper bit, bit15, is unused).
+<br>
+Set DMA to Main Memory mode, 32bit transfer width, word count set to 4,
+destination address to DISP_MMEM_FIFO, source address must be in Main Memory.
+<br>
+Transfer starts at next frame.
+<br>
+Main Memory Display/Capture is supported for Display Engine A only.
+<br>
+
+<br>
+
+<br>
+
+
+
+<table width="100%" border="0" cellspacing="0" cellpadding="2"><tbody><tr bgcolor="#cccccc"><td width="100%"><font size="+2">
+  <a name="dsvideodisplaysystemblockdiagram"></a>
+  DS Video Display System Block Diagram
+</font></td></tr></tbody></table>
+<table border="0" cellspacing="0" cellpadding="0"><tbody><tr><td><pre>             _____________               __________
+  VRAM A --&gt;| 2D Graphics |--------OBJ-&gt;|          |
+  VRAM B --&gt;| Engine A    |--------BG3-&gt;| Layering |
+  VRAM C --&gt;|             |--------BG2-&gt;| and      |
+  VRAM D --&gt;|             |--------BG1-&gt;| Special  |
+  VRAM E --&gt;|             |   ___       | Effects  |
+  VRAM F --&gt;|             |-&gt;|SEL|      |          |          ______
+  VRAM G --&gt;| - - - - - - |  |BG0|-BG0-&gt;|          |----o---&gt;|      |
+            | 3D Graphics |-&gt;|___|      |__________|    |    |Select|
+            | Engine      |                             |    |Video |
+            |_____________|--------3D----------------.  |    |Input |
+             _______      _______              ___   |  |    |      |
+            |       |    |       |&lt;-----------|SEL|&lt;-'  |    |and   |--&gt;
+            |       |    |       |    _____   |A  |     |    |      |
+  VRAM A &lt;--|Select |    |Select |   |     |&lt;-|___|&lt;----'    |Master|
+  VRAM B &lt;--|Capture|&lt;---|Capture|&lt;--|Blend|   ___           |Bright|
+  VRAM C &lt;--|Dest.  |    |Source |   |_____|&lt;-|SEL|&lt;----.    |A     |
+  VRAM D &lt;--|       |    |       |            |B  |     |    |      |
+            |_______|    |_______|&lt;-----------|___|&lt;-.  |    |      |
+             _______                                 |  |    |      |
+  VRAM A --&gt;|Select |                                |  |    |      |
+  VRAM B --&gt;|Display|--------------------------------o------&gt;|      |
+  VRAM C --&gt;|VRAM   |                                   |    |      |
+  VRAM D --&gt;|_______|   _____________                   |    |      |
+                       |Main Memory  |                  |    |      |
+  Main   ------DMA----&gt;|Display FIFO |------------------o---&gt;|______|
+  Memory               |_____________|
+             _____________               __________           ______
+  VRAM C --&gt;| 2D Graphics |--------OBJ-&gt;| Layering |         |      |
+  VRAM D --&gt;| Engine B    |--------BG3-&gt;| and      |         |Master|
+  VRAM H --&gt;|             |--------BG2-&gt;| Special  |--------&gt;|Bright|--&gt;
+  VRAM I --&gt;|             |--------BG1-&gt;| Effects  |         |B     |
+            |_____________|--------BG0-&gt;|__________|         |______|
+</pre></td></tr></tbody></table>
+
+<br>
+
+<br>
+
+
+<table width="100%" border="0" cellspacing="0" cellpadding="2"><tbody><tr bgcolor="#cccccc"><td width="100%"><font size="+2">
+  <a name="dsfiles2dvideo"></a>
+  DS Files - 2D Video
+</font></td></tr></tbody></table>
+<br>
+eg. used in DSi Launcher "rom:\layout\cmn\launcher_d.szs\.."
+<br>
+
+<a href="http://www.romhacking.net/documents/[469]nds_formats.htm"><font color="#808080">http://www.romhacking.net/documents/[469]nds_formats.htm</font></a>
+
+<br>
+
+<br>
+
+<table border="0" cellspacing="0" cellpadding="0"><tbody><tr><td><pre> ____________________________ Nitro Color Palette _____________________________
+</pre></td></tr></tbody></table>
+
+<br>
+
+<b>Header</b>
+<br>
+
+<table border="0" cellspacing="0" cellpadding="0"><tbody><tr><td><pre>  000h 4    Chunk ID "RLCN" (aka NCLR backwards, Nitro Color Resource)
+  004h 2    Byte Order    (FEFFh)
+  006h 2    Version       (0100h)
+  008h 4    Total Filesize
+  00Ch 2    Offset to "TTLP" Chunk, aka Size of "RLCN" Chunk (0010h)
+  00Eh 2    Total number of following Chunks (1=TTLP) (or 2=TTLP+PMCP ?)
+</pre></td></tr></tbody></table>
+
+<br>
+
+<b>TTLP Chunk</b>
+<br>
+
+<table border="0" cellspacing="0" cellpadding="0"><tbody><tr><td><pre>  000h 4    Chunk ID "TTLP" (aka PLTT backwards, Palette data)
+  004h 4    Chunk Size (eg. 0218h)
+  008h 4    Reportedly Color Depth (ie. "tile usage info") (3=4bpp, 4=8bpp)
+  00Ch 4    Zero
+  010h 4    Palette Data Size in bytes (eg. 200h) (or 200h-N? no, blah!)
+  014h 4    Offset from TTLP+8 to Palette Data? (always 10h)
+  018h N*2  Palete Data (16bit colors, 0000h..7FFFh)
+</pre></td></tr></tbody></table>
+Most DSi titles use full 200h-byte palettes (Paper Plane has a smaller one in
+Graphics.NARC\Seq\pause.zcl). There seem to be no DSi titles with PMCP chunks.
+<br>
+
+<br>
+
+<b>PMCP Chunk (if any) (reportedly exists, but not in DSi Launcher...?)</b>
+<br>
+
+<table border="0" cellspacing="0" cellpadding="0"><tbody><tr><td><pre>  000h 4    Chunk ID "PMCP" (aka PCMP backwards, Palette CMP?)
+  004h 4    Chunk Size (reportedly always 12h ???)
+  008h 2    Number of palettes in file (uh?)
+  00Ah 2    Unused (BEEFh=Bullshit)
+  00Ch 4    Offset from PMCP+8 to Palette IDs? (always 08h)
+  DATA N*2  "Palette ID numbers for each palette (starting from 0)"
+</pre></td></tr></tbody></table>
+
+<br>
+
+<table border="0" cellspacing="0" cellpadding="0"><tbody><tr><td><pre> ___________________________ Nitro Character Tiles ____________________________
+</pre></td></tr></tbody></table>
+
+<br>
+
+<table border="0" cellspacing="0" cellpadding="0"><tbody><tr><td><pre>  eg. DSi Launcher "rom:\debug\DebugFont.NCGR"         -- with SOPC chunk
+  eg. DSi Launcher "rom:\layout\cmn\launcher_d.szs\.." -- without SOPC chunk
+</pre></td></tr></tbody></table>
+
+<br>
+
+<b>Header</b>
+<br>
+
+<table border="0" cellspacing="0" cellpadding="0"><tbody><tr><td><pre>  000h 4    Chunk ID "RGCN" (aka NCGR backwards, Nitro Char Graphics Resource)
+  004h 2    Byte Order    (FEFFh)
+  006h 2    Version       (0101h) (unknown if 0100h does also exist?)
+  008h 4    Total Filesize
+  00Ch 2    Offset to "RAHC" Chunk, aka Size of "RGCN" Chunk (0010h)
+  00Eh 2    Total number of following Chunks (1=RAHC, or 2=RAHC+SOPC)
+</pre></td></tr></tbody></table>
+
+<br>
+
+<b>RAHC Chunk</b>
+<br>
+
+<table border="0" cellspacing="0" cellpadding="0"><tbody><tr><td><pre>  000h 4    Chunk ID "RAHC" (aka CHAR backwards)
+  004h 4    Chunk Size (eg. 1420h)
+  008h 2    Tile Data Size in Kilobytes   ;\or both set to FFFFh
+  00Ah 2    Unknown (always 20h)          ;/(when size&lt;&gt;N*1024)
+  00Ch 4    Color Depth (3=4bpp, 4=8bpp)
+  010h 2    Zero   ;or 10h (when SOPC not exists? kbyte size rounded up?)
+  012h 2    Zero   ;or 20h (when SOPC not exists?)
+  014h 4    Zero
+  018h 4    Tile Data Size in Bytes (eg. 1400h)
+  01Ch 4    Offset from RAHC+8 to Tile Data?  ;=always 18h
+  020h ...  Tile Data (eg. 20h-byte zerofilled for 4bpp SPC char?)
+</pre></td></tr></tbody></table>
+Nonzero [10h,12h] spotted in Paper Plane "rom:\Graphics.NARC\Plane\plane.zcg".
+<br>
+
+<br>
+
+<b>SOPC Chunk (only present if Tile Data size is N*1024 bytes)</b>
+<br>
+
+<table border="0" cellspacing="0" cellpadding="0"><tbody><tr><td><pre>  000h 4    Chunk ID "SOPC" (aka CPOS backwards)
+  004h 4    Chunk Size (10h)
+  008h 4    Zero
+  00Ch 2    Same as [00Ah] in RAHC chunk? (always 20h)
+  00Eh 2    Same as [008h] in RAHC chunk? (size in kilobytes)
+</pre></td></tr></tbody></table>
+
+<br>
+
+<table border="0" cellspacing="0" cellpadding="0"><tbody><tr><td><pre> __________________________ Unknown Character Tiles ___________________________
+</pre></td></tr></tbody></table>
+
+<br>
+Apart from above NCGR, there is reportedly another tile format:
+<br>
+
+<table border="0" cellspacing="0" cellpadding="0"><tbody><tr><td><pre>  NCGR (Nitro Character Graphic Resource) - Graphical Tiles --&gt; see above
+  NBGR (Nitro Basic Graphic Resource)     - Graphical Tiles --&gt; what ???
+</pre></td></tr></tbody></table>
+If it does really exist for real... the header ID might be "RGBN" (aka NBGR
+backwards), and file extension might be NBGR? But even if so, it's unknown
+if/when/where/why that NBGR format is used. If the "B" is for "Basic" then
+might have less features than NCGR, or maybe it might be "B" for non-tiled
+Bitmaps, or whatever?
+<br>
+
+<br>
+
+<table border="0" cellspacing="0" cellpadding="0"><tbody><tr><td><pre> ___________________________ Nitro BG Maps Screens ____________________________
+</pre></td></tr></tbody></table>
+
+<br>
+
+<b>Header</b>
+<br>
+
+<table border="0" cellspacing="0" cellpadding="0"><tbody><tr><td><pre>  000h 4    Chunk ID "RCSN" (aka NSCR backwards, Nitro Screen Resource)
+  004h 2    Byte Order    (FEFFh)
+  006h 2    Version       (0100h)
+  008h 4    Total Filesize
+  00Ch 2    Offset to "NRCS" Chunk, aka Size of "RCSN" Chunk (0010h)
+  00Eh 2    Total number of following Chunks (1=NRCS)
+</pre></td></tr></tbody></table>
+
+<br>
+
+<b>NRCS Chunk</b>
+<br>
+
+<table border="0" cellspacing="0" cellpadding="0"><tbody><tr><td><pre>  000h 4    Chunk ID "NRCS" (aka SCRN backwards, Screen)
+  004h 4    Chunk Size
+  008h 4    Screen Width in pixels
+  00Ah 2    Screen Height in pixels
+  00Ch 4    Zero
+  010h 4    Screen Data Size (width/8)*(height/8)*2
+  014h N*2  Screen Data (16bit BG Map entries, palette+xyflip+tileno)
+</pre></td></tr></tbody></table>
+
+<br>
+
+<table border="0" cellspacing="0" cellpadding="0"><tbody><tr><td><pre> ____________________________ Nitro OBJ Animations ____________________________
+</pre></td></tr></tbody></table>
+
+<br>
+
+<b>Header</b>
+<br>
+
+<table border="0" cellspacing="0" cellpadding="0"><tbody><tr><td><pre>  000h 4    Chunk ID "RNAN" (aka NANR backwards, Nitro Animation Resource)
+  004h 2    Byte Order    (FEFFh)
+  006h 2    Version       (0100h)
+  008h 4    Total Filesize
+  00Ch 2    Offset to "KNBA" Chunk, aka Size of "RNAN" Chunk (0010h)
+  00Eh 2    Total number of following Chunks (1=KNBA, or 3=KNBA+LBAL+TXEU)
+</pre></td></tr></tbody></table>
+One chunk exists in DSi Launcher
+<br>
+Three chunks exist in DSi Flipnote "rom:ManualData.Eu\md2res_narc.blz\data\obj
+<br>
+
+<br>
+
+<b>KNBA Chunk</b>
+<br>
+
+<table border="0" cellspacing="0" cellpadding="0"><tbody><tr><td><pre>  000h 4    Chunk ID "KNBA" (aka ABNK backwards, Animation Bank)
+  004h 4    Chunk Size (always padded to 4-byte boundary if LABL chunk follows)
+  008h 2    Number of 16-byte Animation Blocks ;implies NumLabels in LABL chunk
+  00Ah 2    Number of 8-byte Frame Blocks
+  00Ch 4    Offset from KNBA+8 to Animation Blocks ;=18h
+  010h 4    Offset from KNBA+8 to Frame Blocks     ;=[0Ch]+[08h]*10h
+  014h 4    Offset from KNBA+8 to Frame Data       ;=[10h]+[0Ah]*8
+  018h 8    Zero
+  DATA ..   Animation Blocks (16-byte entries)
+   00h 4      Number of Frames
+   04h 2      Unknown        (0)
+   06h 2      Unknown Always (1)   ;reportedly "always unknown"
+   08h 4      Unknown        (1..2)
+   0Ch 4      Offset from FrameBlock+0 to First Frame
+  DATA ..   Frame Blocks (8-byte entries)
+   00h 4      Offset from FrameData+0 to whatever?   (always 4-byte aligned?)
+   04h 2      Frame Width   ;3Ch or 01..06h   ;Time in 60Hz units? num meta's?
+   06h 2      Unused (usually 0000h, or BEEFh=Bullshit)
+  DATA ..   Frame Data (2-byte entries)
+   00h 2      Unknown 16bit values? (maybe CELL index or whatever??)  (CCCCh=?)
+</pre></td></tr></tbody></table>
+
+<br>
+
+<b>LBAL Chunk</b>
+<br>
+
+<table border="0" cellspacing="0" cellpadding="0"><tbody><tr><td><pre>  000h 4    Chunk ID "LBAL" (aka LABL backwards, Labels)
+  004h 4    Chunk Size (not padded to 4-byte size, following TXEU is unaligned)
+  008h 4*N  Offsets from LabelArea+0 to Labels (for each Animation Block)
+  ...  ..   Label Area (ASCII Strings, terminated by 00h)
+</pre></td></tr></tbody></table>
+The LabelArea starts at LBAL+8+NumLabels*4 (whereas, NumLabels is found in KNBA
+chunk).
+<br>
+
+<br>
+
+<b>TXEU Chunk</b>
+<br>
+Caution: Not 4-byte aligned (the preceeding LBAL chunk can have odd size).
+<br>
+
+<table border="0" cellspacing="0" cellpadding="0"><tbody><tr><td><pre>  000h 4    Chunk ID "TXEU" (aka UEXT backwards, Whatever Extension or so?)
+  004h 4    Chunk Size (0Ch)
+  008h 4    Unknown (usually 0) (reportedly 0 or 1)
+</pre></td></tr></tbody></table>
+
+<br>
+
+<table border="0" cellspacing="0" cellpadding="0"><tbody><tr><td><pre> __________________________ Nitro OBJ Metatile Cells __________________________
+</pre></td></tr></tbody></table>
+
+<br>
+
+<b>Header</b>
+<br>
+
+<table border="0" cellspacing="0" cellpadding="0"><tbody><tr><td><pre>  000h 4    Chunk ID "RECN" (aka NCER backwards, Nitro Cell Resource)
+  004h 2    Byte Order    (FEFFh)
+  006h 2    Version       (0100h)
+  008h 4    Total Filesize
+  00Ch 2    Offset to "KBEC" Chunk, aka Size of "RECN" Chunk (0010h)
+  00Eh 2    Total number of following Chunks (1=KBEC, or 3=KBEC+LBAL+TXEU)
+</pre></td></tr></tbody></table>
+
+<br>
+
+<b>KBEC Chunk</b>
+<br>
+
+<table border="0" cellspacing="0" cellpadding="0"><tbody><tr><td><pre>  000h 4    Chunk ID "KBEC" (aka CEBK backwards, Cell Bank)
+  004h 4    Chunk Size (always padded to 4-byte boundary if LABL chunk follows)
+  008h 2    Number of Metatiles
+  00Ah 2    Metatiles Entry Size (0=Normal 8 bytes, 1=Extended 16 bytes)
+              (DSi Launcher ..layout\cmn\launcher_u\.. uses 16-byte size)
+  00Ch 4    Offset from KBEC+8 to Metatile Table? (18h)
+  010h 4    Boundary Size (?)       (but is ZERO in layout\cmn\launcher_u\)
+               "Specifies the area in which the image can be drawn,
+               multiplied by 64, ie. 2 means that the area is 128x128 pixels."
+  014h 0Ch  Zero
+  020h ..   Metatile Table (8 bytes each) (or 16 bytes)
+  ...  ..   OBJ Attribute Table (6-bytes each)
+</pre></td></tr></tbody></table>
+Metatile Table entries are (8-byte or 16-byte):
+<br>
+
+<table border="0" cellspacing="0" cellpadding="0"><tbody><tr><td><pre>  000h 2    Number of OBJs
+  002h 2    Unknown
+  004h 4    OBJ Data Offset (from begin of OBJ Attr Table)
+ (008h 2)   Unknown (can be 02h,10h,48h,74h)
+ (00Ah 2)   Unknown (can be 08h)
+ (00Ch 2)   Unknown (can be FFA0h..FFF0h) ;\maybe extra coordinate offsets?
+ (00Eh 2)   Unknown (can be FFF0h..FFF9h) ;/
+</pre></td></tr></tbody></table>
+OBJ Attribute Table...
+<br>
+
+<table border="0" cellspacing="0" cellpadding="0"><tbody><tr><td><pre>  starts at Number of Cells * 8 | each cell is made up of 6 bytes)
+</pre></td></tr></tbody></table>
+The 6-byte OBJ Attributes seem to be in normal OAM format, containing the
+coordinates, tile number, tile size, and other flags (however, the coordinates
+contain signed values; ie. one needs to add the current OBJ position to those
+values). For details on the OBJ Attributes, see:
+<br>
+
+<a href="#lcdobjoamattributes">LCD OBJ - OAM Attributes</a>
+<br>
+
+<br>
+
+<b>LBAL and TEXU Chunks (if any)</b>
+<br>
+Same as in Animation files (see there). In fact, the content seems to be SAME
+as the corresponding Animation file (for pairs of filename.NANR and
+filename.NCER), and the number of labels must be obtained from the NANR file's
+KNBA chunk (as such, it's rather useless to have LBAL in NCER files, except
+perhaps for error checking that the correct file pair was loaded).
+<br>
+
+<br>
+Note: DSi Launcher layout\cmn\logodemo.szs has KBEC Chunk Size 2B6h (although
+the filesize is padded as if it were 2B8h bytes) (the file has no LBAL chunk,
+so it's unclear if/how it were aligned if present).
+<br>
+
+<br>
+
+<table border="0" cellspacing="0" cellpadding="0"><tbody><tr><td><pre> ____________________________ Nitro Unknown Files  ____________________________
+</pre></td></tr></tbody></table>
+
+<br>
+DSi Deep Psyche has two extra file types:
+<br>
+
+<table border="0" cellspacing="0" cellpadding="0"><tbody><tr><td><pre>  .NMAR file (with "RAMN" header ID, and "KNBA"+"LBAL" chunks)
+  .NMCR file (with "RCMN" header ID, and "KBCM" chunk)
+</pre></td></tr></tbody></table>
+The purpose is unknown, but they are probably also animating something...
+<br>
+
+<table border="0" cellspacing="0" cellpadding="0"><tbody><tr><td><pre>  OBJ with 16bit x/y (instead 9bit/8bit)?
+  OBJ with fractional x/y-stepping (moving/motion)?
+  OBJ rotation/scaling?
+  BG scroll offsets?
+  BG tile replacement?
+</pre></td></tr></tbody></table>
+Going by the filename (a01_obj01.NMAR) they seem to be OBJ related. Labels
+include things like "a01_upNN" and "a01_windowNN".
+<br>
+The chunks seem to resemble those in RNAN/RECN files (Animation+Cells). Except,
+the KBCM has 8-byte entries (unlike the 6-byte ones in KBEC):
+<br>
+
+<table border="0" cellspacing="0" cellpadding="0"><tbody><tr><td><pre>  000h 2    Unknown (000xh..007Ah, maybe time or so?)
+  002h 2    Unknown (signed 16bit?)
+  004h 2    Unknown (signed 16bit?)
+  006h 2    Unknown (0x21h, with x=0..8)
+</pre></td></tr></tbody></table>
+
+<br>
+
+<table border="0" cellspacing="0" cellpadding="0"><tbody><tr><td><pre> _________________________ Nitro More Unknown Files  __________________________
+</pre></td></tr></tbody></table>
+
+<br>
+Some 2D folders contain more unknown files (eg. DSi Camera
+"rom:layout\cmn\fusion_camera.szs"):
+<br>
+
+<br>
+
+<b>JNBL (whatever, with .bnbl extension)</b>
+<br>
+
+<table border="0" cellspacing="0" cellpadding="0"><tbody><tr><td><pre>  000h 4     ID "JNBL"
+  004h 2     Zero
+  006h 2     Number of 6-byte entries (01h or more)
+  008h N*6   Unknown
+</pre></td></tr></tbody></table>
+
+<br>
+
+<b>JNCL (whatever, with .bncl extension)</b>
+<br>
+
+<table border="0" cellspacing="0" cellpadding="0"><tbody><tr><td><pre>  000h 4     ID "JNCL"
+  004h 2     Zero (0000h)
+  006h 2     Number of 8-byte entries (01h or more)
+  008h N*8   Unknown (eg. 80h,10h,C0h,20h,00h,00h,00h,00h)
+</pre></td></tr></tbody></table>
+
+<br>
+
+<b>JNLL (whatever, with .bnll extension)</b>
+<br>
+
+<table border="0" cellspacing="0" cellpadding="0"><tbody><tr><td><pre>  000h 4     ID "JNLL"
+  004h 2     Zero (0000h)
+  006h 2     Number of 16-byte entries (01h or more)
+  008h N*16  Unknown (eg. 80h,50h,60h,10h,7Ch,29h,FFh,FDh,0Dh,19h,0,0,0,0,0,0)
+</pre></td></tr></tbody></table>
+
+<br>
+
+<b>BNGL (whatever, with .bngl extension)</b>
+<br>
+
+<table border="0" cellspacing="0" cellpadding="0"><tbody><tr><td><pre>  000h 4   ID "BNGL"   ;this same as file extension (not JNGL)
+  004h 2   Zero (0000h)
+  006h 2   Number of ?-byte entries (01h or more)
+  008h 2   Unknown (can be 02h,04h,06h,0Ah)
+  00Ah 2   Number of ?-byte other entries maybe (01h or more)
+  ...
+  ...      Entries?
+  ...      Other Entries?
+  ...      Maybe More Other Entries?
+</pre></td></tr></tbody></table>
+Filesize can range from 18h bytes to 24Ah bytes (or maybe yet smaller/biggger).
+<br>
+
+<br>
+
+<table border="0" cellspacing="0" cellpadding="0"><tbody><tr><td><pre> ______________________________ .ntft and .ntfp _______________________________
+</pre></td></tr></tbody></table>
+
+<br>
+
+<b>.ntft file</b>
+<br>
+Texture data (maybe for use as extra 2D layer), size is usually/always a power
+of 2 (ranging from 80h bytes to at least 64Kbytes (or even 512Kbytes?). Color
+depth can be 16bit or 8bit (and maybe less). Files with less than 16bit are
+bundled with a .ntfp palette file.
+<br>
+
+<br>
+
+<b>.ntfp file</b>
+<br>
+Texture palette, with 16bit color numbers. The files can be quite small (eg.
+only 6 or 8 bytes).
+<br>
+
+<br>
+
+<table border="0" cellspacing="0" cellpadding="0"><tbody><tr><td><pre> ______________________________ .wmif and .wmpf _______________________________
+</pre></td></tr></tbody></table>
+
+<br>
+DSi Sudoku rom:\Textures\ has "Wild Magic" .wmif and .wmpf (image+palette)
+files.
+<br>
+
+<br>
+
+<b>.wmif file</b>
+<br>
+
+<table border="0" cellspacing="0" cellpadding="0"><tbody><tr><td><pre>  000h 1Bh  ID "Wild Magic Image File 3.00",00h
+  01Bh 4    Palette Filename Length (eg. 0Dh)
+  01Fh LEN  Palette Filename        (eg. "BG_Board.wmpf")
+  ...  4    Texture Format (5=2bpp, 6=4bpp, 7=8bpp) (non-standard numbering)
+  ...  4    Texture Width in pixels
+  ...  4    Texture Height in pixels
+  ...  ..   Texture data (vertically mirrored, starting with lower line)
+</pre></td></tr></tbody></table>
+
+<br>
+
+<b>.wmpf file</b>
+<br>
+
+<table border="0" cellspacing="0" cellpadding="0"><tbody><tr><td><pre>  000h 1Dh  ID "Wild Magic Palette File 1.00",00h
+  01Dh 4    Zero?
+  021h 4    Number of Colors
+  025h ..   Colors, 16bit (0000h..7FFFh)
+</pre></td></tr></tbody></table>
+
+<br>
+
+<table border="0" cellspacing="0" cellpadding="0"><tbody><tr><td><pre> _______________________________ .ntf and .xtf ________________________________
+</pre></td></tr></tbody></table>
+
+<br>
+
+<b>Walk with Me - Simple Texture (*.ntf)</b>
+<br>
+
+<table border="0" cellspacing="0" cellpadding="0"><tbody><tr><td><pre>  000h 4    Unknown, ID?     (always 0Ch)
+  004h 4    Unknown, ID?     (always 01h) (maybe num textures, aa in .xtf ?)
+  008h 2    Width in pixels  (usually 8 SHL W)
+  00Ah 2    Height in pixels (usually 8 SHL H)
+  00Ch 2    Width shift      (W)
+  00Eh 2    Height shift     (H)
+  010h 4?   Texture Format   (1..7)
+  014h 4    Bitmap Size      (Width*Height*bpp/8)
+  018h 4    Palette Size     (NumColors*2)
+  01Ch 4    Unknown (0)
+  020h ..   Bitmap Data
+  ...  ..   Palette Data
+</pre></td></tr></tbody></table>
+
+<br>
+
+<b>Walk with Me - Extended Texture Archive (*.xtf)</b>
+<br>
+
+<table border="0" cellspacing="0" cellpadding="0"><tbody><tr><td><pre>  000h 4     Offset to Texture part
+  004h 4     Number of Whatever (N)                     ;\
+  008h 4     Unknown (0Ch)                              ; Attributes?
+  00Ch N*8   Whatever List (CCCC00xxh,Offset)           ;
+  ...  N*var Whatever Entries ...                       ;/
+  ...  4     Unknown (08h)                              ;\
+  ...  4     Number of Texture Blocks (1 or more)       ; Texture part
+  ...  ..    Texture Block(s)                           ;/
+ Texture Block:
+  000h 2     Width           (usually 8 SHL W)  ;\
+  002h 2     Height          (usually 8 SHL H)  ;
+  004h 2     Width shift     (W)                ;
+  006h 2     Height shift    (H)                ; one or more such blocks
+  008h 4?    Texture Format  (1..7)             ;
+  00Ch 4     Bitmap Size  (Width*Height*bpp/8)  ; (about same as in .ntf files)
+  010h 4     Palette Size (NumColors*2)         ;
+  014h 4     Unknown (0)                        ;
+  018h ..    Bitmap Data                        ;
+  ...  ..    Palette Data                       ;/
+</pre></td></tr></tbody></table>
+
+<br>
+
+<table border="0" cellspacing="0" cellpadding="0"><tbody><tr><td><pre> ____________________________________ TEX. ____________________________________
+</pre></td></tr></tbody></table>
+
+<br>
+
+<b>Nanostray TEX.</b>
+<br>
+
+<table border="0" cellspacing="0" cellpadding="0"><tbody><tr><td><pre>  000h 4    ID ("TEX.")
+  004h 4    Texture Format   (1..7)
+  008h 4    Width shift      (W)
+  00Ch 4    Height shift     (H)
+  010h 4    Usually zero (or, 1 in menu\planet_a\waterplanet.tex) (color0 ?)
+  014h 4    Width in pixels  (usually 8 SHL W)
+  018h 4    Height in pixels (usually 8 SHL H, or sometimes less than 8 SHL H)
+  01Ch 4    Compressed Palette Offset (34h)
+  020h 4    Compressed Palette Size in bytes
+  024h 4    Unknown Offset? (usually/always same as [02Ch])
+  028h 4    Unknown Size?   (usually/always 0=None)
+  02Ch 4    Compressed Bitmap Offset
+  030h 4    Compressed Bitmap Size in bytes
+  034h ..   Compressed Palette Data
+  ...  ..   Compressed Bitmap Data
+ The Compressed Data blocks look as so:
+  000h 1    Compression Method (00h=Stored/uncompressed, 10h=LZSS/compressed)
+  001h 3    Uncompressed Size
+  004h ..   Compressed Data
+  ...  ..   Padding to 4-byte boundary
+ The bitmap is stored in some files, and compressed in other files.
+ The palette is usually/always stored.
+</pre></td></tr></tbody></table>
+
+<br>
+
+<table border="0" cellspacing="0" cellpadding="0"><tbody><tr><td><pre> __________________________________ PMB+TTLP __________________________________
+</pre></td></tr></tbody></table>
+
+<br>
+
+<b>Cooking Coach PMB (rom:\2d\bitmap\*)</b>
+<br>
+
+<table border="0" cellspacing="0" cellpadding="0"><tbody><tr><td><pre>  000h 4    ID (" PMB") (aka BMP backwards)
+  004h 4    Compressed Bitmap Size in bytes (can be odd, footer is unaligned)
+  008h ..   Compressed Bitmap (LZSS) (10h,size(24bit),compressed data)
+  ..   2    Bitmap Width  (100h)
+  ..   2    Bitmap Height (C0h)
+  ..   4    Palette Filename length
+  ...  ..   Palette Filename ("2d/palette/name", without any trailing zero)
+</pre></td></tr></tbody></table>
+
+<br>
+
+<b>Cooking Coach TTLP (rom:\2d\palette\*)</b>
+<br>
+
+<table border="0" cellspacing="0" cellpadding="0"><tbody><tr><td><pre>  000h 4    ID ("TTLP") (aka PLTT backwards)
+  004h 4    Palette Size in bytes
+  008h ..   Palette (uncompressed, 16bit entries)
+</pre></td></tr></tbody></table>
+
+<br>
+
+<table border="0" cellspacing="0" cellpadding="0"><tbody><tr><td><pre> ____________________________________ NTFA ____________________________________
+</pre></td></tr></tbody></table>
+
+<br>
+
+<b>NTFA</b>
+<br>
+Reportedly used by Nintendo Spot series for the whole menu (=for what?) (=DS
+Station downloads for DSi Nintendo Zone and/or DS Download Play?).
+<br>
+The whole file is LZSS compressed (sometimes compression isn't used, but
+usually only very small NTFA files are not compressed).
+<br>
+
+<table border="0" cellspacing="0" cellpadding="0"><tbody><tr><td><pre>  000h 4   Maybe Header Size (maybe 1Ch or so?)
+  004h 8   ID "NTFA0000"
+  00Ch 2   Color 0 Transparency (0=Solid, Nonzero=Transparent)
+  00Eh 2   Color Depth (3=4bpp, 4=8bpp)
+  010h 2   Bitmap Width
+  012h 2   Bitmap Height
+  014h 4   Bitmap Offset  (maybe 1Ch+NumColors*2 ?)
+  018h 4   Palette Offset (maybe 1Ch or so?)
+  ...  N*2 Palette Data (RGB555)
+  ...  ..  Bitmap Data
+</pre></td></tr></tbody></table>
+The number of palette entries can be determined by subtracting image offset by
+palette offset, and dividing the result by 2.
+<br>
+The palette is RGB15. The image is non-tiled.
+<br>
+
+<br>
+
+<br>
+
+
+
+</body>
+</html>

@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body,h2{font-size:12px}
+        pre,h3{font-size:11px}
+        h1,h2,h3{margin:0;display:inline;padding:0}
+        h1{font-weight:normal}
+        h2,h3{font-weight:bold}
+        body,h1,h2{font-family:Arial, Helvetica, sans-serif}
+        pre,h3{font-family:monospace, "Courier New", Courier}
+        body{max-width:50em}
+    </style>
+    <title>NDS Reference</title>
+</head>
+<body>
+<b>Overview</b>
+<br>
+
+<a href="#dstechnicaldata">DS Technical Data</a>
+<br>
+
+<a href="#dsiomaps">DS I/O Maps</a>
+<br>
+
+<a href="#dsmemorymaps">DS Memory Maps</a>
+<br>
+<br>
+<br>
+
+<table width="100%" border="0" cellspacing="0" cellpadding="2"><tbody><tr bgcolor="#cccccc"><td width="100%"><font size="+2">
+  <a name="dstechnicaldata"></a>
+  DS Technical Data
+</font></td></tr></tbody></table>
+<br>
+
+<b>Processors</b>
+<br>
+
+<table border="0" cellspacing="0" cellpadding="0"><tbody><tr><td><pre>  1x ARM946E-S 32bit RISC CPU, 66MHz (NDS9 video) (not used in GBA mode)
+  1x ARM7TDMI  32bit RISC CPU, 33MHz (NDS7 sound) (16MHz in GBA mode)
+</pre></td></tr></tbody></table>
+
+<b>Internal Memory</b>
+<br>
+
+<table border="0" cellspacing="0" cellpadding="0"><tbody><tr><td><pre>  4096KB Main RAM (8192KB in debug version)
+  96KB   WRAM (64K mapped to NDS7, plus 32K mappable to NDS7 or NDS9)
+  60KB   TCM/Cache (TCM: 16K Data, 32K Code) (Cache: 4K Data, 8K Code)
+  656KB  VRAM (allocateable as BG/OBJ/2D/3D/Palette/Texture/WRAM memory)
+  4KB    OAM/PAL (2K OBJ Attribute Memory, 2K Standard Palette RAM)
+  248KB  Internal 3D Memory (104K Polygon RAM, 144K Vertex RAM)
+  ?KB    Matrix Stack, 48 scanline cache
+  8KB    Wifi RAM
+  256KB  Firmware FLASH (512KB in iQue variant, with chinese charset)
+  36KB   BIOS ROM (4K NDS9, 16K NDS7, 16K GBA)
+</pre></td></tr></tbody></table>
+
+<b>Video</b>
+<br>
+
+<table border="0" cellspacing="0" cellpadding="0"><tbody><tr><td><pre>  2x LCD screens (each 256x192 pixel, 3 inch, 18bit color depth, backlight)
+  2x 2D video engines (extended variants of the GBA's video controller)
+  1x 3D video engine (can be assigned to upper or lower screen)
+  1x video capture (for effects, or for forwarding 3D to the 2nd 2D engine)
+</pre></td></tr></tbody></table>
+
+<b>Sound</b>
+<br>
+
+<table border="0" cellspacing="0" cellpadding="0"><tbody><tr><td><pre>  16 sound channels (16x PCM8/PCM16/IMA-ADPCM, 6x PSG-Wave, 2x PSG-Noise)
+  2 sound capture units (for echo effects, etc.)
+  Output: Two built-in stereo speakers, and headphones socket
+  Input:  One built-in microphone, and microphone socket
+</pre></td></tr></tbody></table>
+
+<b>Controls</b>
+<br>
+
+<table border="0" cellspacing="0" cellpadding="0"><tbody><tr><td><pre>  Gamepad      4 Direction Keys, 8 Buttons
+  Touchscreen  (on lower LCD screen)
+</pre></td></tr></tbody></table>
+
+<b>Communication Ports</b>
+<br>
+
+<table border="0" cellspacing="0" cellpadding="0"><tbody><tr><td><pre>  Wifi IEEE802.11b
+</pre></td></tr></tbody></table>
+
+<b>Specials</b>
+<br>
+
+<table border="0" cellspacing="0" cellpadding="0"><tbody><tr><td><pre>  Built-in Real Time Clock
+  Power Managment Device
+  Hardware divide and square root functions
+  CP15 System Control Coprocessor (cache, tcm, pu, bist, etc.)
+</pre></td></tr></tbody></table>
+
+<b>External Memory</b>
+<br>
+
+<table border="0" cellspacing="0" cellpadding="0"><tbody><tr><td><pre>  NDS Slot (for NDS games) (encrypted 8bit data bus, and serial 1bit bus)
+  GBA Slot (for NDS expansions, or for GBA games) (but not for DMG/CGB games)
+</pre></td></tr></tbody></table>
+
+<b>Manufactured Cartridges</b>
+<br>
+
+<table border="0" cellspacing="0" cellpadding="0"><tbody><tr><td><pre>  ROM: 16MB, 32MB, or 64MB
+  EEPROM/FLASH/FRAM: 0.5KB, 8KB, 64KB, 256KB, or 512KB
+</pre></td></tr></tbody></table>
+
+<b>Can be booted from</b>
+<br>
+
+<table border="0" cellspacing="0" cellpadding="0"><tbody><tr><td><pre>  NDS Cartridge (NDS mode)
+  Firmware FLASH (NDS mode) (eg. by patching firmware via ds-xboo cable)
+  Wifi (NDS mode)
+  GBA Cartridge (GBA mode) (without DMG/CGB support) (without SIO support)
+</pre></td></tr></tbody></table>
+
+<b>Power Supply</b>
+<br>
+
+<table border="0" cellspacing="0" cellpadding="0"><tbody><tr><td><pre>  Built-in rechargeable Lithium ion battery, 3.7V 1000mAh (DS-Lite)
+  External Supply: 5.2V DC
+</pre></td></tr></tbody></table>
+
+<br>
+
+<b>NDS-Lite</b>
+<br>
+Slightly smaller than the original NDS, coming in a more decently elegant case.
+The LCDs are much more colorful (and thus not backwards compatible with any
+older NDS or GBA games), and the LCDs support wider viewing angles. Slightly
+different power managment device (with selectable backlight brightness, new
+external power source flag, lost audio amplifier mute flag). Slightly different
+Wifi controller (different chip ID, different dirt effects when accessing
+invalid wifi ports and unused wifi memory regions, different behaviour on
+GAPDISP registers, RF/BB chips replaced by a single chip). Slightly different
+touch screen controller (with new unused input, and slightly different
+powerdown bits).
+<br>
+
+<br>
+
+<b>Notice</b>
+<br>
+NDS9 means the ARM9 processor and its memory and I/O ports in NDS mode
+<br>
+NDS7 means the ARM7 processor and its memory and I/O ports in NDS mode
+<br>
+GBA means the ARM7 processor and its memory and I/O ports in GBA mode
+<br>
+
+<br>
+
+<b>The two Processors</b>
+<br>
+Most game code is usually executed on the ARM9 processor (in fact, Nintendo
+reportedly doesn't allow developers use the ARM7 processor, except by
+predefined API functions, anyways, even with the most likely inefficient API
+code, most of the ARM7's 33MHz horsepower is left unused).
+<br>
+The ARM9's 66MHz "horsepower" is a different tale - it seems Nintendo thought
+that a 33MHz processor would be too "slow" for 3D games, and so they (tried to)
+badge an additional CPU to the original GBA hardware.
+<br>
+However, the real 66MHz can be used only with cache and tcm, all other memory
+and I/O accesses are delayed to the 33MHz bus clock, that'd be still quite
+fast, but, there seems to be a hardware glitch that adds 3 waitcycles to all
+nonsequential accesses at the NDS9 side, which effectively drops its bus clock
+to about 8MHz, making it ways slower than the 33MHz NDS7 processor, it's even
+slower than the original 16MHz GBA processor.
+<br>
+Altogether, with the bugged 66MHz, and the unused 33MHz, Nintendo could have
+reached almost the same power when staying with the GBA's 16MHz processor :-)
+<br>
+Although, when properly using cache/tcm, then the 66MHz processor <can>
+be very fast, still, the NDS should have worked as well with a single
+processor, though using only an ARM9 might cause a lot of compatibility
+problems with GBA games, so there's at least one reason for keeping the ARM7
+included.
+<br>
+
+<br>
+
+<br>
+
+<table width="100%" border="0" cellspacing="0" cellpadding="2"><tbody><tr bgcolor="#cccccc"><td width="100%"><font size="+2">
+  <a name="dsiomaps"></a>
+  DS I/O Maps
+</font></td></tr></tbody></table>
+<br>
+ARM9 I/O Map
+<br>
+
+<b>ARM9 Display Engine A</b>
+<br>
+
+<table border="0" cellspacing="0" cellpadding="0"><tbody><tr><td><pre>  4000000h  4    2D Engine A - DISPCNT - LCD Control (Read/Write)
+  4000004h  2    2D Engine A+B - DISPSTAT - General LCD Status (Read/Write)
+  4000006h  2    2D Engine A+B - VCOUNT - Vertical Counter (Read only)
+  4000008h  50h  2D Engine A (same registers as GBA, some changed bits)
+  4000060h  2    DISP3DCNT - 3D Display Control Register (R/W)
+  4000064h  4    DISPCAPCNT - Display Capture Control Register (R/W)
+  4000068h  4    DISP_MMEM_FIFO - Main Memory Display FIFO (R?/W)
+  400006Ch  2    2D Engine A - MASTER_BRIGHT - Master Brightness Up/Down
+</pre></td></tr></tbody></table>
+
+<a href="#gbaiomap">GBA I/O Map</a>
+<br>
+
+<b>ARM9 DMA, Timers, and Keypad</b>
+<br>
+
+<table border="0" cellspacing="0" cellpadding="0"><tbody><tr><td><pre>  40000B0h  30h  DMA Channel 0..3
+  40000E0h  10h  DMA FILL Registers for Channel 0..3
+  4000100h  10h  Timers 0..3
+  4000130h  2    KEYINPUT
+  4000132h  2    KEYCNT
+</pre></td></tr></tbody></table>
+
+<b>ARM9 IPC/ROM</b>
+<br>
+
+<table border="0" cellspacing="0" cellpadding="0"><tbody><tr><td><pre>  4000180h  2  IPCSYNC - IPC Synchronize Register (R/W)
+  4000184h  2  IPCFIFOCNT - IPC Fifo Control Register (R/W)
+  4000188h  4  IPCFIFOSEND - IPC Send Fifo (W)
+  40001A0h  2  AUXSPICNT - Gamecard ROM and SPI Control
+  40001A2h  2  AUXSPIDATA - Gamecard SPI Bus Data/Strobe
+  40001A4h  4  Gamecard bus timing/control
+  40001A8h  8  Gamecard bus 8-byte command out
+  40001B0h  4  Gamecard Encryption Seed 0 Lower 32bit
+  40001B4h  4  Gamecard Encryption Seed 1 Lower 32bit
+  40001B8h  2  Gamecard Encryption Seed 0 Upper 7bit (bit7-15 unused)
+  40001BAh  2  Gamecard Encryption Seed 1 Upper 7bit (bit7-15 unused)
+</pre></td></tr></tbody></table>
+
+<b>ARM9 Memory and IRQ Control</b>
+<br>
+
+<table border="0" cellspacing="0" cellpadding="0"><tbody><tr><td><pre>  4000204h  2  EXMEMCNT - External Memory Control (R/W)
+  4000208h  2  IME - Interrupt Master Enable (R/W)
+  4000210h  4  IE  - Interrupt Enable (R/W)
+  4000214h  4  IF  - Interrupt Request Flags (R/W)
+  4000240h  1  VRAMCNT_A - VRAM-A (128K) Bank Control (W)
+  4000241h  1  VRAMCNT_B - VRAM-B (128K) Bank Control (W)
+  4000242h  1  VRAMCNT_C - VRAM-C (128K) Bank Control (W)
+  4000243h  1  VRAMCNT_D - VRAM-D (128K) Bank Control (W)
+  4000244h  1  VRAMCNT_E - VRAM-E (64K) Bank Control (W)
+  4000245h  1  VRAMCNT_F - VRAM-F (16K) Bank Control (W)
+  4000246h  1  VRAMCNT_G - VRAM-G (16K) Bank Control (W)
+  4000247h  1  WRAMCNT   - WRAM Bank Control (W)
+  4000248h  1  VRAMCNT_H - VRAM-H (32K) Bank Control (W)
+  4000249h  1  VRAMCNT_I - VRAM-I (16K) Bank Control (W)
+</pre></td></tr></tbody></table>
+
+<b>ARM9 Maths</b>
+<br>
+
+<table border="0" cellspacing="0" cellpadding="0"><tbody><tr><td><pre>  4000280h  2  DIVCNT - Division Control (R/W)
+  4000290h  8  DIV_NUMER - Division Numerator (R/W)
+  4000298h  8  DIV_DENOM - Division Denominator (R/W)
+  40002A0h  8  DIV_RESULT - Division Quotient (=Numer/Denom) (R)
+  40002A8h  8  DIVREM_RESULT - Division Remainder (=Numer MOD Denom) (R)
+  40002B0h  2  SQRTCNT - Square Root Control (R/W)
+  40002B4h  4  SQRT_RESULT - Square Root Result (R)
+  40002B8h  8  SQRT_PARAM - Square Root Parameter Input (R/W)
+  4000300h  4  POSTFLG - Undoc
+  4000304h  2  POWCNT1 - Graphics Power Control Register (R/W)
+</pre></td></tr></tbody></table>
+
+<b>ARM9 3D Display Engine</b>
+<br>
+
+<table border="0" cellspacing="0" cellpadding="0"><tbody><tr><td><pre>  4000320h..6A3h
+</pre></td></tr></tbody></table>
+
+<a href="#ds3diomap">DS 3D I/O Map</a>
+<br>
+
+<b>ARM9 Display Engine B</b>
+<br>
+
+<table border="0" cellspacing="0" cellpadding="0"><tbody><tr><td><pre>  4001000h  4    2D Engine B - DISPCNT - LCD Control (Read/Write)
+  4001008h  50h  2D Engine B (same registers as GBA, some changed bits)
+  400106Ch  2    2D Engine B - MASTER_BRIGHT - 16bit - Brightness Up/Down
+</pre></td></tr></tbody></table>
+
+<b>ARM9 DSi Extra Registers</b>
+<br>
+
+<table border="0" cellspacing="0" cellpadding="0"><tbody><tr><td><pre>  40021Axh  ..  DSi Registers
+  4004xxxh  ..  DSi Registers
+</pre></td></tr></tbody></table>
+
+<b>ARM9 IPC/ROM</b>
+<br>
+
+<table border="0" cellspacing="0" cellpadding="0"><tbody><tr><td><pre>  4100000h  4    IPCFIFORECV - IPC Receive Fifo (R)
+  4100010h  4    Gamecard bus 4-byte data in, for manual or dma read (R) (or W)
+</pre></td></tr></tbody></table>
+
+<b>ARM9 DS Debug Registers (Emulator/Devkits)</b>
+<br>
+
+<table border="0" cellspacing="0" cellpadding="0"><tbody><tr><td><pre>  4FFF0xxh  ..   Ensata Emulator Debug Registers
+  4FFFAxxh  ..   No$gba Emulator Debug Registers
+</pre></td></tr></tbody></table>
+
+<b>ARM9 Hardcoded RAM Addresses for Exception Handling</b>
+<br>
+
+<table border="0" cellspacing="0" cellpadding="0"><tbody><tr><td><pre>  27FFD9Ch   ..  NDS9 Debug Stacktop / Debug Vector (0=None)
+  DTCM+3FF8h 4   NDS9 IRQ Check Bits (hardcoded RAM address)
+  DTCM+3FFCh 4   NDS9 IRQ Handler (hardcoded RAM address)
+</pre></td></tr></tbody></table>
+
+<b>Main Memory Control</b>
+<br>
+
+<table border="0" cellspacing="0" cellpadding="0"><tbody><tr><td><pre>  27FFFFEh  2    Main Memory Control
+</pre></td></tr></tbody></table>
+
+<b>Further Memory Control Registers</b>
+<br>
+
+<a href="#armcp15systemcontrolcoprocessor">ARM CP15 System Control Coprocessor</a>
+<br>
+
+<br>
+
+<b>ARM7 I/O Map</b>
+<br>
+
+<table border="0" cellspacing="0" cellpadding="0"><tbody><tr><td><pre>  4000004h  2   DISPSTAT
+  4000006h  2   VCOUNT
+  40000B0h  30h DMA Channels 0..3
+  4000100h  10h Timers 0..3
+  4000120h  4   Debug SIODATA32
+  4000128h  4   Debug SIOCNT
+  4000130h  2   KEYINPUT
+  4000132h  2   KEYCNT
+  4000134h  2   Debug RCNT
+  4000136h  2   EXTKEYIN
+  4000138h  1   RTC Realtime Clock Bus
+  4000180h  2   IPCSYNC - IPC Synchronize Register (R/W)
+  4000184h  2   IPCFIFOCNT - IPC Fifo Control Register (R/W)
+  4000188h  4   IPCFIFOSEND - IPC Send Fifo (W)
+  40001A0h  2   AUXSPICNT - Gamecard ROM and SPI Control
+  40001A2h  2   AUXSPIDATA - Gamecard SPI Bus Data/Strobe
+  40001A4h  4   Gamecard bus timing/control
+  40001A8h  8   Gamecard bus 8-byte command out
+  40001B0h  4   Gamecard Encryption Seed 0 Lower 32bit
+  40001B4h  4   Gamecard Encryption Seed 1 Lower 32bit
+  40001B8h  2   Gamecard Encryption Seed 0 Upper 7bit (bit7-15 unused)
+  40001BAh  2   Gamecard Encryption Seed 1 Upper 7bit (bit7-15 unused)
+  40001C0h  2   SPI bus Control (Firmware, Touchscreen, Powerman)
+  40001C2h  2   SPI bus Data
+</pre></td></tr></tbody></table>
+
+<b>ARM7 Memory and IRQ Control</b>
+<br>
+
+<table border="0" cellspacing="0" cellpadding="0"><tbody><tr><td><pre>  4000204h  2   EXMEMSTAT - External Memory Status
+  4000206h  2   WIFIWAITCNT
+  4000208h  4   IME - Interrupt Master Enable (R/W)
+  4000210h  4   IE  - Interrupt Enable (R/W)
+  4000214h  4   IF  - Interrupt Request Flags (R/W)
+  4000218h  -   IE2  ;\DSi only (additional ARM7 interrupt sources)
+  400021Ch  -   IF2  ;/
+  4000240h  1   VRAMSTAT - VRAM-C,D Bank Status (R)
+  4000241h  1   WRAMSTAT - WRAM Bank Status (R)
+  4000300h  1   POSTFLG
+  4000301h  1   HALTCNT (different bits than on GBA) (plus NOP delay)
+  4000304h  2   POWCNT2  Sound/Wifi Power Control Register (R/W)
+  4000308h  4   BIOSPROT - Bios-data-read-protection address
+</pre></td></tr></tbody></table>
+
+<b>ARM7 Sound Registers</b>
+<br>
+
+<table border="0" cellspacing="0" cellpadding="0"><tbody><tr><td><pre>  4000400h 100h Sound Channel 0..15 (10h bytes each)
+  40004x0h  4   SOUNDxCNT - Sound Channel X Control Register (R/W)
+  40004x4h  4   SOUNDxSAD - Sound Channel X Data Source Register (W)
+  40004x8h  2   SOUNDxTMR - Sound Channel X Timer Register (W)
+  40004xAh  2   SOUNDxPNT - Sound Channel X Loopstart Register (W)
+  40004xCh  4   SOUNDxLEN - Sound Channel X Length Register (W)
+  4000500h  2   SOUNDCNT - Sound Control Register (R/W)
+  4000504h  2   SOUNDBIAS - Sound Bias Register (R/W)
+  4000508h  1   SNDCAP0CNT - Sound Capture 0 Control Register (R/W)
+  4000509h  1   SNDCAP1CNT - Sound Capture 1 Control Register (R/W)
+  4000510h  4   SNDCAP0DAD - Sound Capture 0 Destination Address (R/W)
+  4000514h  2   SNDCAP0LEN - Sound Capture 0 Length (W)
+  4000518h  4   SNDCAP1DAD - Sound Capture 1 Destination Address (R/W)
+  400051Ch  2   SNDCAP1LEN - Sound Capture 1 Length (W)
+</pre></td></tr></tbody></table>
+
+<b>ARM7 DSi Extra Registers</b>
+<br>
+
+<table border="0" cellspacing="0" cellpadding="0"><tbody><tr><td><pre>  40021Axh  ..  DSi Registers
+  4004xxxh  ..  DSi Registers
+  4004700h  2   DSi SNDEXCNT Register  ;\mapped even in DS mode
+  4004C0xh  ..  DSi GPIO Registers     ;/
+</pre></td></tr></tbody></table>
+
+<b>ARM7 IPC/ROM</b>
+<br>
+
+<table border="0" cellspacing="0" cellpadding="0"><tbody><tr><td><pre>  4100000h  4   IPCFIFORECV - IPC Receive Fifo (R)
+  4100010h  4   Gamecard bus 4-byte data in, for manual or dma read (R) (or W)
+</pre></td></tr></tbody></table>
+
+<b>ARM7 3DS</b>
+<br>
+
+<table border="0" cellspacing="0" cellpadding="0"><tbody><tr><td><pre>  4700000h  4   Disable ARM7 bootrom overlay (W) (3DS only)
+</pre></td></tr></tbody></table>
+
+<b>ARM7 WLAN Registers</b>
+<br>
+
+<table border="0" cellspacing="0" cellpadding="0"><tbody><tr><td><pre>  4800000h  ..  Wifi WS0 Region (32K) (Wifi Ports, and 8K Wifi RAM)
+  4808000h  ..  Wifi WS1 Region (32K) (mirror of above, other waitstates)
+</pre></td></tr></tbody></table>
+
+<b>ARM7 Hardcoded RAM Addresses for Exception Handling</b>
+<br>
+
+<table border="0" cellspacing="0" cellpadding="0"><tbody><tr><td><pre>  380FFC0h  4   DSi7 IRQ IF2 Check Bits (hardcoded RAM address) (DSi only)
+  380FFDCh  ..  NDS7 Debug Stacktop / Debug Vector (0=None)
+  380FFF8h  4   NDS7 IRQ IF Check Bits (hardcoded RAM address)
+  380FFFCh  4   NDS7 IRQ Handler (hardcoded RAM address)
+</pre></td></tr></tbody></table>
+
+<br>
+
+<br>
+
+<table width="100%" border="0" cellspacing="0" cellpadding="2"><tbody><tr bgcolor="#cccccc"><td width="100%"><font size="+2">
+  <a name="dsmemorymaps"></a>
+  DS Memory Maps
+</font></td></tr></tbody></table>
+<br>
+
+<b>NDS9 Memory Map</b>
+<br>
+
+<table border="0" cellspacing="0" cellpadding="0"><tbody><tr><td><pre>  00000000h  Instruction TCM (32KB) (not moveable) (mirror-able to 1000000h)
+  0xxxx000h  Data TCM        (16KB) (moveable)
+  02000000h  Main Memory     (4MB)
+  03000000h  Shared WRAM     (0KB, 16KB, or 32KB can be allocated to ARM9)
+  04000000h  ARM9-I/O Ports
+  05000000h  Standard Palettes (2KB) (Engine A BG/OBJ, Engine B BG/OBJ)
+  06000000h  VRAM - Engine A, BG VRAM  (max 512KB)
+  06200000h  VRAM - Engine B, BG VRAM  (max 128KB)
+  06400000h  VRAM - Engine A, OBJ VRAM (max 256KB)
+  06600000h  VRAM - Engine B, OBJ VRAM (max 128KB)
+  06800000h  VRAM - "LCDC"-allocated (max 656KB)
+  07000000h  OAM (2KB) (Engine A, Engine B)
+  08000000h  GBA Slot ROM (max 32MB)
+  0A000000h  GBA Slot RAM (max 64KB)
+  FFFF0000h  ARM9-BIOS (32KB) (only 3K used)
+</pre></td></tr></tbody></table>
+The ARM9 Exception Vectors are located at FFFF0000h. The IRQ handler redirects
+to [DTCM+3FFCh].
+<br>
+
+<br>
+
+<b>NDS7 Memory Map</b>
+<br>
+
+<table border="0" cellspacing="0" cellpadding="0"><tbody><tr><td><pre>  00000000h  ARM7-BIOS (16KB)
+  02000000h  Main Memory (4MB)
+  03000000h  Shared WRAM (0KB, 16KB, or 32KB can be allocated to ARM7)
+  03800000h  ARM7-WRAM (64KB)
+  04000000h  ARM7-I/O Ports
+  04800000h  Wireless Communications Wait State 0 (8KB RAM at 4804000h)
+  04808000h  Wireless Communications Wait State 1 (I/O Ports at 4808000h)
+  06000000h  VRAM allocated as Work RAM to ARM7 (max 256K)
+  08000000h  GBA Slot ROM (max 32MB)
+  0A000000h  GBA Slot RAM (max 64KB)
+</pre></td></tr></tbody></table>
+The ARM7 Exception Vectors are located at 00000000h. The IRQ handler redirects
+to [3FFFFFCh aka 380FFFCh].
+<br>
+
+<br>
+
+<b>Further Memory (not mapped to ARM9/ARM7 bus)</b>
+<br>
+
+<table border="0" cellspacing="0" cellpadding="0"><tbody><tr><td><pre>  3D Engine Polygon RAM (52KBx2)
+  3D Engine Vertex RAM (72KBx2)
+  Firmware (256KB) (built-in serial flash memory)
+  GBA-BIOS (16KB) (not used in NDS mode)
+  NDS Slot ROM (serial 8bit-bus, max 4GB with default protocol)
+  NDS Slot FLASH/EEPROM/FRAM (serial 1bit-bus)
+</pre></td></tr></tbody></table>
+
+<br>
+
+<b>Shared-RAM</b>
+<br>
+Even though Shared WRAM begins at 3000000h, programs are commonly using mirrors
+at 37F8000h (both ARM9 and ARM7). At the ARM7-side, this allows to use 32K
+Shared WRAM and 64K ARM7-WRAM as a continous 96K RAM block.
+<br>
+
+<br>
+
+<b>Undefined I/O Ports</b>
+<br>
+On the NDS (at the ARM9-side at least) undefined I/O ports are always zero.
+<br>
+
+<br>
+
+<b>Undefined Memory Regions</b>
+<br>
+16MB blocks that do not contain any defined memory regions (or that contain
+only mapped TCM regions) are typically completely undefined.
+<br>
+16MB blocks that do contain valid memory regions are typically containing
+mirrors of that memory in the unused upper part of the 16MB area (only
+exceptions are TCM and BIOS which are not mirrored).
+<br>
+
+<br>
+
+<br>
+
+</body>
+</html>

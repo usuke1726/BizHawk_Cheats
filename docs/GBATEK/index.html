@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body,h2{font-size:12px}
+        pre,h3{font-size:11px}
+        h1,h2,h3{margin:0;display:inline;padding:0}
+        h1{font-weight:normal}
+        h2,h3{font-weight:bold}
+        body,h1,h2{font-family:Arial, Helvetica, sans-serif}
+        pre,h3{font-family:monospace, "Courier New", Courier}
+        body{max-width:50em; font-size:larger;}
+        a[href*="/"]{line-height:2;}
+    </style>
+    <title>NDS Reference</title>
+</head>
+<body>
+<table width="100%" border="0" cellspacing="0" cellpadding="2"><tbody><tr bgcolor="#cccccc"><td width="100%"><font size="+2">
+  <a name="ndsreference"></a>
+  NDS Reference
+</font></td></tr></tbody></table>
+<br>
+
+
+<a href="./01_Overview.html">Overview</a>
+<br>
+
+
+<br>
+
+<b>Hardware Programming</b>
+<br><br>
+
+<a href="./02_MemoryControl.html">DS Memory Control</a>
+<br>
+
+<a href="./03_2DVideo.html">DS Video</a>
+<br>
+
+<a href="./04_3DVideo.html">DS 3D Video</a>
+<br>
+
+<a href="./05_Sound.html">DS Sound</a>
+<br>
+
+<a href="./06_GBA_LCD_Video.html">GBA LCD Video</a>
+<br>
+
+<!-- 
+
+<a href="#dssystemandbuiltinperipherals">DS System and Built-in Peripherals</a>
+<br>
+
+<a href="#dscartridgesencryptionfirmware">DS Cartridges, Encryption, Firmware</a>
+<br>
+
+<a href="#dsxboo">DS Xboo</a>
+<br>
+
+<a href="#dswirelesscommunications">DS Wireless Communications</a>
+<br>
+
+<br>
+
+<b>Other</b>
+<br>
+
+<a href="#biosfunctions">BIOS Functions</a>
+<br>
+
+<a href="#armcpureference">ARM CPU Reference</a>
+<br>
+
+<a href="#externalconnectors">External Connectors</a>
+<br>
+
+<br> -->
+
+<br>
+
+<!-- 
+https://problemkaputt.de/gbatek.htm#dsmemorycontrol から以下のコードで抽出:
+
+
+function main(s){
+const isHeader = (el) => {
+    if(el.tagName !== "TABLE") return false;
+    const a = el.getElementsByTagName("font");
+    if(!a || a.length !== 1) return false;
+    const b = a[0].getElementsByTagName("a")
+    if(!a || a.length !== 1) return false;
+    return true;
+};
+const children = [...document.body.childNodes];
+const el = children.filter(el => el.tagName === "TABLE").find(el => el.innerText.trim() === s);
+const IDX = children.indexOf(el);
+const el2 = children.find((el, idx) => idx>IDX && isHeader(el));
+const IDX2 = children.indexOf(el2);
+return [...Array(IDX2-IDX).keys()].map(i => i+IDX).map(i => children[i].nodeType === Node.TEXT_NODE ? children[i].textContent.trim() : children[i].outerHTML).join("\n");
+}
+
+console.log(["DS Sound", "DS Sound Channels 0..15", /*...*/].map(s => main(s)).join("\n\n\n"));
+or
+["GBA LCD Video Controller", /*...*/].forEach(s => console.log(main(s)));
+
+-->
+
+</body>
+</html>
