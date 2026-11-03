@@ -967,3 +967,291 @@ lib.warr(0x0215BB6F, htob( -- グッドだらしない服装 胸にジー...
 end,
 }):onStateChanged(function()update() end)
 ```
+
+## video22 レオムービーバグ
+
+```lua
+
+-- ムービーでトーテムぽくなる？
+local begin0 = 0x2224EF0
+local bs = {
+0x2224EF0,
+0x2236F30,
+0x2248F60,
+0x225AFA0,
+0x2291040,
+0x227F000,
+0x226CFD0,
+0x225AFA0,
+}
+local W = 0x100
+-- local begin = 0x2228000
+-- local begin = begin0 + W * 20
+-- local iend = 0x0222FFFF
+local iend = 0x02230FAF
+local prevs = {}
+local r = RC(30)
+for i = begin0, iend, 4 do
+    prevs[i] = r32(i)
+    for _, b in pairs(bs) do
+        prevs[i-begin0+b] = r32(i-begin0+b)
+    end
+end
+local c = Cnt(10)
+
+function loop()
+    local width = 0x40
+    local height = 40
+    touch = DS.key.get_mouse_pos()
+    local xct = ilerp(0, W, clamp(invlerp(touch.x, 0, 255), 0, 1))
+    local yct = ilerp(0, 192, clamp(invlerp(touch.y, 0, 191), 0, 1))
+    local xst = xct - width//2
+    local yst = yct - height//2
+    -- local xst = W//2
+    -- local yst = 0x40
+
+    -- if not c() then return end
+    -- if r() then
+    --     for i = begin0, iend, 4 do
+    --         prevs[i] = r32(i)
+    --         for _, b in pairs(bs) do
+    --             prevs[i-begin0+b] = r32(i-begin0+b)
+    --         end
+    --     end
+    -- end
+    -- for i = begin0, iend, 4 do
+    --     w32(i, prevs[i])
+    --     for _, b in pairs(bs) do
+    --         w32(i-begin0+b, prevs[i-begin0+b])
+    --     end
+    -- end
+    for _, b in pairs(bs) do
+        local begin = b + 0*W
+        for i = begin, b+192*W do
+            local offset = i - begin
+            local x, y = offset % W, offset // W
+            x = (x - xst) % width + xst
+            y = (y - yst) % height + yst
+            -- local i2 = (y%40)*W + x
+            local i2 = y*W + x
+            w32(i, r32(i2 + begin))
+        end
+    end
+
+    -- for i = begin, iend, 4 do
+    --     local offset = i - begin
+    --     local x, y = offset % W, offset // W
+    --     local d = 0x40
+    --     local i2 = y + ilerp(0, 0x30, invlerp(x%d, 0, d-1))
+    --     -- local i2 = (y%40) * W + x
+    --     w32(i, r32(i2 + begin - 0x0000))
+    -- end
+end
+-- 音源はROM0x0AD27000から
+
+-- 音源を差し替える
+local addr = 0x0AD27000
+local file = io.open(lib.path.output("fab_voices/movie2.adx"), "rb")
+local content = file:read("a")
+file:close()
+local bytes = {}
+for i = 1, #content do
+    bytes[i] = content:byte(i)
+end
+lib.romwarr(addr, bytes)
+-- sample rate は7FD8(=32728)
+```
+
+## video22 レオ会話01 & あらぶり
+
+```lua
+local eye_addrs1 = {
+0x022FDF9C,
+0x022FE59C,
+0x022FE79C,
+0x022FED9C,
+}
+local eye_addrs2 = {
+0x022FDFAC,
+0x022FE5AC,
+0x022FE7AC,
+0x022FEDAC,
+}
+
+local update_eyes = (function()
+local vs1 = {}
+local vs2 = {}
+for i, a in pairs(eye_addrs1) do
+    vs1[i] = ValueUpdater(40, 0x0d80, 0x0d80+0x4f00, "pingpong"):w32(a)
+end
+for i, a in pairs(eye_addrs2) do
+    vs2[i] = ValueUpdater(40, 0x0d80, 0x0d80+0x4f00, "rpingpong"):w32(a)
+end
+return function()
+    for _, v in pairs(vs1) do v() end
+    for _, v in pairs(vs2) do v() end
+end
+end)()
+
+-- constant tr: Fixed(1.19.12)
+-- constant scl: Fixed(1.19.12)
+local origs_tr = {}
+local origs_scl = {}
+
+local function _r32(a)
+    local v = 0
+    for i = 0, 3 do
+        v = v | (r8(a+i) << (8*i))
+    end
+    return v
+end
+local function _w32(a, v)
+    for i = 0, 3 do
+        w8(a+i, (v >> (8*i)) & 0xff)
+    end
+end
+
+local function is_eye(addr)
+    for _, a in pairs(eye_addrs1) do
+        if within(a - addr, 0, 0x10) then
+            return true
+        end
+    end
+    for _, a in pairs(eye_addrs2) do
+        if within(a - addr, 0, 0x10) then
+            return true
+        end
+    end
+    return false
+end
+---@param tr DataPos?
+local function try_add(tr, arr)
+    if not tr then return end
+    if is_eye(tr.addr) then return end
+    arr[tr.addr] = intToFixFloat(_r32(tr.addr), 19, 12)
+end
+
+local function setup_JNT()
+local _, Jaddrs = Nitro.find_all_JNT0(nil, nil, true)
+for _, a in pairs(Jaddrs) do
+    local res = Nitro.read_JNT0(a, 0)
+    for _, tracks in pairs(res.tracks) do
+        for _, track in pairs(tracks) do
+            try_add(track.CurveX_Const, origs_tr)
+            try_add(track.CurveY_Const, origs_tr)
+            try_add(track.CurveZ_Const, origs_tr)
+            try_add(track.CurveScaleX_Const1, origs_scl)
+            try_add(track.CurveScaleY_Const1, origs_scl)
+            try_add(track.CurveScaleZ_Const1, origs_scl)
+        end
+    end
+end
+end
+
+local update_move = (function()
+local reset = RC(5)
+local change = RC(3)
+local tr = {}
+local scl = {}
+return function()
+for a, orig in pairs(origs_tr) do
+    tr[a] = tr[a] or orig
+    if change() then
+        tr[a] = tr[a] + rand(0, 1000) / 1000
+    end
+    if reset() then
+        tr[a] = orig
+    end
+    _w32(a, fixFloatToInt(tr[a], 19, 12))
+end
+end
+end)()
+
+-- local _, Maddrs = Nitro.find_all_MDL0(nil, nil, true)
+
+local update_ready = (function()
+local READY = false
+local cooltime = 6
+return function()
+    if cooltime == 0 then return true end
+    if READY then
+        cooltime = cooltime - 1
+        if cooltime == 0 then
+            setup_JNT()
+            return true
+        end
+        return false
+    end
+    if r8(0x022FDF9F) == 0 then
+        READY = true
+    end
+    return false
+end
+end)()
+
+function loop()
+    if not update_ready() then return end
+    update_move()
+    update_eyes()
+end
+
+
+lib.actions.register("fab_video_20", lib.actions.KF.button("L"), {
+function()
+end,
+function()
+lib.warr(0x0215B891, htob( -- ……もうやだー、こんなの 横文...
+"81638163d3b3d4c0de815b8141baddc5c90a89a195b68e9a8d44b7c9968296408e67b2c996bcca0a81758f8096b38dca904681761b4bbeddbd1b4888ab815bb28149050505"
+))
+end,
+function()
+lib.warr(0x0215B89E, htob( -- それより、ゴスロリ女武士さァ ...
+"bfdad6d881411b4bbadebddbd81b488f9795908e6dbb1b4ba70a8fad944e969f89e68e8f95971b4bc1aebab1bf1b48815b1b4bc41b48c5d70ad3b3c1aeb28f6e944e91778e9e91e39681b2c0d78148050505"
+))
+end,
+function()
+lib.warr(0x0215B8D6, htob( -- 今時、そんな雅のベートーベン ...
+"8da18e9e8141bfddc589ebc91b4bcdde1b48815b1b4bc41b48815b1b4bcddedd0ac5ddc3814192d095a896bc975f89ef92b7bdb7dec0dedb81480aafc0b894ab81491b4bbcdeaaddc4d9cfdd1b488d86050505"
+))
+end,
+function()
+lib.warr(0x0215B908, htob( -- それだけ言い残すと、 青年は銃...
+"bfdac0deb98cbeb28e63bdc481410a90c2944eca8f65a6b6cfb4c0050505"
+))
+end,
+})
+
+
+lib.irume.start(function()
+    local base = 0x03E18DD0
+    local vol = 0x12
+    local p2 = 0x14
+    local as = {}
+    local hat = {}
+    local ds = {}
+    for i = 0, 16 do
+        as[i] = base + i*0x40
+        hat[i] = false
+        ds[i] = 0x40
+    end
+    local r = RC(15)
+    local hatr = RC(90)
+    local c = Cnt(40)
+    return function()
+        c()
+        for i, a in pairs(as) do
+            w16(a+vol, 0x0100)
+            if r() then
+                w16(a+p2, rand(-20, 20)*0x20)
+            end
+            if hatr() then
+                hat[i] = not hat[i]
+                ds[i] = rand(2, 8)*0x10
+            end
+            if hat[i] then
+                add16(a+p2, round(math.sin(c.i*2*math.pi/c.n)*ds[i]))
+            end
+        end
+    end
+end)
+```

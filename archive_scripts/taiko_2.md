@@ -877,4 +877,409 @@ local b = lib.htob("e382a2e383b3e38391e383b3e3839ee383b3")
 CLS()
 -- lib.findr(0x00000000, 0x03ffffff, b)
 
+
+```
+
+```
+以下のアドレスをいじってキャラを高速にできる
+228F7AC:
+59 00 00 00
+<anim time>
+80 00 00 00 C0 00 00 00 00 00 80 3F 00 00 80 3F
+<x座標>     <y座標>        <width>    <height>
+08 00 00 00 00 00 00 00 8B 05 00 00
+```
+
+## アンパンの譜面を改造する(試験段階)
+
+```lua
+
+local data = lib.image.lz77.decompress(0x00983200, false)
+-- local s = table.concat(Array.map(data, function(v) return _HEX(v, 2, true) end), "")
+local len = #data
+local out = {}
+for i = 1, len do out[i-1]=data[i] end
+local function main(v, i)
+    if i < 0x1930 then
+        if v & 0xf0 == 0xA0 then
+            return 0x37
+        end
+        return
+    end
+    local num = 0x8
+    if v == 0xff or v == 0 then return end
+    -- if v == 0x14 then return 0x50 end
+    if v == 0x7 then for j=9,15 do out[i+j]=0 end out[i+8]=num out[i+12]=0x78 out[i+13]=0x0b return 0xa end
+    if v == 0x1 then for j=9,15 do out[i+j]=0 end out[i+8]=num out[i+12]=0x78 out[i+13]=0x0b return 0xa end
+    if v == 0x2 then for j=9,15 do out[i+j]=0 end out[i+8]=num out[i+12]=0x78 out[i+13]=0x0b return 0xa end
+    if v == 0x3 then for j=9,15 do out[i+j]=0 end out[i+8]=num out[i+12]=0x78 out[i+13]=0x0b return 0xa end
+    if v == 0x4 then for j=9,15 do out[i+j]=0 end out[i+8]=num out[i+12]=0x78 out[i+13]=0x0b return 0xa end
+    if v == 0x5 then for j=9,15 do out[i+j]=0 end out[i+8]=num out[i+12]=0x78 out[i+13]=0x0b return 0xa end
+    if v == 0xa then for j=9,15 do out[i+j]=0 end out[i+8]=num out[i+12]=0x78 out[i+13]=0x0b return 0xa end
+    if v == 0x6 then for j=9,15 do out[i+j]=0 end out[i+8]=num out[i+12]=0x78 out[i+13]=0x0b return 0xa end
+    -- if v==6 then return 6 end
+    -- if v == 0x6 then
+    --     out[i+12] = 0x44
+    --     out[i+13] = 0x44
+    -- end
+    -- return rand(0, 0x2A)
+end
+
+local _out2 = {}
+local i = 0
+while true do
+local v = out[i]
+for _ = 1, 1 do
+    -- if i == 0 then out[0] = 0x30 end
+    if i < 0x1938 then
+        if v & 0xf0 == 0xA0 then
+            -- out[i] = 0x37
+        end
+        break
+    end
+    -- local num = 0x1
+    local num = 0x2
+    if v == 0xff or v == 0 then break end
+    -- if v == 0x14 then return 0x50 end
+    if (
+        v == 0x7
+        or v == 0x1
+        or v == 0x2
+        or v == 0x3
+        or v == 0x4
+        or v == 0x5
+        or v == 0x6
+        or v == 0xa
+    ) then
+    -- 7が大ドン, 8が大カツ, aが風船, 6が連打
+        -- 風船だらけにする
+        out[i] = 0xa
+        i = i + 8
+        for j = 0, 7 do
+            out[i+j] = 0
+        end
+        if i-8==0x31F8 then
+            out[i] = 1
+        elseif i-8==0x31D8 then
+            out[i] = 0x60
+        elseif v == 0xa or v == 0x7 or v == 0x6 then
+            out[i] = 0x07
+            out[i+1] = 0x1
+        else
+            out[i] = num
+        end
+        out[i+4] = 78
+        -- out[i+5] = 0xb
+        out[i+5] = 0x24
+        -- out[i+5] = 0x40
+        -- 風船を落とすまでの時間
+        i = i + 8
+        i = i - 1
+        break
+    end
+end
+i = i + 1
+if i > len-1 then break end
+end
+
+for i = 0, len-1 do _out2[i+1] = out[i] end
+lib.romwarr(0x00983200, lib.image.lz77.compress(_out2))
+-- local file = io.open(lib.path.output("taiko_anpan.dat"), "wb")
+-- file:write(longchars(data))
+-- file:close()
+
+```
+
+## EKiBEN でんでん祭り & キャラ拡大、高速化
+
+```lua
+local function change_humen(addr, offset)
+local data = lib.image.lz77.decompress(addr, false)
+-- local s = table.concat(Array.map(data, function(v) return _HEX(v, 2, true) end), "")
+local len = #data
+local out = {}
+for i = 1, len do out[i-1]=data[i] end
+
+local _out2 = {}
+local i = 0
+while true do
+local v = out[i]
+for _ = 1, 1 do
+    -- if i == 0 then out[0] = 0x30 end
+    if i < offset then
+        if v & 0xf0 == 0xA0 then
+            -- out[i] = 0x37
+        end
+        break
+    end
+    if i < 0x7578 then break end
+    -- local num = 0x1
+    local num = 0x2
+    if v == 0xff or v == 0 then break end
+    -- if v == 0x14 then return 0x50 end
+    if (
+        v == 0x7
+        or v == 0x1
+        or v == 0x2
+        or v == 0x3
+        or v == 0x4
+        or v == 0x5
+        or v == 0x6
+        or v == 0x8
+        or v == 0x9
+        or v == 0xa
+        or v == 0xb
+        or v == 0xd
+    ) then
+    -- 7が大ドン, 8が大カツ, aが風船, 6が連打
+        -- 風船だらけにする
+        -- out[i] = 0xa
+        -- out[i] = 0xc
+        out[i] = rand(1,4)==1 and 0xa or 0xc
+        if within(i, 0x8800, 0x8F00) then
+            out[i] = 0xc
+        end
+        i = i + 8
+        for j = 0, 7 do
+            out[i+j] = 0
+        end
+        if i-8==0x31F8 then
+            out[i] = 1
+        elseif i-8==0x31D8 then
+            -- out[i] = 0x60
+            -- out[i] = num
+            out[i] = rand(1, 2)
+        elseif v == 0xa or v == 0x7 or v == 0x6 then
+            -- out[i] = 0x07
+            -- out[i+1] = 0x1
+            out[i] = rand(1, 2)
+        else
+            out[i] = rand(1, 2)
+        end
+        out[i+4] = 78
+        -- out[i+5] = 0xb
+        out[i+5] = 0x24
+        -- out[i+5] = 0x40
+        -- 風船を落とすまでの時間
+        i = i + 8
+        i = i - 1
+        break
+    end
+end
+i = i + 1
+if i > len-1 then break end
+end
+
+for i = 0, len-1 do _out2[i+1] = out[i] end
+lib.romwarr(addr, lib.image.lz77.compress(_out2))
+end
+
+
+-- change_sound()
+-- change_humen(0x00983200, 0x1938)
+change_humen(0x00a00800, 0x3E68)
+-- w16r(0x0081C96A, 0x1111) -- スコアの一部をかいめつ
+
+-- 踊り子をアラブらセル
+w8(0x0228F788, 0x06)
+w8(0x0228F78C, 0x20)
+w16(0x0228F796, 0x4080)
+w16(0x0228F79A, 0x4040)
+
+w8(0x0228F7AC, 0x04)
+w16(0x0228F7BA, 0x4080)
+w16(0x0228F7BE, 0x4040)
+
+w8(0x0228F7D0, 0x11)
+w8(0x0228F7D4, 0xe0)
+w16(0x0228F7DE, 0x4080)
+w16(0x0228F7E2, 0x4040)
+
+-- メカどんの位置を調整
+w32(0x0228FF48, 0xFFFFFF40)
+w32(0x0228FF4C, 0xFFFFFFC0)
+w16(0x0228FF52, 0x4041)
+w16(0x0228FF56, 0x3FA0)
+
+```
+
+## アンパンの音源をカオスにする
+
+```lua
+
+-- ==============================
+-- ========== 本番用 ============
+-- ==============================
+
+-- lib.fill_inr(0x028a0000, 0x028bb09f)
+-- lib.fill_inr(0x028a0000, 0x028b809f)
+local function change_sound()
+local begin = 0x02844AD8
+local iend = 0x028BB1FF
+local begin2 = 0x028BE680
+local r = RC(10)
+local d = 0
+-- https://github.com/oct0xor/taiko_no_tatsujin_ds_custom_songs/blob/master/taiko_music/main.cpp#L105 より
+-- 太鼓の音源はSiren14（ITU-T G.722.1 Annex C）フォーマットに従っており、1サンプルのデータは0x78らしい
+-- https://github.com/XyLe-GBP/PolyTool でもITU G.722.1をdecodeできるみたいだが、もしかすると太鼓とは互換性ないかも
+local step = 0x78
+local vs = {}
+local spd = 1
+local i_st = 0
+for i = begin, iend do
+    vs[i] = r8r(i)
+end
+for i = begin, iend, step do
+    if r() then
+        if i < begin + 0x1000 then
+            -- do nothing
+        elseif i < begin+0x30000 then
+            d = rand(0x1, 0x40)*0x10
+        elseif i > iend - 0x30000 then
+            d = rand(-0x40, -0x1)*0x10
+        else
+            d = rand(-0x10, 0x10)*0x60
+        end
+        spd = rand(1, 4) == 1 and 2 or 1
+        i_st = ( (i-begin)//step ) + d
+    end
+    -- local j = (i-begin+d)%(iend-begin)+begin
+    -- local j = (i-begin)//2+begin
+
+    -- if d then
+    --     w32r(i, r32r(i - begin + begin2))
+    -- else
+    --     w32r(i, r32r(i))
+    -- end
+    -- if i > begin+ 0x1000 then
+    local _i = ( (i-begin)//step ) + d
+    assert(within(_i, 0, (iend-begin)//step), "out of bound of _i")
+    if spd == 2 then
+        local _i2 = (_i-i_st)*2+i_st
+        if within(_i2, 0, (iend-begin)//step) then
+            _i = _i2
+        end
+    end
+    _i = _i * step + begin
+        for j = 0, step-1 do
+            local _j = j
+            -- local v = r8r((i-begin)*2+begin+_j)
+            local v = assert(vs[_i+_j])
+            w8r(i+j, v)
+        end
+    -- end
+
+    -- w32r(i, r32r(i)+rand(1,2)*0x10000000)
+end
+end
+
+
+local function change_humen(addr, offset)
+local data = lib.image.lz77.decompress(addr, false)
+-- local s = table.concat(Array.map(data, function(v) return _HEX(v, 2, true) end), "")
+local len = #data
+local out = {}
+for i = 1, len do out[i-1]=data[i] end
+
+local _out2 = {}
+local i = 0
+while true do
+local v = out[i]
+for _ = 1, 1 do
+    -- if i == 0 then out[0] = 0x30 end
+    if i < offset then
+        if v & 0xf0 == 0xA0 then
+            -- out[i] = 0x37
+        end
+        break
+    end
+    -- local num = 0x1
+    local num = 0x2
+    if v == 0xff or v == 0 then break end
+    -- if v == 0x14 then return 0x50 end
+    if (
+        v == 0x7
+        or v == 0x1
+        or v == 0x2
+        or v == 0x3
+        or v == 0x4
+        or v == 0x5
+        or v == 0x6
+        or v == 0x8
+        or v == 0x9
+        or v == 0xa
+        or v == 0xb
+        or v == 0xd
+    ) then
+    -- 7が大ドン, 8が大カツ, aが風船, 6が連打
+        -- 風船だらけにする
+        out[i] = 0x9
+        -- if within(v, 1, 9) then
+        --     local _d = {1,2,3,4,5}
+        --     out[i] = _d[rand(1, #_d)]
+        --     out[i+4] = clamp(out[i+4]+rand(-0x10,0x10), 0, 0x20)
+        -- end
+        i = i + 8
+        i = i + 8
+        i = i - 1
+        break
+        for j = 0, 7 do
+            out[i+j] = 0
+        end
+        if i-8==0x31F8 then
+            out[i] = 1
+        elseif i-8==0x31D8 then
+            out[i] = 0x60
+            out[i] = num
+        elseif v == 0xa or v == 0x7 or v == 0x6 then
+            out[i] = 0x07
+            out[i+1] = 0x1
+        else
+            out[i] = num
+        end
+        out[i+4] = 78
+        -- out[i+5] = 0xb
+        out[i+5] = 0x24
+        -- out[i+5] = 0x40
+        -- 風船を落とすまでの時間
+        i = i + 8
+        i = i - 1
+        break
+    end
+end
+i = i + 1
+if i > len-1 then break end
+end
+
+for i = 0, len-1 do _out2[i+1] = out[i] end
+lib.romwarr(addr, lib.image.lz77.compress(_out2))
+end
+
+
+change_sound()
+change_humen(0x00983200, 0x1938)
+-- change_humen(0x00a00800, 0x3E68)
+w16r(0x0081C96A, 0x1111) -- スコアの数字の一部をかいめつ
+
+-- 踊り子をアラブらセル
+w8(0x0228F788, 0x06)
+w8(0x0228F78C, 0x20)
+w16(0x0228F796, 0x4080)
+w16(0x0228F79A, 0x4040)
+
+w8(0x0228F7AC, 0x04)
+w16(0x0228F7BA, 0x4080)
+w16(0x0228F7BE, 0x4040)
+
+w8(0x0228F7D0, 0x11)
+w8(0x0228F7D4, 0xe0)
+w16(0x0228F7DE, 0x4080)
+w16(0x0228F7E2, 0x4040)
+
+-- メカどんの位置を調整
+w8(0x0228FF44, 0x04)
+w32(0x0228FF48, 0xFFFFFF20)
+w32(0x0228FF4C, 0xFFFFFF40)
+w16(0x0228FF52, 0x4081)
+w16(0x0228FF56, 0x4040)
 ```
