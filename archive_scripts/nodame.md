@@ -2082,3 +2082,442 @@ lib.irume.start(function()
     end
 end)
 ```
+
+## video23 リザルト 情けない顔「最高にキモモモモモ」
+
+```lua
+local addrs = {
+0x02237934,
+0x0223D514,
+0x02265204,
+}
+local res = Nitro.read_MDL0(addrs[2], 0)
+local meshes = res.addrs_mesh
+
+local f16 = FixFloatConverter(3, 12)
+local xmin, xmax = 10000000000, -10000000000
+local ymin, ymax = 10000000000, -10000000000
+local zmin, zmax = 10000000000, -10000000000
+for _, mesh in pairs(meshes) do
+    Nitro.filter_mesh(mesh.begin, mesh.iend, function(addr, cmd, pnum, name)
+        if name == MESH_COMMANDS.VTX_16 then
+        local x = f16:tof(r16(addr+0))
+        local y = f16:tof(r16(addr+2))
+        local z = f16:tof(r16(addr+4))
+        xmin = math.min(xmin, x) xmax = math.max(xmax, x)
+        ymin = math.min(ymin, y) ymax = math.max(ymax, y)
+        zmin = math.min(zmin, z) zmax = math.max(zmax, z)
+        end
+    end)
+    Nitro.filter_mesh(mesh.begin, mesh.iend, function(addr, cmd, pnum, name)
+        if name == MESH_COMMANDS.VTX_16 then
+        local x = f16:tof(r16(addr+0))
+        local y = f16:tof(r16(addr+2))
+        local z = f16:tof(r16(addr+4))
+        -- y: 横
+        -- z: 奥行
+        -- x: 縦
+        x = x - math.abs(invlerp(y, ymin, ymax)-0.5) * 2
+        w16(addr+0, f16:toi(x))
+        w16(addr+2, f16:toi(y))
+        w16(addr+4, f16:toi(z))
+        end
+    end)
+end
+
+-- 「キモモモモモ」は「キモ」の瞬間にフリーズさせればよい
+```
+
+## video23 デブ化 & 情けない顔2
+
+```lua
+local f16 = FixFloatConverter(3, 12)
+local res = Nitro.read_MDL0(0x02280A2C, 0)
+local mesh = res.addrs_mesh
+local xmin, xmax = 10000000, -10000000
+local ymin, ymax = 10000000, -10000000
+local zmin, zmax = 10000000, -10000000
+
+xmin, xmax = 10000000, -10000000
+ymin, ymax = 10000000, -10000000
+zmin, zmax = 10000000, -10000000
+Nitro.filter_mesh(mesh[1].begin, mesh[1].iend, function(addr, cmd, pnum, name)
+    if name ~= MESH_COMMANDS.VTX_16 then return end
+    assert(addr%2==0)
+    local x, y, z = f16:tof(r16(addr+0)), f16:tof(r16(addr+2)), f16:tof(r16(addr+4))
+    xmin = math.min(xmin, x) xmax = math.max(xmax, x)
+    ymin = math.min(ymin, y) ymax = math.max(ymax, y)
+    zmin = math.min(zmin, z) zmax = math.max(zmax, z)
+end)
+-- local t = Cnt(60)
+Nitro.filter_mesh(mesh[1].begin, mesh[1].iend, function(addr, cmd, pnum, name)
+    if name ~= MESH_COMMANDS.VTX_16 then return end
+    local x, y, z = f16:tof(r16(addr+0)), f16:tof(r16(addr+2)), f16:tof(r16(addr+4))
+    -- local dx = invlerp(x, xmin, xmax)
+    -- local yx = invlerp(y, ymin, ymax)
+    z=z*2
+    y=y*2
+    w16(addr+0, f16:toi(x))
+    w16(addr+2, f16:toi(y))
+    w16(addr+4, f16:toi(z))
+end)
+
+xmin, xmax = 10000000, -10000000
+ymin, ymax = 10000000, -10000000
+zmin, zmax = 10000000, -10000000
+
+Nitro.filter_mesh(mesh[2].begin, mesh[2].iend, function(addr, cmd, pnum, name)
+    if name ~= MESH_COMMANDS.VTX_16 then return end
+    assert(addr%2==0)
+    local x, y, z = f16:tof(r16(addr+0)), f16:tof(r16(addr+2)), f16:tof(r16(addr+4))
+    xmin = math.min(xmin, x) xmax = math.max(xmax, x)
+    ymin = math.min(ymin, y) ymax = math.max(ymax, y)
+    zmin = math.min(zmin, z) zmax = math.max(zmax, z)
+end)
+Nitro.filter_mesh(mesh[2].begin, mesh[2].iend, function(addr, cmd, pnum, name)
+    if name ~= MESH_COMMANDS.VTX_16 then return end
+    local x, y, z = f16:tof(r16(addr+0)), f16:tof(r16(addr+2)), f16:tof(r16(addr+4))
+    -- x: 高さ
+    -- y: 横
+    -- z: 奥行
+    z = z - 0.5
+    x = 3*x - 1 - math.abs(invlerp(y, ymin, ymax) - 0.5)*5
+    y = 4*y
+    -- vs[addr+4] = _z
+    w16(addr+0, f16:toi(x))
+    w16(addr+2, f16:toi(y))
+    w16(addr+4, f16:toi(z))
+    -- w16(addr+4, fixFloatToInt(invlerp(_z, -8, 2.1)*0.1, 3, 12))
+end)
+
+lib.irume.start(function()
+    local head = 0x03eb8660
+    local as = {}
+    local p1 = 0x13
+    local p2 = 0x06
+    local vol = 0x0a
+    local v = ValueUpdater(35, 0x08, 0x10, "isin")
+    for i = 0, 16 do
+        as[i] = head + 0x40*i
+    end
+    return function()
+        v()
+        local _v = (v.v<<8)|v.v
+        for i, a in pairs(as) do
+            w16(a+vol, 0x0100)
+            w16(a+p2, _v)
+        end
+    end
+end)
+```
+
+## video23 髪の毛伸ばす & 手を横にチョー広げる etc.
+
+```lua
+
+lib.irume.start(function()
+    local head = 0x03eb8660
+    local as = {}
+    local p1 = 0x13
+    local p2 = 0x06
+    local vol = 0x0a
+    for i = 0, 16 do
+        as[i] = head + 0x40*i
+    end
+    local c = Cnt(2, 2)
+    local r = RC(20)
+    local d = 0x1000
+    return function()
+        if r() then
+            d = rand(1, 20) * 0x400
+        end
+        c()
+        local v = (c.i+1)*0x10
+        v = (v<<8) | v
+        if c.i == 1 then
+            v = v + d
+        end
+        for i, a in pairs(as) do
+            w16(a+vol, 0x80)
+            w16(a+p2, v)
+        end
+    end
+end)
+
+
+
+
+w8(0x022812B5, 0x2b)
+w32(0x022812BC, 0)
+w8(0x022812BC, 0xb6)
+
+
+local f16 = FixFloatConverter(3, 12)
+local res = Nitro.read_MDL0(0x02280A2C, 0)
+local mesh = res.addrs_mesh
+
+local update_body = (function()
+local xmin, xmax = 10000000, -10000000
+local ymin, ymax = 10000000, -10000000
+local zmin, zmax = 10000000, -10000000
+
+---@type table<int, {y: number, z: number}>
+local vs = {}
+printf("MESH START: 0x%08X", mesh[1].begin)
+Nitro.filter_mesh(mesh[1].begin, mesh[1].iend, function(addr, cmd, pnum, name)
+    if name ~= MESH_COMMANDS.VTX_16 then return end
+    assert(addr%2==0)
+    local x, y, z = f16:tof(r16(addr+0)), f16:tof(r16(addr+2)), f16:tof(r16(addr+4))
+    xmin = math.min(xmin, x) xmax = math.max(xmax, x)
+    ymin = math.min(ymin, y) ymax = math.max(ymax, y)
+    zmin = math.min(zmin, z) zmax = math.max(zmax, z)
+end)
+local t = Cnt(60)
+Nitro.filter_mesh(mesh[1].begin, mesh[1].iend, function(addr, cmd, pnum, name)
+    if name ~= MESH_COMMANDS.VTX_16 then return end
+    local x, y, z = f16:tof(r16(addr+0)), f16:tof(r16(addr+2)), f16:tof(r16(addr+4))
+    -- x: 高さ
+    -- y: 横
+    if within(invlerp(x, xmin, xmax), 0.4, 0.45) then
+        -- y = y * 8
+        -- local __x = x
+        -- x = (x-3)*16 + 40
+        x = x*16+40
+        -- printf("%f -> %f", __x, x)
+    end
+        -- y = y+4
+    y = y/2
+    -- y = y * 4
+    w16(addr+0, f16:toi(x))
+    w16(addr+2, f16:toi(y))
+    w16(addr+4, f16:toi(z))
+end)
+return function() end
+end)()
+
+local update_face = (function()
+local xmin, xmax = 10000000, -10000000
+local ymin, ymax = 10000000, -10000000
+local zmin, zmax = 10000000, -10000000
+---@type table<int, {y: number, z: number}>
+local vs = {}
+
+Nitro.filter_mesh(mesh[2].begin, mesh[2].iend, function(addr, cmd, pnum, name)
+    if name ~= MESH_COMMANDS.VTX_16 then return end
+    assert(addr%2==0)
+    local x, y, z = f16:tof(r16(addr+0)), f16:tof(r16(addr+2)), f16:tof(r16(addr+4))
+    xmin = math.min(xmin, x) xmax = math.max(xmax, x)
+    ymin = math.min(ymin, y) ymax = math.max(ymax, y)
+    zmin = math.min(zmin, z) zmax = math.max(zmax, z)
+end)
+Nitro.filter_mesh(mesh[2].begin, mesh[2].iend, function(addr, cmd, pnum, name)
+    if name ~= MESH_COMMANDS.VTX_16 then return end
+    local x, y, z = f16:tof(r16(addr+0)), f16:tof(r16(addr+2)), f16:tof(r16(addr+4))
+    -- x: 高さ
+    -- y: 横
+    -- z: 奥行
+    -- y = y * 4
+    y=y/2
+    -- if within(invlerp(x, xmin, xmax), 0.19, 0.2) and within(z, -1.2, -1.1) then
+    if within(invlerp(x, xmin, xmax), 0, 0.5) then
+        -- print("OK")
+        local d = (1-invlerp(x, xmin, xmax))*0.2
+        z = z - d*4
+        x = x + d
+    end
+    w16(addr+0, f16:toi(x))
+    w16(addr+2, f16:toi(y))
+    w16(addr+4, f16:toi(z))
+    -- w16(addr+4, fixFloatToInt(invlerp(_z, -8, 2.1)*0.1, 3, 12))
+end)
+return function() end
+end)()
+
+
+
+
+-- サビが始まる瞬間に実行↓
+local addrs = {
+0x022330DC,
+0x02233A84,
+0x0223459C,
+0x022358B0,
+0x02237414,
+0x0223876C,
+0x0223B614,
+0x0223F694,
+0x022455A8,
+0x02248B80,
+0x0224A2C4,
+0x0228ABF0,
+}
+local ftr = FixFloatConverter(19, 12)
+
+for _, addr in pairs(pick(addrs, {
+-- range(1, 20)
+range(0, 200)
+})) do
+local res = Nitro.read_JNT0(addr, 0)
+local tr_x = {}
+local tr_y = {}
+local tr_z = {}
+local rot = {}
+---@param v {addr: int}?
+---@param arr any
+local function try_add(v, arr)
+    if v then
+        table.insert(arr, {addr = v.addr, v = r32(v.addr)})
+    end
+end
+for _, tracks in pairs(res.tracks) do
+for _, track in pairs(tracks) do
+    try_add(track.CurveX_Const, tr_x)
+    try_add(track.CurveY_Const, tr_y)
+    try_add(track.CurveZ_Const, tr_z)
+    try_add(track.CurveRot_Const, rot)
+end
+end
+-- printf("tr_x: %d", #tr_x)
+-- printf("tr_y: %d", #tr_y)
+-- printf("tr_z: %d", #tr_z)
+-- printf("rot: %d", #rot)
+
+local ARR = pick(tr_y, {
+range(1, 3000)
+})
+local min, max = 1000000000, -1000000000
+for a, v in pairs(ARR) do
+    local _v = ftr:tof(v.v)
+    min = math.min(min, _v) max = math.max(max, _v)
+end
+for a, V in pairs(ARR) do
+    local v = ftr:tof(V.v)
+    if v == 0 then v = 0.01 end
+    v = v * 512
+    w32(V.addr, ftr:toi(v))
+end
+
+ARR = pick(tr_z, {
+range(1, 3000)
+})
+min, max = 1000000000, -1000000000
+for a, v in pairs(ARR) do
+    local _v = ftr:tof(v.v)
+    min = math.min(min, _v) max = math.max(max, _v)
+end
+for a, V in pairs(ARR) do
+    local v = ftr:tof(V.v)
+    if v == 0 then v = 0.01 end
+    v = v * 128
+    w32(V.addr, ftr:toi(v))
+end
+
+printf("%f -- %f", min, max)
+end
+
+-- b6
+
+w8(0x022812B5, 0x2b)
+w32(0x022812BC, 0)
+local c = RC(5)
+function loop()
+    if not c() then return end
+    w8(0x022812BC, rand(0,0xff))
+end
+```
+
+## video23 千秋グルグル回転 (ボツ)
+
+```lua
+--千秋グルグル回転(地味なバグか？)
+
+local f16 = FixFloatConverter(3, 12)
+local res = Nitro.read_MDL0(0x02280A2C, 0)
+-- local res = Nitro.read_MDL0(0x0223D514, 0)
+local mesh = res.addrs_mesh
+
+
+local update_body = (function()
+local xmin, xmax = 10000000, -10000000
+local ymin, ymax = 10000000, -10000000
+local zmin, zmax = 10000000, -10000000
+
+---@type table<int, {y: number, z: number}>
+local vs = {}
+Nitro.filter_mesh(mesh[1].begin, mesh[1].iend, function(addr, cmd, pnum, name)
+    if name ~= MESH_COMMANDS.VTX_16 then return end
+    assert(addr%2==0)
+    local x, y, z = f16:tof(r16(addr+0)), f16:tof(r16(addr+2)), f16:tof(r16(addr+4))
+    xmin = math.min(xmin, x) xmax = math.max(xmax, x)
+    ymin = math.min(ymin, y) ymax = math.max(ymax, y)
+    zmin = math.min(zmin, z) zmax = math.max(zmax, z)
+end)
+local t = Cnt(60)
+Nitro.filter_mesh(mesh[1].begin, mesh[1].iend, function(addr, cmd, pnum, name)
+    if name ~= MESH_COMMANDS.VTX_16 then return end
+    local x, y, z = f16:tof(r16(addr+0)), f16:tof(r16(addr+2)), f16:tof(r16(addr+4))
+    vs[addr+2] = {y = invlerp(y, ymin, ymax), z = invlerp(z, zmin, zmax)}
+    -- local dx = invlerp(x, xmin, xmax)
+    -- local yx = invlerp(y, ymin, ymax)
+    -- x = lerp(xmin, xmax, ease(invlerp(x, xmin, xmax), "quad", "mid"))
+    -- x: 高さ
+    -- y: 横
+    w16(addr+0, f16:toi(x))
+    -- w16(addr+2, f16:toi(y))
+    -- w16(addr+4, f16:toi(z))
+end)
+return function()
+    local _x = t:next()/t.n
+    local sin = math.sin(2*_x*math.pi)
+    local cos = math.cos(2*_x*math.pi)
+    for a, v in pairs(vs) do
+        local y, z = v.y-0.5, v.z-0.5
+        local y2 = y*sin + z*cos
+        local z2 = y*cos - z*cos
+        w16(a, f16:toi(lerp(ymin, ymax, y2)))
+        w16(a+2, f16:toi(lerp(zmin, zmax, z2)))
+    end
+end
+end)()
+
+local update_face = (function()
+local xmin, xmax = 10000000, -10000000
+local ymin, ymax = 10000000, -10000000
+local zmin, zmax = 10000000, -10000000
+---@type table<int, {y: number, z: number}>
+local vs = {}
+
+Nitro.filter_mesh(mesh[2].begin, mesh[2].iend, function(addr, cmd, pnum, name)
+    if name ~= MESH_COMMANDS.VTX_16 then return end
+    assert(addr%2==0)
+    local x, y, z = f16:tof(r16(addr+0)), f16:tof(r16(addr+2)), f16:tof(r16(addr+4))
+    xmin = math.min(xmin, x) xmax = math.max(xmax, x)
+    ymin = math.min(ymin, y) ymax = math.max(ymax, y)
+    zmin = math.min(zmin, z) zmax = math.max(zmax, z)
+end)
+Nitro.filter_mesh(mesh[2].begin, mesh[2].iend, function(addr, cmd, pnum, name)
+    if name ~= MESH_COMMANDS.VTX_16 then return end
+    local x, y, z = f16:tof(r16(addr+0)), f16:tof(r16(addr+2)), f16:tof(r16(addr+4))
+    -- x: 高さ
+    -- y: 横
+    -- z: 奥行
+    local b = 0.0001
+    local dy = math.abs(math.fmod(invlerp(y, ymin, ymax) + 0.0, b) - b/2)*5/b
+    x = x * 3
+    y = y * 3
+    z = z - 5
+    x = x - dy
+    x = x - 3
+    w16(addr+0, f16:toi(x))
+    w16(addr+2, f16:toi(y))
+    w16(addr+4, f16:toi(z))
+    -- w16(addr+4, fixFloatToInt(invlerp(_z, -8, 2.1)*0.1, 3, 12))
+end)
+return function() end
+end)()
+
+function loop()
+    update_body()
+    update_face()
+end
+```

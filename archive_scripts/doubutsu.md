@@ -642,3 +642,114 @@ end
 w8(0x23522AA, 0x02) -- 口が上に移動
 w32(0x023522A8, 0x0d60040c)
 ```
+
+## video23 プレスのようにもちもち
+
+```lua
+local f16 = FixFloatConverter(3, 12)
+local cnt = {}
+local xmin, xmax = 100000000, -100000000
+local ymin, ymax = 100000000, -100000000
+local zmin, zmax = 100000000, -100000000
+Nitro.filter_mesh(0x02352410, 0x02354B6F, nil, function(addr, cmd, pnum, name)
+    if name == MESH_COMMANDS.NORMAL then
+        w32(addr, 0x000080ff)
+        return
+    end
+    if name == MESH_COMMANDS.VTX_16 then
+        local x = f16:tof(r16(addr+0))
+        local y = f16:tof(r16(addr+2))
+        local z = f16:tof(r16(addr+4))
+        xmin = math.min(xmin, x)
+        xmax = math.max(xmax, x)
+        ymin = math.min(ymin, y)
+        ymax = math.max(ymax, y)
+        zmin = math.min(zmin, z)
+        zmax = math.max(zmax, z)
+        -- y=y*2 -- 横幅
+        -- x=x*2 -- 縦
+    end
+    -- cnt[name] = (cnt[name] or 0) + 1
+end)
+local vs = {}
+local ys = {}
+local zs = {}
+Nitro.filter_mesh(0x02352410, 0x02354B6F, function(addr, cmd, pnum, name)
+    if name ~= MESH_COMMANDS.VTX_16 then return end
+    local x = f16:tof(r16(addr+0))
+    local y = f16:tof(r16(addr+2))
+    local z = f16:tof(r16(addr+4))
+    local dx = invlerp(x, xmin, xmax)
+    if within(dx, 0.29, 0.95) then
+        vs[addr] = dx
+        ys[addr+2] = y
+        zs[addr+4] = z
+    end
+end)
+local v = ValueUpdater(45, 100, 1000, "rpingpong")
+function loop()
+    v()
+    local t = v.v/1000
+    for a, dx in pairs(vs) do
+        x = lerp(xmin, xmax, 0.45-(0.45-dx) * t)
+        w16(a, f16:toi(x))
+    end
+    local scl = 1 + (1-t)*0.5
+    for a, y in pairs(ys) do
+        w16(a, f16:toi(y*scl))
+    end
+    for a, z in pairs(zs) do
+        w16(a, f16:toi(z*scl))
+    end
+end
+```
+
+## video23 顔を逆三角形に
+
+```lua
+local f16 = FixFloatConverter(3, 12)
+local cnt = {}
+local xmin, xmax = 100000000, -100000000
+local ymin, ymax = 100000000, -100000000
+local zmin, zmax = 100000000, -100000000
+Nitro.filter_mesh(0x02352410, 0x02354B6F, nil, function(addr, cmd, pnum, name)
+    if name == MESH_COMMANDS.NORMAL then
+        w32(addr, 0x000080ff)
+        return
+    end
+    if name == MESH_COMMANDS.VTX_16 then
+        local x = f16:tof(r16(addr+0))
+        local y = f16:tof(r16(addr+2))
+        local z = f16:tof(r16(addr+4))
+        xmin = math.min(xmin, x)
+        xmax = math.max(xmax, x)
+        ymin = math.min(ymin, y)
+        ymax = math.max(ymax, y)
+        zmin = math.min(zmin, z)
+        zmax = math.max(zmax, z)
+        -- y=y*2 -- 横幅
+        -- x=x*2 -- 縦
+    end
+    -- cnt[name] = (cnt[name] or 0) + 1
+end)
+Nitro.filter_mesh(0x02352410, 0x02354B6F, function(addr, cmd, pnum, name)
+    if name ~= MESH_COMMANDS.VTX_16 then return end
+    local x = f16:tof(r16(addr+0))
+    local y = f16:tof(r16(addr+2))
+    local z = f16:tof(r16(addr+4))
+    local dx = invlerp(x, xmin, xmax)
+    if within(dx, 0.20, 1.000) then
+        -- x = lerp(xmin, xmax, 0.45-(0.45-dx) * 0.3)
+    y=y*dx*dx*dx*5
+    z=z*dx*dx*dx*5
+    -- if within(dx, 0.5, 1) then
+    else
+    end
+    w16(addr+0, f16:toi(x))
+    w16(addr+2, f16:toi(y))
+    w16(addr+4, f16:toi(z))
+end)
+for name, c in pairs(cnt) do
+    printf("%s: %d", name, c)
+end
+```

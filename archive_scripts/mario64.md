@@ -1462,3 +1462,319 @@ function loop()
     end
 end
 ```
+
+## video23 01
+
+```lua
+-- ルイージ
+local f16 = FixFloatConverter(3, 12)
+local xmin, xmax = 10000000000, -10000000000
+local ymin, ymax = 10000000000, -10000000000
+local zmin, zmax = 10000000000, -10000000000
+-- local function hosei(v, min, max)
+--     if v >= 0 then return v end
+--     return min - v
+-- end
+
+Nitro.filter_mesh(0x0229EF54, 0x022A5CBF, function(addr, cmd, pnum, name)
+    if name == MESH_COMMANDS.VTX_16 then
+        local x = f16:tof(r16(addr+0))
+        local y = f16:tof(r16(addr+2))
+        local z = f16:tof(r16(addr+4))
+        xmin = math.min(xmin, x) xmax = math.max(xmax, x)
+        ymin = math.min(ymin, y) ymax = math.max(ymax, y)
+        zmin = math.min(zmin, z) zmax = math.max(zmax, z)
+    end
+end)
+local t = ValueUpdater(40, -50, 100, "pingpong")
+Nitro.filter_mesh(0x0229EF54, 0x022A5CBF, function(addr, cmd, pnum, name)
+    if name == MESH_COMMANDS.VTX_16 then
+        local x = f16:tof(r16(addr+0))
+        local y = f16:tof(r16(addr+2))
+        local z = f16:tof(r16(addr+4))
+        -- z = lerp(xmin, xmax, invlerp(z, zmin, zmax)*0.1+0.5)
+        local d = 1-invlerp(y, ymin, ymax)
+        d = 4*(d * d) + 1.5
+        z = clamp(z*d, -7.99, 7.99)
+        y=y - math.fmod(invlerp(x, xmin, xmax)+0.2, 0.3)*4.5
+        -- x = x + 3
+        -- y = y + 3
+        -- z = z + 3
+        w16(addr+0, f16:toi(x))
+        w16(addr+2, f16:toi(y))
+        w16(addr+4, f16:toi(z))
+    end
+end)
+printf("x: [%f -- %f]", xmin, xmax)
+printf("y: [%f -- %f]", ymin, ymax)
+printf("z: [%f -- %f]", zmin, zmax)
+
+-- 22AFc70あたり、キノピオのポリゴンデータ?
+-- 22AEB30, 22B0BBF
+backup = lib.range(0x22AEB30, 0x22B0BBF):save()
+
+
+-- キノピオ
+local f16 = FixFloatConverter(3, 12)
+local xmin, xmax = 10000000000, -10000000000
+local ymin, ymax = 10000000000, -10000000000
+local zmin, zmax = 10000000000, -10000000000
+Nitro.filter_mesh(0x22AEB30, 0x22B0BBF, function(addr, cmd, pnum, name)
+    if name == MESH_COMMANDS.VTX_16 then
+        local x = f16:tof(r16(addr+0))
+        local y = f16:tof(r16(addr+2))
+        local z = f16:tof(r16(addr+4))
+        xmin = math.min(xmin, x) xmax = math.max(xmax, x)
+        ymin = math.min(ymin, y) ymax = math.max(ymax, y)
+        zmin = math.min(zmin, z) zmax = math.max(zmax, z)
+    end
+end)
+local t = ValueUpdater(40, -50, 100, "pingpong")
+local mode = 2
+Nitro.filter_mesh(0x22AEB30, 0x22B0BBF, function(addr, cmd, pnum, name)
+    if name == MESH_COMMANDS.VTX_16 then
+        local x = f16:tof(r16(addr+0))
+        local y = f16:tof(r16(addr+2))
+        local z = f16:tof(r16(addr+4))
+        -- z = lerp(xmin, xmax, invlerp(z, zmin, zmax)*0.1+0.5)
+        local d = 1-invlerp(x, xmin, xmax) + 0.5
+        if mode == 1 then
+            d = 3*(d * d * d * d) + 0.1
+            y = clamp(y*d, -7.99, 7.99)
+            z = clamp(z*d, -7.99, 7.99)
+        else
+            d = 1/(d*d*d*d*d*d)
+            if invlerp(x, xmin, xmax) < 0.4 then
+                y = invlerp(y, ymin, ymax) * 2-1
+                z = invlerp(z, zmin, zmax) * 2-1
+            else
+                y = clamp(y*d, ymin+0.3, ymax)
+                z = clamp(z*d, -7.99, 7.99)
+            end
+        end
+        w16(addr+0, f16:toi(x))
+        w16(addr+2, f16:toi(y))
+        w16(addr+4, f16:toi(z))
+    end
+end)
+
+
+lib.irume.start(function()
+    local head = 0x03e07d40
+    local as = {}
+    local cs = {}
+    for i = 0, 16 do
+        as[i] = head + 0x40*i
+        cs[i] = Cnt(20)
+    end
+    local tone = {0x42, 0x00, 0x79, 0x7f}
+    local t = 0x24
+    local p1 = 0x17
+    local pos = 0x2c
+    local tone = 0x06
+    local r = RC(10)
+    return function()
+        for i, a in pairs(as) do
+            if r() or cs[i]() then
+                w32(a+pos, 0x021822ED)
+                cs[i].i = 0
+            end
+        end
+    end
+end)
+
+```
+
+## video23 02
+
+```lua
+
+
+local f16 = FixFloatConverter(3, 12)
+local xmin, xmax = 10000000000, -10000000000
+local ymin, ymax = 10000000000, -10000000000
+local zmin, zmax = 10000000000, -10000000000
+-- local function hosei(v, min, max)
+--     if v >= 0 then return v end
+--     return min - v
+-- end
+
+local backup = lib.range(0x0229EF54, 0x022A5CBF):save()
+Nitro.filter_mesh(0x0229EF54, 0x022A5CBF, function(addr, cmd, pnum, name)
+    if name == MESH_COMMANDS.VTX_16 then
+        local x = f16:tof(r16(addr+0))
+        local y = f16:tof(r16(addr+2))
+        local z = f16:tof(r16(addr+4))
+        xmin = math.min(xmin, x) xmax = math.max(xmax, x)
+        ymin = math.min(ymin, y) ymax = math.max(ymax, y)
+        zmin = math.min(zmin, z) zmax = math.max(zmax, z)
+    end
+end)
+local f1 = {c = 0.2, t = 0.2}
+local f2 = {c = 0.3, t = 0.3}
+local f3 = {c = 4.5, t = 4.5}
+local f5 = {c = 0.2, t = 0.2}
+local f6 = {c = 0.3, t = 0.3}
+local f7 = {c = 4.5, t = 4.5}
+local f4 = {c = 1, t = 1}
+local r = RC(10)
+
+function loop()
+backup:rollback()
+if r() then f1.t = rand(-500, 1000)/100 end
+if r() then f2.t = rand(-500, 1000)/100 end
+if r() then f3.t = rand(-400, 400)/100 end
+if r() then f4.t = rand(-200, 200)/100 end
+if r() then f5.t = rand(-500, 1000)/100 end
+if r() then f6.t = rand(-500, 1000)/100 end
+if r() then f7.t = rand(-400, 400)/100 end
+f1.c = lerp(f1.c, f1.t, 0.02)
+f2.c = lerp(f2.c, f2.t, 0.02)
+f3.c = lerp(f3.c, f3.t, 0.02)
+f4.c = lerp(f4.c, f4.t, 0.02)
+f5.c = lerp(f5.c, f5.t, 0.02)
+f6.c = lerp(f6.c, f6.t, 0.02)
+f7.c = lerp(f7.c, f7.t, 0.02)
+Nitro.filter_mesh(0x0229EF54, 0x022A5CBF, function(addr, cmd, pnum, name)
+    if name == MESH_COMMANDS.VTX_16 then
+        local x = f16:tof(r16(addr+0))
+        local y = f16:tof(r16(addr+2))
+        local z = f16:tof(r16(addr+4))
+        -- z = lerp(xmin, xmax, invlerp(z, zmin, zmax)*0.1+0.5)
+        local d = 1-invlerp(y, ymin, ymax)
+        -- d = 4*(d * d) + 1.5
+        d = f4.c*(d * d) + 1.5
+        z = clamp(z*d, -7.99, 7.99)
+        -- y=y - math.fmod(invlerp(x, xmin, xmax)+0.2, 0.3)*4.5
+        local _y = y
+        y=y - math.fmod(invlerp(x, xmin, xmax)+f1.c, f2.c)*f3.c
+        x=x - math.fmod(invlerp(_y, ymin, ymax)+f5.c, f6.c)*f7.c
+        x = clamp(x, xmin+0.5, xmax-0.5)
+        y = clamp(y, ymin+2, ymax-0.5)
+        -- x = x + 3
+        -- y = y + 3
+        -- z = z + 3
+        w16(addr+0, f16:toi(x))
+        w16(addr+2, f16:toi(y))
+        w16(addr+4, f16:toi(z))
+    end
+end)
+end
+printf("x: [%f -- %f]", xmin, xmax)
+printf("y: [%f -- %f]", ymin, ymax)
+printf("z: [%f -- %f]", zmin, zmax)
+
+-- 22AFc70あたり、キノピオのポリゴンデータ?
+-- 22AEB30, 22B0BBF
+-- backup = lib.range(0x22AEB30, 0x22B0BBF):save()
+
+lib.irume.start(function()
+    local head = 0x03e07d40
+    local as = {}
+    for i = 0, 16 do
+        as[i] = head + 0x40*i
+    end
+    -- local tone = {0x42, 0x00, 0x79, 0x7f}
+    local t = 0x24
+    local p1 = 0x17
+    local p2 = 0x10
+    local pos = 0x2c
+    local tone = 0x06
+    local v = ValueUpdater(30, -0xc0, 0xc0, "pingpong")
+    local m = lib.at(as[1])
+    return function()
+        v()
+        for i, a in pairs(as) do
+            w16(a+p2, v.v)
+            w16(a+tone, 0x003F)
+            m:with(a+t):T8(0x10, rand(1, 0x10))
+        end
+    end
+end)
+```
+
+## video23 03 情けないツラ
+
+```lua
+
+local f16 = FixFloatConverter(3, 12)
+local xmin, xmax = 10000000000, -10000000000
+local ymin, ymax = 10000000000, -10000000000
+local zmin, zmax = 10000000000, -10000000000
+-- local function hosei(v, min, max)
+--     if v >= 0 then return v end
+--     return min - v
+-- end
+
+local backup = lib.range(0x0229EF54, 0x022A5CBF):save()
+Nitro.filter_mesh(0x0229EF54, 0x022A5CBF, function(addr, cmd, pnum, name)
+    if name == MESH_COMMANDS.VTX_16 then
+        local x = f16:tof(r16(addr+0))
+        local y = f16:tof(r16(addr+2))
+        local z = f16:tof(r16(addr+4))
+        xmin = math.min(xmin, x) xmax = math.max(xmax, x)
+        ymin = math.min(ymin, y) ymax = math.max(ymax, y)
+        zmin = math.min(zmin, z) zmax = math.max(zmax, z)
+    end
+end)
+
+Nitro.filter_mesh(0x0229EF54, 0x022A5CBF, function(addr, cmd, pnum, name)
+    if name == MESH_COMMANDS.VTX_16 then
+        local x = f16:tof(r16(addr+0))
+        local y = f16:tof(r16(addr+2))
+        local z = f16:tof(r16(addr+4))
+        if invlerp(y, ymin, ymax) < 0.4 then
+            x=0
+            z=0
+        end
+        w16(addr+0, f16:toi(x))
+        w16(addr+2, f16:toi(y))
+        w16(addr+4, f16:toi(z))
+    end
+end)
+
+
+lib.irume.start(function()
+    local head = 0x03e07d40
+    local as = {}
+    local ps = {}
+    local prevs = {}
+    for i = 0, 16 do
+        as[i] = head + 0x40*i
+        ps[i] = 0
+        prevs[i] = 0
+    end
+    local t = 0x24
+    local p1 = 0x17
+    local p2 = 0x10
+    local pos = 0x2c
+    local tone = 0x06
+    local m = lib.at(as[1])
+    return function()
+        for i, a in pairs(as) do
+            local _t = r8(a+t)
+            if prevs[i] < _t then
+                ps[i] = 0
+            end
+            prevs[i] = _t
+            ps[i] = ps[i] - 0x30
+            w16(a + p2, ps[i])
+        end
+    end
+end)
+```
+
+```lua
+-- OPのマリオ 雑多メモ
+-- x: 228B708, y: 228B70C, z: 228B710
+-- 228B720 大きさ
+-- B714, B724: 回転軸
+-- B7B4 裏側がうつる?
+-- B88C, 背景y
+-- 227BDF0あたり=>色変更
+
+-- ポリゴン? 20805BC
+-- for i = 0x02082000, 0x02089fff, 4 do
+--     w32(i, r32(i)+0x10000)
+-- end
+```
