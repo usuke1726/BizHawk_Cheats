@@ -46,6 +46,20 @@ function fixFloatToInt(v, y, z) end
 ---@param z int
 ---@return number
 function intToFixFloat(v, y, z) end
+---@class FixFloatConverterObj
+---@field y int
+---@field z int
+local FixFloatConverterObj = {}
+---@param v number
+---@return int
+function FixFloatConverterObj:toi(v) end
+---@param v int
+---@return number
+function FixFloatConverterObj:tof(v) end
+---@param y int
+---@param z int
+---@return FixFloatConverterObj
+function FixFloatConverter(y, z) end
 
 ---負値の可能性がある1バイト値`val`を非負にする。(負の場合は1byteオーバーフロー)
 ---@param val int

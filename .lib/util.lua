@@ -63,6 +63,27 @@ local function _intToFixFloat(v, y, z)
 end
 fixFloatToInt = _fixFloatToInt
 intToFixFloat = _intToFixFloat
+---@class FixFloatConverterObj
+---@field y int
+---@field z int
+local FixFloatConverterObj = {}
+---@param v number
+---@return int
+function FixFloatConverterObj:toi(v)
+    return fixFloatToInt(v, self.y, self.z)
+end
+---@param v int
+---@return number
+function FixFloatConverterObj:tof(v)
+    return intToFixFloat(v, self.y, self.z)
+end
+---@param y int
+---@param z int
+---@return FixFloatConverterObj
+function FixFloatConverter(y, z)
+    assert(y > 0 and z > 0, "y or z is negative")
+    return setmetatable({y = y, z = z}, {__index = FixFloatConverterObj})
+end
 
 ---`m`以上`n`以下の整数をランダムに取得する。
 ---@param m int
