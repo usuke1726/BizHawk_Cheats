@@ -593,3 +593,359 @@ end
 -- 2313AA4
 -- 2313B14
 ```
+
+## video21 源氏パイ?
+
+```lua
+-- 20E688Eで音声がバグる
+SET_LOOP("voice_loop", (function()
+    local c = Cnt(30)
+    local c2 = Cnt(40)
+    local r = RC(30)
+    return function()
+        if c() then
+            c:N(rand(10, 40))
+            w32(0x020E6918, rand(0, 0x20)*0x100)
+        end
+        -- if c2() or r() then
+        --     w8(0x020E688E, rand(1, 0x6))
+        -- end
+    end
+end)())
+-- 音楽が消える
+lib.fill_in(0x02131CC0+8, 0x02131CC0+0x3fff)
+lib.fill_in(0x02142AA0+8, 0x02142AA0+0x3fff)
+lib.fill_in(0x02143360+8, 0x02143360+0x3fff)
+lib.fill_in(0x0214F0E0+8, 0x0214F0E0+0x3fff)
+lib.fill_in(0x02160C40+8, 0x02160C40+0x3fff)
+lib.fill_in(0x0218FC80+8, 0x0218FC80+0x3fff) -- これが正解っぽい
+lib.fill_in(0x021BECC0+8, 0x021BECC0+0x3fff)
+
+local update = (function()
+    local t = 0
+    local n = 1800
+    local rl = RL(430)
+    local first = true
+    return function()
+        if not rl() then return end
+        if first then first = false print("START") end
+        t = math.min(t + 1, n)
+        local x = t / n
+        w32(0x02248414, ilerp(0, -0x1000, x))
+        w32(0x0224841C, ilerp(0, 0x30000, x))
+        w32(0x02248418, ilerp(-0x3000, -0x5000, x))
+        w16(0x02248428, ilerp(0, -0x600, x))
+    end
+end)()
+
+SET_LOOP("update_move", function()
+    update()
+end)
+
+-- x -1000
+-- z 30000
+
+local head1 = 0x0640e540
+local head2 = 0x06412d40
+local bound = 0x4780
+for i = 0, bound, 4 do
+    w32(head1+i, 0)
+    w32(head2+i, 0)
+end
+
+    -- 0x0229389C
+    -- 0x022C8A70
+w32(0x02248418, -0x3000)
+local res = Nitro.read_MDL0(0x0229389C, 0)
+local meshes = res.addrs_mesh
+printf("len: %d", #meshes)
+for _, mesh in pairs(pick(meshes, {
+-- range(56, 58),
+range(55, 56), -- 顔
+})) do
+    local ymin, ymax = 100000000000, -10000000000
+    Nitro.filter_mesh(mesh.begin, mesh.iend, function(addr, cmd, argnum, name)
+        assert(addr%2==0)
+        if name == MESH_COMMANDS.VTX_16 then
+            local y = intToFixFloat(r16(addr+2), 3, 12)
+            ymin = math.min(ymin, y) ymax = math.max(ymax, y)
+        end
+    end)
+    Nitro.filter_mesh(mesh.begin, mesh.iend, function(addr, cmd, argnum, name)
+        assert(addr%2==0)
+        if name == MESH_COMMANDS.VTX_16 then
+            local x = intToFixFloat(r16(addr+0), 3, 12)
+            local y = intToFixFloat(r16(addr+2), 3, 12)
+            local z = intToFixFloat(r16(addr+4), 3, 12)
+            local d = 0
+            local dc = -8
+            local scl = 4
+            if math.abs(y-dc) < 1.5 then d = math.abs(y-dc)*scl end
+            if math.abs(y) < 1.5 then d = math.abs(y)*scl end
+            w16(addr+0, fixFloatToInt(x*3, 3, 12))
+            w16(addr+2, fixFloatToInt(y*6, 3, 12))
+            w16(addr+4, fixFloatToInt(z*2+d, 3, 12))
+        end
+    end)
+    printf("y: [%f -- %f]", ymin, ymax)
+end
+for _, mesh in pairs(pick(meshes, {
+range(0, 54),
+range(57, 80)
+})) do
+    local xmin, xmax = 100000000000, -10000000000
+    local ymin, ymax = 100000000000, -10000000000
+    local zmin, zmax = 100000000000, -10000000000
+    Nitro.filter_mesh(mesh.begin, mesh.iend, function(addr, cmd, argnum, name)
+        assert(addr%2==0)
+        if name == MESH_COMMANDS.VTX_16 then
+            local x = intToFixFloat(r16(addr+0), 3, 12)
+            local y = intToFixFloat(r16(addr+2), 3, 12)
+            local z = intToFixFloat(r16(addr+4), 3, 12)
+            xmin = math.min(xmin, x) xmax = math.max(xmax, x)
+            ymin = math.min(ymin, y) ymax = math.max(ymax, y)
+            zmin = math.min(zmin, z) zmax = math.max(zmax, z)
+        end
+    end)
+    Nitro.filter_mesh(mesh.begin, mesh.iend, function(addr, cmd, argnum, name)
+        if name == MESH_COMMANDS.VTX_16 then
+            local x = intToFixFloat(r16(addr+0), 3, 12)
+            local y = intToFixFloat(r16(addr+2), 3, 12)
+            local z = intToFixFloat(r16(addr+4), 3, 12)
+            w16(addr+0, fixFloatToInt(invlerp(x, xmin, xmax)*0.2, 3, 12))
+            w16(addr+2, fixFloatToInt(invlerp(y, ymin, ymax)*0.2, 3, 12))
+            -- w16(addr+4, fixFloatToInt(invlerp(z, zmin, zmax)*0.5, 3, 12))
+        end
+    end)
+end
+```
+
+## video21 金太郎飴
+
+```lua
+
+-- 金太郎飴
+local res = Nitro.read_MDL0(0x0229389C, 0)
+local meshes = res.addrs_mesh
+printf("len: %d", #meshes)
+for _, mesh in pairs(pick(meshes, {
+range(00, 55)
+})) do
+    Nitro.filter_mesh(mesh.begin, mesh.iend, function(addr, cmd, argnum, name)
+        assert(addr%2==0)
+        if name == MESH_COMMANDS.VTX_16 then
+            local x = intToFixFloat(r16(addr+0), 3, 12)
+            w16(addr+0, fixFloatToInt(x+4, 3, 12))
+        end
+    end)
+end
+
+local head1 = 0x0640e540
+local head2 = 0x06412d40
+local bound = 0x4780
+for i = 0, bound, 4 do
+    w32(head1+i, 0)
+    w32(head2+i, 0)
+end
+
+local update_rot = (function()
+    local v = 0
+    local c = Cnt(45)
+    local bound = 10
+    local r = RC(120)
+    local rl = RL(360)
+    local cool = 0
+    local s = 1
+    return function()
+        v = v + math.sin(c:next()*2*math.pi/c.n)*s + 0.1
+        if v > bound then v = v - 2*bound end
+        if v < -bound then v = v + 2*bound end
+        w16(0x02248428, round(v/bound*0x8000))
+        if not rl() then return end
+        if cool > 0 then cool = cool - 1 if cool == 0 then s = 1 end
+        elseif r() then cool = c.n//2 s = rand(2, 3) end
+    end
+end)()
+
+function loop()
+    update_rot()
+end
+
+SET_LOOP("voice_loop", (function()
+    local c = Cnt(30)
+    local c2 = Cnt(40)
+    local r = RC(30)
+    return function()
+        if c() then
+            c:N(rand(10, 40))
+            w32(0x020E6918, rand(0, 0x20)*0x100)
+        end
+        -- if c2() or r() then
+        --     w8(0x020E688E, rand(1, 0x6))
+        -- end
+    end
+end)())
+```
+
+## 音声データ調査
+
+```lua
+
+-- lib.find_all(0x02000000, 0x023fffff, ascii("STRM"))
+-- ボイスが消える
+lib.fill_in(0x020E6864+0xc0, 0x020E6864+0xff)
+
+--[[
+            53 54 52 4D FF FE 00 01 D4 33 00 00
+10 00 02 00 48 45 41 44 50 00 00 00 02 00 01 00
+EC 3F 20 00 00 00 00 00 01 66 00 00 68 00 00 00
+
+total filesize = 0x33d4
+header size = 0x10
+number of blocks = 0x2
+type = 0x2 (IMA-ADPCM)
+loop = 0
+channels = 1
+sample rate = 0x3FEC
+time = 0x20
+number of samples = 0x6601
+number of blocks = 0x1a
+block length = 0x200
+samples per block = 0x3f8
+last block length = 0x169
+samples per last block = 0x2c9
+]]
+
+-- 20E688Eで音声がバグる
+-- 20E6919 => ボイスのtimer!!
+
+
+-- lib.find_all(0x02000000, 0x023fffff, ascii("SSAR"))
+-- lib.fill_in(0x02131A40, 0x02131A40+0xffff)
+-- lib.fill_in(0x02142180, 0x02142180+0xffff)
+-- lib.fill_in(0x0214EFC0, 0x0214EFC0+0xffff)
+-- lib.fill_in(0x02160B00, 0x02160B00+0xffff)
+-- lib.fill_in(0x0218FB40, 0x0218FB40+0xffff)
+-- lib.fill_in(0x021BEB80, 0x021BEB80+0xffff)
+
+
+-- 音楽が消える
+-- lib.find_all(0x02000000, 0x023fffff, ascii("SWAV"))
+-- lib.fill_in(0x02131CC0+8, 0x02131CC0+0x3fff)
+-- lib.fill_in(0x02142AA0+8, 0x02142AA0+0x3fff)
+-- lib.fill_in(0x02143360+8, 0x02143360+0x3fff)
+-- lib.fill_in(0x0214F0E0+8, 0x0214F0E0+0x3fff)
+-- lib.fill_in(0x02160C40+8, 0x02160C40+0x3fff)
+-- lib.fill_in(0x0218FC80+8, 0x0218FC80+0x3fff)
+-- lib.fill_in(0x021BECC0+8, 0x021BECC0+0x3fff)
+
+```
+
+## video21 デブ
+
+```lua
+    -- 0x0229389C
+    -- 0x022C8A70
+local res = Nitro.read_MDL0(0x0229389C, 0)
+local meshes = res.addrs_mesh
+printf("len: %d", #meshes)
+for _, mesh in pairs(pick(meshes, {
+-- range(56, 58),
+range(0, 54)
+})) do
+    -- local count = {}
+    Nitro.filter_mesh(mesh.begin, mesh.iend, function(addr, cmd, argnum, name)
+        assert(addr%2==0)
+        -- count[name] = (count[name] or 0) + 1
+        if name == MESH_COMMANDS.VTX_16 then
+            local x = intToFixFloat(r16(addr+0), 3, 12)
+            local y = intToFixFloat(r16(addr+2), 3, 12)
+            local z = intToFixFloat(r16(addr+4), 3, 12)
+            local d = 0
+            if math.abs(y) < 1.5 then d = math.abs(y) end
+            -- w16(addr+0, fixFloatToInt(x+4, 3, 12))
+            w16(addr+0, fixFloatToInt(x*3, 3, 12))
+            w16(addr+2, fixFloatToInt(y*2, 3, 12))
+            -- w16(addr+4, fixFloatToInt(z*2+d, 3, 12))
+        end
+    end)
+    -- for name, c in pairs(count) do
+    --     printf("%s: %d", name, c)
+    -- end
+end
+
+for _, mesh in pairs(pick(meshes, {
+-- range(0, 54),
+range(57, 80)
+})) do
+    local xmin, xmax = 100000000000, -10000000000
+    local ymin, ymax = 100000000000, -10000000000
+    local zmin, zmax = 100000000000, -10000000000
+    Nitro.filter_mesh(mesh.begin, mesh.iend, function(addr, cmd, argnum, name)
+        assert(addr%2==0)
+        if name == MESH_COMMANDS.VTX_16 then
+            local x = intToFixFloat(r16(addr+0), 3, 12)
+            local y = intToFixFloat(r16(addr+2), 3, 12)
+            local z = intToFixFloat(r16(addr+4), 3, 12)
+            xmin = math.min(xmin, x) xmax = math.max(xmax, x)
+            ymin = math.min(ymin, y) ymax = math.max(ymax, y)
+            zmin = math.min(zmin, z) zmax = math.max(zmax, z)
+        end
+    end)
+    Nitro.filter_mesh(mesh.begin, mesh.iend, function(addr, cmd, argnum, name)
+        if name == MESH_COMMANDS.VTX_16 then
+            local x = intToFixFloat(r16(addr+0), 3, 12)
+            local y = intToFixFloat(r16(addr+2), 3, 12)
+            local z = intToFixFloat(r16(addr+4), 3, 12)
+            w16(addr+0, fixFloatToInt(invlerp(x, xmin, xmax)*1.2, 3, 12))
+            w16(addr+2, fixFloatToInt(invlerp(y, ymin, ymax)*1.2, 3, 12))
+            -- w16(addr+4, fixFloatToInt(invlerp(z, zmin, zmax)*0.5, 3, 12))
+        end
+    end)
+end
+
+-- ちょっと待ってから以下を実行(ボイスを低くする & BGMを壊す)
+local addrs = {
+0x05741D6C,
+0x04E6A84C,
+0x04E70CEC,
+0x04E7816C,
+0x04E7AFCC,
+0x04E7E92C,
+0x04E874EC,
+0x04E8E54C,
+0x04E91DEC,
+0x04EA4B4C,
+}
+
+for i, a in pairs(addrs) do
+    local found, addr = lib.findr(a-0x80, a, ascii("HEAD"))
+    assert(found)
+    w8r(addr + 0xe, 0x30+(i-1)*8)
+end
+
+-- SWAR
+local addrs = {
+    0x02131CC0,
+    0x02142AA0,
+    0x02143360,
+    0x0214F0E0,
+    0x02160C40,
+    0x0218FC80,
+    0x021BECC0,
+}
+for k, addr in pairs(addrs) do
+    local num = r32(addr + 0x38)
+    printf("%08X -> num: %d", addr, num)
+    for i = 1, num do
+        local head = addr + r32(addr + 0x38 + 4*i)
+        w8(head, 0x01)
+        w8(head+1, 0x01)
+        w16(head+2, r16(head+2)/4)
+        w16(head+4, r16(head+4)*4)
+        for j = head + 0xc, math.min(head + 0x13fff, (addrs[k+1] or 0x021C0000)-1), 2 do
+            w16(j, r16(j)//8)
+        end
+    end
+end
+```

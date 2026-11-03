@@ -5197,3 +5197,496 @@ else
 end
 end
 ```
+
+## video21 レシラム データ調査用
+
+```lua
+
+local addrs = {
+    -- 0x02273638,
+    -- 0x022ACAD0,
+    -- 0x022FA800,
+
+    0x02273638,
+    0x0228DFC8,
+    0x022F6448,
+
+}
+
+local res = Nitro.read_MDL0(addrs[2], 0)
+local meshes = res.addrs_mesh
+for i, mesh in pairs(meshes) do
+    local xmin, xmax = 10000000, -10000000
+    local ymin, ymax = 10000000, -10000000
+    local zmin, zmax = 10000000, -10000000
+    printf("======== MESH %d", i)
+    local count = {}
+    Nitro.filter_mesh(mesh.begin, mesh.iend, function(addr, cmd, argnum, name)
+        assert(addr%2==0)
+        count[name] = (count[name] or 0) + 1
+        if name == MESH_COMMANDS.VTX_DIFF then
+            -- w32(addr, rand(0,0xffffffff))
+            return
+        elseif argnum == 2 then
+            local v1 = intToFixFloat(r16(addr+0), 3, 12)
+            local v2 = intToFixFloat(r16(addr+2), 3, 12)
+            local v3 = intToFixFloat(r16(addr+4), 3, 12)
+            xmin = math.min(xmin, v1) xmax = math.max(xmax, v1)
+            ymin = math.min(ymin, v2) ymax = math.max(ymax, v2)
+            zmin = math.min(zmin, v3) zmax = math.max(zmax, v3)
+            w16(addr+0, fixFloatToInt(invlerp(v1, -8, 6)*(-0.5)+2, 3, 12))
+            w16(addr+2, fixFloatToInt(invlerp(v2, -8, 6)*(-0.5)+2, 3, 12))
+            w16(addr+4, fixFloatToInt(invlerp(v3, -8, 6)*(-0.5)+2, 3, 12))
+        else
+            local v1 = intToFixFloat(r16(addr+0), 3, 12)
+            local v2 = intToFixFloat(r16(addr+2), 3, 12)
+            if name == MESH_COMMANDS.VTX_XZ then
+                xmin = math.min(xmin, v1) xmax = math.max(xmax, v1)
+                zmin = math.min(zmin, v2) zmax = math.max(zmax, v2)
+            elseif name == MESH_COMMANDS.VTX_XY then
+                xmin = math.min(xmin, v1) xmax = math.max(xmax, v1)
+                ymin = math.min(ymin, v2) ymax = math.max(ymax, v2)
+            elseif name == MESH_COMMANDS.VTX_YZ then
+                ymin = math.min(ymin, v1) ymax = math.max(ymax, v1)
+                zmin = math.min(zmin, v2) zmax = math.max(zmax, v2)
+            end
+            -- w16(addr+0, fixFloatToInt(v1*0.25, 3, 12))
+            -- w16(addr+2, fixFloatToInt(v2*0.25, 3, 12))
+        end
+    end)
+    printf("x: [%f -- %f]\ny: [%f -- %f]\nz: [%f - %f]", xmin, xmax, ymin, ymax, zmin, zmax)
+    for n, c in pairs(count) do
+        printf("%s: %d", n, c)
+    end
+end
+```
+
+## video21 レシラムあらぶり
+
+```lua
+local addrs = {
+    0x02287BB0,
+    0x022B8688,
+    0x02312AF8,
+}
+local r = RC(10)
+local vs = {}
+local ds = {}
+local modes = {}
+for _, addr in pairs(pick(addrs, {1,3})) do
+    -- 背景&ライトストーンなどの小物系
+    local res = Nitro.read_JNT0(addr, 0)
+    for _, a in pairs(res.addrs_tr) do
+        vs[a] = r32(a)
+        ds[a] = 0
+        modes[a] = 0
+    end
+end
+local rec_vs = {}
+local rec_ds = {}
+local rec_modes = {}
+local rec_rot = {}
+for _, addr in pairs(pick(addrs, {2})) do
+    -- レシラムモデル
+    local res = Nitro.read_JNT0(addr, 0)
+    for _, a in pairs(res.addrs_tr) do
+        rec_vs[a] = r32(a)
+        rec_ds[a] = 0
+        rec_modes[a] = 0
+    end
+    local count = 0
+    for _, tracks in pairs(res.tracks) do
+        for _, track in pairs(tracks) do
+            if track.CurveRot then
+                rec_rot[track.CurveRot.head_addr] = r32(track.CurveRot.head_addr)
+            end
+        end
+    end
+end
+local r2 = RC(40)
+local r3 = RC(90)
+function loop()
+    for a, v in pairs(vs) do
+        if r2() then
+            modes[a] = rand(0, 1)
+            ds[a] = rand(-0xff, 0xff)*0x100
+        end
+        if modes[a] == 1 then add32(a, ds[a])
+        elseif modes[a] == 2 then add32(a, rand(-0x1fff, 0x1fff)*4)
+        end
+        if r3() then w32(a, v) end
+    end
+    for a, v in pairs(rec_vs) do
+        if r2() then
+            rec_modes[a] = rand(1, 8) == 1 and 2 or rand(0, 1)
+            rec_ds[a] = rand(-0xff, 0xff)*0x1
+        end
+        if rec_modes[a] == 1 then add32(a, rec_ds[a])
+        elseif rec_modes[a] == 2 then add32(a, rand(-0x1fff, 0x1fff))
+        end
+        if r2() then w32(a, v) end
+    end
+    for a, v in pairs(rec_rot) do
+        if r() then
+            w32(a, rand(0, 0xffffffff))
+        end
+        if r() then w32(a, v) end
+    end
+end
+```
+
+## video21 レシラムをボタンで自由に動かす
+
+```lua
+-- translation のsample curveのsamplesを直接いじる
+-- Track 1 (at 0x022B8708)
+-- [TR] s022B870C s022B8714 s022B871C => 各offsetからアドレスを算出
+local x, y, z = 0, 17, 80
+local d = 4
+local reset = DS.key.lis("L"):on("down", function()
+    x, y, z = 0, 17, 80
+end)
+local function update_pos()
+    if DS.key.get("B") then
+        y = y + d
+    elseif DS.key.get("A") then
+        y = y - d
+    end
+    if DS.key.get("Up") then
+        z = z + d
+    elseif DS.key.get("Down") then
+        z = z - d
+    end
+    if DS.key.get("Right") then
+        x = x + d
+    elseif DS.key.get("Left") then
+        x = x - d
+    end
+end
+SET_LOOP("rec_key_move", function()
+    reset()
+    w16(0x022b86bc, 0x10) -- レシラムのアニメーションを無効化
+    update_pos()
+    for i = 0x022F2588, 0x022F26FF, 4 do
+        w32(i, fixFloatToInt(y, 19, 12))
+    end
+    -- for i = 0x22F1044, 0x22F10CF, 4 do
+    for i = 0x22F1044, 0x22F108F, 4 do
+        w32(i, fixFloatToInt(x, 19, 12))
+    end
+    for i = 0x22F3ACC, 0x22F3B5F, 4 do
+        w32(i, fixFloatToInt(z, 19, 12))
+    end
+end)
+
+
+--[[調査用
+local orig_x = intToFixFloat(0, 19, 12)
+local vx = ValueUpdater(20, 10, 40, "pingpong")
+
+local orig_y = intToFixFloat(0xFFFCC73F, 19, 12)
+printf("orig_y: %f", orig_y)
+local vy = ValueUpdater(20, 10, 40, "pingpong")
+
+local orig_z = intToFixFloat(0xFFFFACA6, 19, 12)
+printf("orig_z: %f", orig_z)
+local vz = ValueUpdater(20, 10, 40, "pingpong")
+function loop()
+    w16(0x022b86bc, 0x10)
+    local _v
+    -- vy() _v = fixFloatToInt(vy.v, 19, 12)
+    for i = 0x022F2588, 0x022F26FF, 4 do
+        -- w32(i, _v)
+        w32(i, fixFloatToInt(17, 19, 12))
+    end
+    vx() _v = fixFloatToInt(vx.v, 19, 12)
+    for i = 0x22F1044, 0x22F10CF, 4 do
+        -- w32(i, _v)
+        w32(i, fixFloatToInt(0, 19, 12))
+    end
+    vz() _v = fixFloatToInt(vz.v, 19, 12)
+    for i = 0x22F3ACC, 0x22F3B5F, 4 do
+        w32(i, fixFloatToInt(80, 19, 12))
+        -- w32(i, _v)
+    end
+end
+]]
+```
+
+## video21 レシラムクルンクルン & 回転しながら最後に消える
+
+```lua
+local x, y, z = 0, 17, 80
+local d = 4
+-- local rot = 0x8000
+local rot = 0x9b00
+local rots = {
+0x8000,
+0x8430,
+0x8030,
+0x8c50,
+-- 0x8b30 -- 犬神家
+}
+local y_target = 17
+
+local function update_pos()
+    if DS.key.get("Up") then
+        y_target = y_target + 30
+    end
+    -- Aボタンで消える(画面外に移動)
+    if DS.key.get("A") then x = 180
+    else x = 0
+    end
+    y = math.max(lerp(y, y_target, 0.2), 17)
+    y_target = lerp(y_target, 1.7, 0.1)
+end
+local c = Cnt(2, #rots)
+function loop()
+    w16(0x02312B2C, 1) -- 炎やライトストーンのアニメーションを止める
+    w16(0x022b86bc, 0x10)
+    update_pos()
+    for i = 0x022F2588, 0x022F26FF, 4 do
+        w32(i, fixFloatToInt(y, 19, 12))
+    end
+    -- for i = 0x22F1044, 0x22F10CF, 4 do
+    for i = 0x22F1044, 0x22F108F, 4 do
+        w32(i, fixFloatToInt(x, 19, 12))
+    end
+    for i = 0x22F3ACC, 0x22F3B5F, 4 do
+        w32(i, fixFloatToInt(z, 19, 12))
+    end
+
+    local _r = rots[c:next()+1]
+    for i = 0x022D11E4, 0x022D120F, 2 do
+        w16(i, _r)
+    end
+end
+```
+
+## video21 ゲーチス顔いじり1
+
+```lua
+local gecis = require "misc/pokemon_b_gecis"
+---@type int[][]
+local data = {}
+local W = 256 -- 0x100
+local H = 170 -- 0xaa
+
+local function pos(x, y)
+    return lib.pos.Raster(x, y, 0x100)*2 + 0x06081600
+end
+local function pos2(x, y)
+    return lib.pos.Raster(x, y, 0x100)*2 + 0x060a1600
+end
+local function get(vs, x, y)
+    return vs[y+1][x+1]
+end
+
+for i = 1, H do
+    local line = gecis.DATA[i]
+    assert(#line == W*4, "WRONG WIDTH")
+    local v = htob(line)
+    local ret = {}
+    for j = 1, W do
+        ret[j] = v[2*j-1] | (v[2*j] << 8)
+    end
+    data[i] = ret
+end
+
+local xst = 80
+local xed = 165
+local yst = 40
+-- local yst = 00
+local yed = 85
+mode = 1
+mode_3_min = -1
+mode_3_max = 1
+only_write = true
+rot_mode = 1
+
+local cc1 = Cnt(50, 2)
+local current_1 = 1.0
+local target_1 = 1.0
+---@param x int
+---@param y int
+---@param sin number
+---@param cos number
+---@return int
+local function go(x, y, sin, cos, vs)
+    local v
+    local _yst = mode == 1 and 0 or yst
+    if y >= _yst and within(x, xst, xed) then
+        local _y = ilerp(_yst, yed, invlerp(y, _yst, H-1))
+        local ct = (xed+xst)//2
+        local _x = x
+
+        if mode == 1 then
+            _x = _x - ct
+            local yt = invlerp(_y, _yst, yed)
+            yt = 1-yt
+            _x = round(_x * yt) + ct
+            _x = clamp(_x, xst, xed)
+        elseif mode == 2 then
+            -- do nothing
+        else
+            _y = _y + round(math.abs(_x - ct) * 0.5 * current_1)
+        end
+
+        -- _x = ilerp(xst, xed, invlerp(x, xst, xed) * (invlerp(_y, yst, yed)))
+        v = get(vs, clamp(_x, xst, xed), clamp(_y, _yst, yed))
+    else
+        v = get(vs, x, y)
+    end
+    return v
+end
+
+local n = 90
+local t = ValueUpdater(50, -n, n, "isin")
+
+---@param x int
+---@param y int
+---@param sin number
+---@param cos number
+local function go2(x, y, sin, cos, vs)
+    local x2, y2 = x, y
+    if not only_write then
+        local _x, _y = x-W//2, y//2-H//2
+        x2 = round(_x*sin + _y*cos)
+        y2 = round(_x*cos - _y*sin)
+        x2 = clamp(x2+W//2, 0, W-1)
+        y2 = clamp(y2+H//2, 0, H-1)
+    end
+    local p1 = pos(x, y)
+    local p2 = pos2(x, y)
+    local v = get(vs, x2, y2)
+    w16(p1, v)
+    w16(p2, v)
+end
+
+local time = 0
+function loop()
+    time = time + 1
+    CLS()
+    printf("time: %f", time/60)
+    t()
+    cc1()
+    target_1 = cc1.i == 0 and mode_3_max or mode_3_min
+    current_1 = lerp(current_1, target_1, 0.1)
+    local __x
+    if rot_mode == 1 then
+        __x = -0.5 + t.v/(8*n)
+    elseif rot_mode == 2 then
+        __x = -0.5 + t.v/(2*n)
+    elseif rot_mode == 3 then
+        __x = t.i*2/t.n
+    end
+    local sin = math.sin(__x*math.pi)
+    local cos = math.cos(__x*math.pi)
+    local vs = {}
+    for y = 0, H-1 do
+        local _v = {}
+        for x = 0, W-1 do
+            -- _v[x+1] = get(data, x, y)
+            _v[x+1] = go(x, y, sin, cos, data)
+        end
+        vs[y+1] = _v
+    end
+    for y = 0, H-1 do
+        for x = 0, W-1 do
+            go2(x, y, sin, cos, vs)
+        end
+    end
+end
+
+lib.irume.start(function()
+    local head = 0x03eba730
+    local p1 = 0x1f
+    local p2 = 0x18
+    local as = {}
+    local ps = {}
+    local cnts = {}
+    local ds = {}
+    for i = 0, 19 do
+        as[i] = head + 0x40*i
+        ps[i] = 0
+        cnts[i] = Cnt(10)
+        ds[i] = 0x8
+    end
+    local r = RC(60)
+    local p_min = 0
+    local p_max = 0x800
+    return function()
+        for i, a in pairs(as) do
+            cnts[i]()
+            local sin = math.sin(cnts[i].i*2*math.pi/cnts[i].n)
+            if r() then
+                cnts[i]:N(rand(5, 30))
+                ds[i] = rand(6, 10)
+            end
+            ps[i] = ps[i] + sin*0x30 + ds[i]
+            if ps[i] > p_max then
+                ps[i] = ps[i] - (p_max - p_min)
+            end
+            w16(a+p2, round(ps[i]))
+        end
+    end
+end)
+
+-- ======================
+-- ==== コントローラ ====
+-- ======================
+mode = 3
+mode_3_min = -3
+mode_3_max = 2
+only_write = false
+rot_mode = 3
+```
+
+## video21 改良版(処理は別ファイルに分離)
+
+```lua
+package.loaded["misc/pokemon_b_gecis"] = nil
+local G = require "misc/pokemon_b_gecis"
+local H, W, Black, set, get, orig = G.H, G.W, G.Black, G.set, G.get, G.orig
+
+G.addPreset()
+
+
+function loop()
+    G.update()
+end
+
+lib.irume.start(function()
+    local head = 0x03eba730
+    local p1 = 0x1f
+    local p2 = 0x18
+    local as = {}
+    local ps = {}
+    local cnts = {}
+    local ds = {}
+    for i = 0, 19 do
+        as[i] = head + 0x40*i
+        ps[i] = 0
+        cnts[i] = Cnt(10)
+        ds[i] = 0x8
+    end
+    local r = RC(60)
+    local p_min = 0
+    local p_max = 0x800
+    return function()
+        for i, a in pairs(as) do
+            cnts[i]()
+            local sin = math.sin(cnts[i].i*2*math.pi/cnts[i].n)
+            if r() then
+                cnts[i]:N(rand(5, 30))
+                ds[i] = rand(6, 10)
+            end
+            ps[i] = ps[i] + sin*0x30 + ds[i]
+            if ps[i] > p_max then
+                ps[i] = ps[i] - (p_max - p_min)
+            end
+            w16(a+p2, round(ps[i]))
+        end
+    end
+end)
+```
