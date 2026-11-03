@@ -4,9 +4,9 @@
 
 1. ahxファイルをwavファイルに変換
     ```powershell
-    ahxfilter dec -i ./some_audio.ahx -o ./some_audio.wav
+    ahxconv ./some_audio.ahx ./some_audio.wav
     ```
-    - 大まかな `ahxfilter` の処理は以下の通り:
+    - 大まかな `ahxconv` の処理は以下の通り:
         ```python
         from pathlib import Path
         import cricodecs
@@ -24,19 +24,19 @@
     - エンコーディングは規定のまま Signed 16-bit PCMでOK
 3. wavファイルをahxに変換
     ```powershell
-    ahxfilter enc -i ./out.wav -o ./out.ahx
+    ahxconv ./out.wav ./out.ahx
     ```
 
 ### まるごとデコード
 
 ```powershell
 # fab_voices ディレクトリにて
-01..14 | %{"{0:D2}" -f $_} | %{ahxfilter dec -i "./i$_.ahx" -o "./wavs/i$_.wav"}
+01..14 | %{"{0:D2}" -f $_} | %{ahxconv "./i$_.ahx" "./wavs/i$_.wav"}
 ```
 
 ### まるごとエンコード
 
 ```powershell
 # video** ディレクトリにて
-01..14 | %{"{0:D2}" -f $_} | %{ahxfilter enc -i "./o$_.wav" -o "./o$_.ahx"}
+01..14 | %{"{0:D2}" -f $_} | %{ahxconv "./o$_.wav" "./o$_.ahx"}
 ```
