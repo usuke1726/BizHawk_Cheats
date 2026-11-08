@@ -131,6 +131,49 @@ local mesh_commands = {
     END_VTXS = "END_VTXS",
 }
 MESH_COMMANDS = mesh_commands
+---@class Bound3Dobj
+---@field xmin number
+---@field xmax number
+---@field ymin number
+---@field ymax number
+---@field zmin number
+---@field zmax number
+local Bound3Dobj = {}
+
+---@param x? number
+---@param y? number
+---@param z? number
+function Bound3Dobj:push(x, y, z) end
+local function Bound3Dobj_pr(label, min, max, given)
+    if given then
+        print(string.format("%s: [%f -- %f]", label, min, max))
+    else
+        print(string.format("%s: Not given", label))
+    end
+end
+---@param x number
+---@return number
+function Bound3Dobj:xinv(x) return invlerp(x, self.xmin, self.xmax) end
+---@param y number
+---@return number
+function Bound3Dobj:yinv(y) end
+---@param z number
+---@return number
+function Bound3Dobj:zinv(z) end
+---@param x number
+---@return number
+function Bound3Dobj:xlerp(x) end
+---@param y number
+---@return number
+function Bound3Dobj:ylerp(y) end
+---@param z number
+---@return number
+function Bound3Dobj:zlerp(z) end
+function Bound3Dobj:print()
+
+---@param bound? number
+---@return Bound3Dobj
+local function Bound3D(bound) end
 
 Nitro = {
     read_JNT0 = read_JNT0,
@@ -141,4 +184,5 @@ Nitro = {
     find_all_JNT0 = find_all_JNT0,
     filter_mesh = filter_mesh,
     mesh_commands = mesh_commands,
+    Bound3D = Bound3D,
 }

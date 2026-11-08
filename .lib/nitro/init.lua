@@ -13,6 +13,7 @@ Nitro = {
     find_all_JNT0 = anim_lib.find_all_JNT0,
     filter_mesh = model_lib.filter_mesh,
     mesh_commands = model_lib.mesh_commands,
+    Bound3D = ___nitro_lib.Bound3D,
 }
 
 return Nitro

@@ -176,9 +176,85 @@ local function GetNameList_u32(mem)
     }
 end
 
+---@class Bound3Dobj
+---@field xmin number
+---@field xmax number
+---@field ymin number
+---@field ymax number
+---@field zmin number
+---@field zmax number
+---@field protected xgiven bool
+---@field protected ygiven bool
+---@field protected zgiven bool
+local Bound3Dobj = {}
+
+---@param x? number
+---@param y? number
+---@param z? number
+function Bound3Dobj:push(x, y, z)
+    if x then
+        self.xmin = math.min(self.xmin, x)
+        self.xmax = math.max(self.xmax, x)
+        self.xgiven = true
+    end
+    if y then
+        self.ymin = math.min(self.ymin, y)
+        self.ymax = math.max(self.ymax, y)
+        self.ygiven = true
+    end
+    if z then
+        self.zmin = math.min(self.zmin, z)
+        self.zmax = math.max(self.zmax, z)
+        self.zgiven = true
+    end
+end
+---@param x number
+---@return number
+function Bound3Dobj:xinv(x) return invlerp(x, self.xmin, self.xmax) end
+---@param y number
+---@return number
+function Bound3Dobj:yinv(y) return invlerp(y, self.ymin, self.ymax) end
+---@param z number
+---@return number
+function Bound3Dobj:zinv(z) return invlerp(z, self.zmin, self.zmax) end
+---@param x number
+---@return number
+function Bound3Dobj:xlerp(x) return lerp(self.xmin, self.xmax, x) end
+---@param y number
+---@return number
+function Bound3Dobj:ylerp(y) return lerp(self.ymin, self.ymax, y) end
+---@param z number
+---@return number
+function Bound3Dobj:zlerp(z) return lerp(self.zmin, self.zmax, z) end
+local function Bound3Dobj_pr(label, min, max, given)
+    if given then
+        print(string.format("%s: [%f -- %f]", label, min, max))
+    else
+        print(string.format("%s: Not given", label))
+    end
+end
+function Bound3Dobj:print()
+    Bound3Dobj_pr("x", self.xmin, self.xmax, self.xgiven)
+    Bound3Dobj_pr("y", self.ymin, self.ymax, self.ygiven)
+    Bound3Dobj_pr("z", self.zmin, self.zmax, self.zgiven)
+end
+
+---@param bound? number
+---@return Bound3Dobj
+local function Bound3D(bound)
+    bound = bound or 1000000000
+    return setmetatable({
+        xmin = bound, xmax = -bound,
+        ymin = bound, ymax = -bound,
+        zmin = bound, zmax = -bound,
+        xgiven = false, ygiven = false, zgiven = false,
+    }, {__index = Bound3Dobj})
+end
+
 ___nitro_lib = {
     newMemReader = newMemReader,
     DataPos = DataPos,
     read_ascii = read_ascii,
     GetNameList_u32 = GetNameList_u32,
+    Bound3D = Bound3D,
 }
