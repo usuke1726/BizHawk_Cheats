@@ -339,7 +339,10 @@ end
 ---@param max number
 ---@return number
 local function _invlerp(v, min, max)
-    assert(max > min, "max must be greater than min")
+    assert(max >= min, "max must be greater than min")
+    if min == max then
+        return 0
+    end
     return (v - min) / (max - min)
 end
 lerp = _lerp
