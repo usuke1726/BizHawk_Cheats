@@ -384,8 +384,8 @@ end
 ---Meshコマンドのパラメータに対してフィルタリング処理を行う。
 ---@param begin int
 ---@param iend int
----@param vtx_callback? fun(addr: int, cmd: int, argnum: int, cmdName: string) `VTX`系の命令限定のcallback (`addr`は`arg`の開始アドレス)
----@param callback? fun(addr: int, cmd: int, argnum: int, cmdName: string) 全命令に対するcallback (`addr`は`arg`の開始アドレス)
+---@param vtx_callback? fun(addr: int, info: {cmd: int, argnum: int, name: string}) `VTX`系の命令限定のcallback (`addr`は`arg`の開始アドレス)
+---@param callback? fun(addr: int, info: {cmd: int, argnum: int, name: string}) 全命令に対するcallback (`addr`は`arg`の開始アドレス)
 local function filter_mesh(begin, iend, vtx_callback, callback)
     vtx_callback = vtx_callback or function() end
     callback = callback or function() end
@@ -400,9 +400,9 @@ local function filter_mesh(begin, iend, vtx_callback, callback)
                 local pnum = cmd_detail[1]
                 local name = cmd_detail[2]
                 if within(cmd, 0x23, 0x28) then
-                    vtx_callback(i, cmd, pnum, name)
+                    vtx_callback(i, {cmd = cmd, argnum = pnum, name = name})
                 end
-                callback(i, cmd, pnum, name)
+                callback(i, {cmd = cmd, argnum = pnum, name = name})
                 i = i + pnum * 4
             end
         end
