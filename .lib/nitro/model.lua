@@ -192,14 +192,31 @@ local function read_MaterialList(begin, w, addrs_mat)
     if not materialList then return end
     w:wl(string.format((
         "\n\n### MaterialList\n" ..
-        "  - texture_pairings => %08X" ..
-        "  - palette_pairings => %08X" ..
+        "  - texture_pairings => %08X\n" ..
+        "  - palette_pairings => %08X\n" ..
         "  - %d Materials"
     ), begin + texture_pairings_off, begin + palette_pairings_off, materialList.count))
     for i = 1, materialList.count do
         local offset = materialList.data[i].v
         read_Material(begin + offset, i, w, addrs_mat)
     end
+    local texture_pairings = GetNameList_u32(newMemReader(begin + texture_pairings_off))
+    if not texture_pairings then return end
+    w:wl("")
+    for i = 1, texture_pairings.count do
+        local name = texture_pairings.names[i]
+        local addr = texture_pairings.data[i].addr
+        w:wl(string.format(" - texture \"%s\" (0x%08X)", name.v, addr))
+    end
+    local palette_pairings = GetNameList_u32(newMemReader(begin + palette_pairings_off))
+    if not palette_pairings then return end
+    w:wl("")
+    for i = 1, palette_pairings.count do
+        local name = palette_pairings.names[i]
+        local addr = palette_pairings.data[i].addr
+        w:wl(string.format(" - palette \"%s\" (0x%08X)", name.v, addr))
+    end
+    w:wl("")
 end
 
 ---@param begin int
