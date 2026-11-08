@@ -460,6 +460,55 @@ dump_voice(13, "800000201100000100005FE200023A7900000600000000000000000000002863
 dump_voice(14, "800000201100000100005FE20001B39D0000060000000000000000000000286329435249FFF5E0C066669190008020000001E8715CD167859A5FBDD8E1C657E99DFCDD7ED95EF7BDEF7BDEF7BDEEEEEEEB635AD7BDEF7C1EE6BDCF7777875B1AD6C5E89ECAA1AD89644A551C8696914127A1876D830755C3A24F12910A5356E7")
 ```
 
+## ボイス 自動検索からのダンプ
+
+
+```lua
+local function search(d)
+    for i = 6, 0x9 do
+        local a = 0x01000000*i
+        local found, addr = lib.findr(a, a+0x00ffffff, d, nil, true)
+        if found then
+            print(string.format("local begin = 0x%08X", addr))
+            local _f, addr2 = lib.findr(addr + 0x40, addr + 0x000fffff, ascii("CRI"), nil, true)
+            assert(_f)
+            addr2 = addr2 + 4
+            print(string.format("local iend = 0x%08X", addr2))
+            return addr, addr2
+        end
+    end
+    return nil, nil
+end
+
+local function dump_voice(query, filename, skip_writing)
+    local begin, iend = search(query)
+    assert(begin and iend, "not found")
+    assert(r8r(iend) == 0 and r8r(iend + 1) == 0xff, "iend may be wrong?")
+    if skip_writing then return end
+    local f = io.open(lib.path.output(string.format("fab_voices/%s.ahx", filename)), "wb")
+    f:write(longchars(lib.romrarr(begin, iend))) f:close()
+end
+
+local start_voice_search = function(filename, skip_writing)
+local head = 0x0212F3C0
+local id = "voice_search"
+SET_LOOP(id, (function()
+    local m = lib.at(head)
+    local prev = m:r32()
+    return function()
+        if m:r32() ~= prev then
+            DELETE_LOOP(id)
+            local d = lib.rarr(head, head + 0x5f)
+            dump_voice(d, filename, skip_writing)
+        end
+    end
+end)())
+end
+
+start_voice_search("tmp")
+
+```
+
 ## video19 ジョバババ再現的なカット
 
 ```lua
@@ -1254,4 +1303,180 @@ lib.irume.start(function()
         end
     end
 end)
+```
+
+## video25 アキラいけませんねのループ
+
+```lua
+-- fabstyleアキラ「いける/いけない」を連呼しながらモデルを崩壊させる
+
+local addrs = {
+0x0226E2A8, -- 顔面
+0x02274260, -- ヅラ
+0x022778D8, -- 上半身
+}
+local vtx = MESH_LIB.VTX_16
+
+local update_face = (function()
+
+local origs = {}
+local res = Nitro.read_MDL0(addrs[1], 0)
+local meshes = res.addrs_mesh
+local Bs = {}
+
+for i, mesh in pairs(meshes) do
+local B = Nitro.Bound3D()
+Nitro.filter_mesh(mesh.begin, mesh.iend, function(addr, info)
+    if info.name ~= MESH_COMMANDS.VTX_16 then return end
+    local pos = vtx.read(addr)
+    B:push(pos.x, pos.y, pos.z)
+    origs[addr]=r16(addr)
+    origs[addr+2]=r16(addr+2)
+    origs[addr+4]=r16(addr+4)
+end)
+Bs[i] = B
+end
+
+return function()
+for a, v in pairs(origs) do w16(a, v) end
+
+for i, mesh in pairs(meshes) do
+local B = Bs[i]
+local yc = rand(3, 7)/10
+local yloop = rand(1, 4)~=1 and rand(2,5)/10 or nil
+local yabs = rand(1, 2) == 1
+local yscl = rand(1, 50)/10
+Nitro.filter_mesh(mesh.begin, mesh.iend, function(addr, info)
+    if info.name ~= MESH_COMMANDS.VTX_16 then return end
+    local pos = vtx.read(addr)
+    local yd = B:xinv(pos.x)
+    if i > 6 then
+        yd=1-yd
+    end
+    if yloop then yd=math.fmod(yd, yloop) end
+    if yabs then
+    yd = math.abs(yd-yc)
+    end
+    yd=yd*yscl
+    yd = yd - 1.5 - yscl/2
+    pos.x = pos.x *4
+    pos.y = pos.y*2 + yd
+    pos.z = pos.z*4 + 1
+    vtx.write(addr, pos)
+end)
+end
+
+
+end
+end)()
+
+-- ==============================
+-- ==============================
+-- ==============================
+
+local update_JNT = (function()
+local _, addrs = Nitro.find_all_JNT0(nil, nil, true)
+local orig_tr = {}
+local f = FixFloatConverter(19, 12)
+for _, a in pairs(addrs) do
+local res = Nitro.read_JNT0(a, 0)
+for _, _a in pairs(res.addrs_tr) do
+    orig_tr[_a] = f:tof(r32(_a))
+end
+end
+return function(n)
+    local r = RC(n or 2)
+    local scl = rand(1, 3)
+    for a, orig in pairs(orig_tr) do
+        if r() then
+            local x = orig
+            x = x + rand(-100, 100)*scl/100
+            w32(a, f:toi(x))
+        end
+    end
+end
+end)()
+
+
+-- ==============================
+-- ==============================
+-- ==============================
+
+local update_akira = (function()
+local key = DS.key.lis("L")
+local cooltime = 0
+local IKEMASU = "B2B9CFBDC81B4BAA1B488163"
+local masen = "B2B9CFBEDDC88163"
+local voice_cnt = RL(7)
+local paths = {
+{"orig_big", masen},
+-- {"ikemasu_orig", "B2B9CFBDC88163"},
+{"ikemasu_orig", IKEMASU},
+-- "B2B9CFBDC81B4BAA1B488163" -- いけますねェ…
+{"ikemasen_var/01", masen},
+{"ikemasen_var/02", masen},
+{"ikemasen_var/03", masen},
+{"ikemasen_var/04", masen},
+{"ikemasen_var/05", masen},
+{"ikemasen_var/06", masen},
+{"ikemasu_var/01", IKEMASU},
+{"ikemasu_var/02", IKEMASU},
+{"ikemasu_var/03", IKEMASU},
+{"ikemasu_var/04", IKEMASU},
+{"ikemasu_var/05", IKEMASU},
+{"ikemasu_var/06", IKEMASU},
+}
+---@type int[][]
+local DATA = {}
+local texts = {}
+for _, p in pairs(paths) do
+local path = lib.path.output(string.format("fab_voices/video25/%s.ahx", p[1]))
+local file = assert(io.open(path, "rb"), "not found file " .. p[1])
+local content = file:read("a")
+file:close()
+local bytes = {}
+for i = 1, #content do
+    bytes[i] = content:byte(i)
+end
+table.insert(DATA, bytes)
+table.insert(texts, p[2])
+end
+local ahxDataAddr = 0x0622D400
+local function try_load()
+    voice_cnt()
+    local n
+    if voice_cnt.fired then
+        n = #DATA
+    elseif voice_cnt.i < 3 then n = 1
+    else n = 2
+    end
+    local i = rand(1, n)
+    lib.romwarr(ahxDataAddr, DATA[i])
+    local text = texts[i]
+    if voice_cnt.fired and rand(1,8)==1 then
+        text ="1B4BB21B48"..string.sub(text, 3)
+    end
+    lib.warr(0x0215A150, htob(text.."050505"))
+    -- lib.timer.setTimeout(30, function()
+    update_JNT(rand(1, 4))
+    update_face()
+    -- end)
+end
+return function()
+    if key() then
+        cooltime = 1
+        savestate.loadslot(9)
+    end
+    if cooltime > 0 then
+        cooltime = cooltime - 1
+        if cooltime == 0 then
+            try_load()
+        end
+    end
+end
+end)()
+
+function loop()
+    update_akira()
+end
 ```

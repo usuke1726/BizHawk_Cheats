@@ -2238,3 +2238,388 @@ lib.irume.start(function()
     end
 end)
 ```
+
+## video25 メッシュ回転
+
+```lua
+local res = Nitro.read_MDL0(0x02168B54, 0)
+local meshes = res.addrs_mesh
+local num = #meshes
+local v16 = MESH_LIB.VTX_16
+local f16 = FixFloatConverter(3, 12)
+local vdif = MESH_LIB.VTX_DIFF
+-- 3, x: 縦, y: 奥行, z: 横
+-- 4, x: 奥行, y: 縦, z: 横
+-- 5, x: 縦, y: 奥行, z: 横
+-- 6, x: 縦, y: 奥行, z: 横
+-- 7, x: 奥行, y: 縦, z: 横
+-- 8, x: 奥行, y: 縦, z: 横
+-- 9, x: 奥行, y: 縦, z: 横
+-- 10, x: 奥行, y: 縦, z: 横
+-- 11, x: 奥行, y: 横, z: 縦
+-- 12, x: 縦, y: 奥行, z: 横
+local types = {
+1,2,1,1,2,2,2,2,2,1
+}
+local updaters = {}
+
+for i, mesh in pairs(pick(meshes, {
+range(3, 12)
+})) do
+local B = Nitro.Bound3D()
+local poses = {}
+
+Nitro.filter_mesh(mesh.begin, mesh.iend, function(addr, info)
+    if info.name == MESH_COMMANDS.VTX_16 then
+        assert(addr%2==0)
+        local pos = v16.read(addr)
+        B:push(pos.x, pos.y, pos.z)
+        if assert(types[i]) == 1 then
+            table.insert(poses, {
+                x = {addr+0, pos.x},
+                y = {addr+4, pos.z},
+            })
+        else
+            table.insert(poses, {
+                x = {addr+4, pos.z},
+                y = {addr+2, pos.y},
+            })
+        end
+    end
+end)
+local _update
+if assert(types[i]) == 1 then
+_update = function(sin, cos)
+    for _, p in pairs(poses) do
+        local x = B:xinv(p.x[2]) - 0.5
+        local y = B:zinv(p.y[2]) - 0.5
+        local _x, _y
+        _x = x*sin + y*cos
+        _y = x*cos - y*sin
+        w16(p.x[1], f16:toi(B:xlerp(_x+0.5)))
+        w16(p.y[1], f16:toi(B:zlerp(_y+0.5)))
+    end
+end
+else
+_update = function(sin, cos)
+    for _, p in pairs(poses) do
+        local x = B:zinv(p.x[2]) - 0.5
+        local y = B:yinv(p.y[2]) - 0.5
+        local _x, _y
+        _x = x*sin + y*cos
+        _y = x*cos - y*sin
+        w16(p.x[1], f16:toi(B:zlerp(_x+0.5)))
+        w16(p.y[1], f16:toi(B:ylerp(_y+0.5)))
+    end
+end
+end
+
+table.insert(updaters, _update)
+
+end
+
+local c = Cnt(60)
+local r = RC(3)
+
+function loop()
+    if c() and r() then
+        c:N(math.max(round(c.n*0.9), 8))
+    end
+    local x = c.i*2*math.pi/c.n
+    local sin = math.sin(x)
+    local cos = math.cos(x)
+    for _, f in pairs(updaters) do f(sin, cos) end
+end
+
+
+lib.irume.start(function()
+    local head = 0x03EC8A00
+    local as = {}
+    local ps = {}
+    for i = 0, 18 do
+        as[i] = head + 0x40 * i
+        ps[i] = 0
+    end
+    local _t = 0x2c
+    local p1 = 0x1f
+    local p2 = 0x18
+    local vol = 0x16
+    local m = lib.at(head)
+    return function()
+        for i, a in pairs(as) do
+            m:with(a+_t):Tadd8(1, -1)
+            ps[i] = (ps[i]+4)%0x80
+            w16(a+p2, ps[i]-0x40)
+        end
+    end
+end)
+
+```
+
+## video25 もちもち その1
+
+```lua
+
+local res = Nitro.read_MDL0(0x02168B54, 0)
+local meshes = res.addrs_mesh
+local num = #meshes
+local v16 = MESH_LIB.VTX_16
+local f16 = FixFloatConverter(3, 12)
+local vdif = MESH_LIB.VTX_DIFF
+-- 3, x: 縦, y: 奥行, z: 横
+-- 4, x: 奥行, y: 縦, z: 横
+-- 5, x: 縦, y: 奥行, z: 横
+-- 6, x: 縦, y: 奥行, z: 横
+-- 7, x: 奥行, y: 縦, z: 横
+-- 8, x: 奥行, y: 縦, z: 横
+-- 9, x: 奥行, y: 縦, z: 横
+-- 10, x: 奥行, y: 縦, z: 横
+-- 11, x: 奥行, y: 横, z: 縦
+-- 12, x: 縦, y: 奥行, z: 横
+local types = {
+1,2,1,1,2,2,2,2,2,1
+}
+local updaters = {}
+
+for i, mesh in pairs(pick(meshes, {
+range(3, 12)
+})) do
+local B = Nitro.Bound3D()
+local poses = {}
+
+Nitro.filter_mesh(mesh.begin, mesh.iend, function(addr, info)
+    if info.name == MESH_COMMANDS.VTX_16 then
+        assert(addr%2==0)
+        local pos = v16.read(addr)
+        B:push(pos.x, pos.y, pos.z)
+        if assert(types[i]) == 1 then
+            table.insert(poses, {
+                x = {addr+0, pos.x},
+                y = {addr+4, pos.z},
+            })
+        else
+            table.insert(poses, {
+                x = {addr+4, pos.z},
+                y = {addr+2, pos.y},
+            })
+        end
+    end
+end)
+local _update
+if assert(types[i]) == 1 then
+_update = function(sin, cos)
+    for _, p in pairs(poses) do
+        local y = p.y[2]
+        local _y = y*(1+sin)
+        -- w16(p.y[1], f16:toi(B:zlerp(_y+0.5)))
+        w16(p.y[1], f16:toi(_y))
+        local x = p.x[2]
+        local _x = x*(1+cos)
+        w16(p.x[1], f16:toi(_x))
+    end
+end
+else
+_update = function(sin, cos)
+    for _, p in pairs(poses) do
+        local x = p.x[2]
+        local _x = x*(1+cos)
+        w16(p.x[1], f16:toi(_x))
+        local y = p.y[2]
+        local _y = y*(1+sin)
+        -- w16(p.y[1], f16:toi(B:ylerp(_y+0.5)))
+        w16(p.y[1], f16:toi(_y))
+    end
+end
+end
+
+table.insert(updaters, _update)
+
+end
+
+local c = Cnt(60)
+local r = RC(3)
+
+function loop()
+    if c() and r() then
+        c:N(math.max(round(c.n*0.9), 8))
+    end
+    local x = c.i*2*math.pi/c.n
+    local sin = math.sin(x)
+    local cos = math.cos(x)
+    for _, f in pairs(updaters) do f(sin, cos) end
+end
+
+
+lib.irume.start(function()
+    local head = 0x03EC8A00
+    local as = {}
+    local ps = {}
+    for i = 0, 18 do
+        as[i] = head + 0x40 * i
+        ps[i] = 0
+    end
+    local _t = 0x2c
+    local p1 = 0x1f
+    local p2 = 0x18
+    local vol = 0x16
+    local m = lib.at(head)
+
+    local c = Cnt(180)
+    local r = RC(3)
+    local cc = Cnt(6)
+    return function()
+        if c() and r() then
+            c:N(math.max(round(c.n*0.9), 8))
+        end
+        cc()
+        local x = c.i*2*math.pi/c.n
+        local sin = round(math.sin(x) * 4)
+        for i, a in pairs(as) do
+            if sin >= 1 then
+                if cc.i <= sin then
+                m:with(a+_t):Tadd8(1, 1)
+                end
+            else
+                m:with(a+_t):Tadd8(1, sin)
+            end
+            ps[i] = (ps[i]+4)%0x80
+            w16(a+p2, ps[i]-0x40)
+        end
+    end
+end)
+
+```
+
+## video25 でっぷり
+
+```lua
+
+local res = Nitro.read_MDL0(0x02168B54, 0)
+local meshes = res.addrs_mesh
+local num = #meshes
+local v16 = MESH_LIB.VTX_16
+local f16 = FixFloatConverter(3, 12)
+local vdif = MESH_LIB.VTX_DIFF
+-- 3, x: 縦, y: 奥行, z: 横
+-- 4, x: 奥行, y: 縦, z: 横
+-- 5, x: 縦, y: 奥行, z: 横
+-- 6, x: 縦, y: 奥行, z: 横
+-- 7, x: 奥行, y: 縦, z: 横
+-- 8, x: 奥行, y: 縦, z: 横
+-- 9, x: 奥行, y: 縦, z: 横
+-- 10, x: 奥行, y: 縦, z: 横
+-- 11, x: 奥行, y: 横, z: 縦
+-- 12, x: 縦, y: 奥行, z: 横
+local types = {
+1,2,1,1,2,2,2,2,2,1
+}
+local updaters = {}
+
+for i, mesh in pairs(pick(meshes, {
+range(3, 12)
+})) do
+local B = Nitro.Bound3D()
+local poses = {}
+
+Nitro.filter_mesh(mesh.begin, mesh.iend, function(addr, info)
+    if info.name == MESH_COMMANDS.VTX_16 then
+        assert(addr%2==0)
+        local pos = v16.read(addr)
+        B:push(pos.x, pos.y, pos.z)
+        if assert(types[i]) == 1 then
+            table.insert(poses, {
+                x = {addr+0, pos.x},
+                y = {addr+4, pos.z},
+            })
+        else
+            table.insert(poses, {
+                x = {addr+4, pos.z},
+                y = {addr+2, pos.y},
+            })
+        end
+    end
+end)
+local _update
+if assert(types[i]) == 1 then
+_update = function(sin, cos)
+    for _, p in pairs(poses) do
+        local y = p.y[2]
+        local _y = y*2
+        -- w16(p.y[1], f16:toi(B:zlerp(_y+0.5)))
+        w16(p.y[1], f16:toi(_y))
+        -- local x = p.x[2]
+        -- local _x = x*2
+        -- w16(p.x[1], f16:toi(_x))
+    end
+end
+else
+_update = function(sin, cos)
+    for _, p in pairs(poses) do
+        local x = p.x[2]
+        local _x = x*2
+        w16(p.x[1], f16:toi(_x))
+        -- local y = p.y[2]
+        -- local _y = y*(1+sin)
+        -- -- w16(p.y[1], f16:toi(B:ylerp(_y+0.5)))
+        -- w16(p.y[1], f16:toi(_y))
+    end
+end
+end
+
+table.insert(updaters, _update)
+
+end
+
+local c = Cnt(60)
+local r = RC(3)
+
+function loop()
+    if c() and r() then
+        c:N(math.max(round(c.n*0.9), 8))
+    end
+    local x = c.i*2*math.pi/c.n
+    local sin = math.sin(x)
+    local cos = math.cos(x)
+    for _, f in pairs(updaters) do f(sin, cos) end
+end
+
+
+lib.irume.start(function()
+    local head = 0x03EC8A00
+    local as = {}
+    local ps = {}
+    for i = 0, 18 do
+        as[i] = head + 0x40 * i
+        ps[i] = 0
+    end
+    local _t = 0x2c
+    local p1 = 0x1f
+    local p2 = 0x18
+    local vol = 0x16
+    local m = lib.at(head)
+
+    local c = Cnt(180)
+    local r = RC(3)
+    local cc = Cnt(6)
+    return function()
+        if c() and r() then
+            c:N(math.max(round(c.n*0.9), 8))
+        end
+        cc()
+        local x = c.i*2*math.pi/c.n
+        local sin = round(math.sin(x)*2)+2
+        for i, a in pairs(as) do
+            if sin >= 1 then
+                if cc.i <= sin then
+                m:with(a+_t):Tadd8(1, 1)
+                end
+            else
+                m:with(a+_t):Tadd8(1, sin)
+            end
+            ps[i] = (ps[i]+4)%0x80
+            w16(a+p2, ps[i]-0x240)
+        end
+    end
+end)
+```
+
