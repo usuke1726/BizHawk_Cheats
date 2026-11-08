@@ -161,8 +161,10 @@ end
 ---@param addrs_tr int[]
 ---@param addrs_rot int[]
 ---@param addrs_scl int[]
+---@param addrs_pivot_mat int[]
+---@param addrs_basis_mat int[]
 ---@return TrackData[]
-local function read_Animation(begin, anim_idx, w, addrs_tr, addrs_rot, addrs_scl)
+local function read_Animation(begin, anim_idx, w, addrs_tr, addrs_rot, addrs_scl, addrs_pivot_mat, addrs_basis_mat)
     local mem = newMemReader(begin)
     local stamp = string.char(mem:r(4))
     if stamp ~= "J\x00AC" then
@@ -174,6 +176,8 @@ local function read_Animation(begin, anim_idx, w, addrs_tr, addrs_rot, addrs_scl
     local unknown_v1 = mem:r32()
     local pivot_mat_off = mem:r32()
     local basis_mat_off = mem:r32()
+    table.insert(addrs_pivot_mat, begin + pivot_mat_off)
+    table.insert(addrs_basis_mat, begin + basis_mat_off)
     local track_offs = {}
     local tracks = {}
     w:wl(string.format("\n## Animation %d at 0x%08X\n  - %d frames, %d tracks\n  - pivot_mat => 0x%08X\n  - basis_mat => 0x%08X", anim_idx, begin, num_frames, num_tracks, begin + pivot_mat_off, begin + basis_mat_off))
@@ -224,7 +228,7 @@ local function read_Animation(begin, anim_idx, w, addrs_tr, addrs_rot, addrs_scl
     return tracks
 end
 
----@alias JNT0ReadResult { addrs_tr: int[], addrs_rot: int[], addrs_scl: int[], tracks: TrackData[][] }
+---@alias JNT0ReadResult { addrs_tr: int[], addrs_rot: int[], addrs_scl: int[], addrs_anim: int[], addrs_pivot_mat: int[], addrs_basis_mat: int[], tracks: TrackData[][] }
 
 ---アニメーションデータの情報をダンプする
 ---@param begin int `"JNT0"`があるアドレス
@@ -248,16 +252,23 @@ local function read_JNT0(begin, writer_query)
         return empty_res
     end
     w:wl(string.format("# JNT0\n  - range: 0x%08X -- 0x%08X (bound: 0x%X)\n  - %d Animation%s\n", begin, begin + filesize, filesize, animations.count, (animations.count > 1 and "s" or "") ))
-    local addrs_tr, addrs_rot, addrs_scl, tracks = {}, {}, {}, {}
+    local addrs_tr, addrs_rot, addrs_scl, addrs_anim, tracks = {}, {}, {}, {}, {}
+    local addrs_pivot_mat = {}
+    local addrs_basis_mat = {}
     for i = 1, animations.count do
         local offset = animations.data[i].v
-        tracks[i] = read_Animation(begin + offset, i, w, addrs_tr, addrs_rot, addrs_scl)
+        local a = begin + offset
+        addrs_anim[i] = a
+        tracks[i] = read_Animation(a, i, w, addrs_tr, addrs_rot, addrs_scl, addrs_pivot_mat, addrs_basis_mat)
     end
     w:close()
     return {
         addrs_tr = addrs_tr,
         addrs_rot = addrs_rot,
         addrs_scl = addrs_scl,
+        addrs_anim = addrs_anim,
+        addrs_pivot_mat = addrs_pivot_mat,
+        addrs_basis_mat = addrs_basis_mat,
         tracks = tracks,
     }
 end

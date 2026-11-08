@@ -65,7 +65,7 @@
 ---@field CurveScaleY SampledCurve
 ---@field CurveScaleZ SampledCurve
 
----@alias JNT0ReadResult { addrs_tr: int[], addrs_rot: int[], addrs_scl: int[], tracks: TrackData[][] }
+---@alias JNT0ReadResult { addrs_tr: int[], addrs_rot: int[], addrs_scl: int[], addrs_anim: int[], addrs_pivot_mat: int[], addrs_basis_mat: int[], tracks: TrackData[][] }
 ---@alias AddrsMeshRange {begin: int, iend: int}
 ---@alias MDL0ReadResult { addrs_mat: int[], addrs_bone: int[], addrs_mesh: AddrsMeshRange[] }
 
