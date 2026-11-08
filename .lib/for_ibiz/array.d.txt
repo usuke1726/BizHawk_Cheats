@@ -54,6 +54,29 @@ range = _range
 local function _pick(arr, indices) end
 pick = _pick
 
+---@class CountUpObj
+---@overload fun(value: int | string | int[] | string[]): CountUpObj
+local CountUpObj = {}
+
+---@return CountUpObj
+function CountUpObj:reset() self.tbl = {} return self end
+---@param value int | string | int[] | string[]
+---@return CountUpObj
+function CountUpObj:add(value) end
+---@param value int | int[]
+---@param digit? int
+---@return CountUpObj
+function CountUpObj:addHex(value, digit) end
+---@param value string
+---@return int
+function CountUpObj:get(value) end
+function CountUpObj:print() end
+
+---@param arr? int[] | string[]
+---@return CountUpObj
+local function countUp(arr) end
+CountUp = countUp
+
 ---配列の配列をすべてconcatする
 ---@generic T
 ---@param arrs T[][]
@@ -93,6 +116,7 @@ Array = {
     seq = _seq,
     range = _range,
     pick = _pick,
+    countUp = countUp,
     insert_array = insert_array,
     slice = slice,
 }

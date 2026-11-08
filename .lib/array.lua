@@ -108,6 +108,69 @@ local function _pick(arr, indices)
 end
 pick = _pick
 
+---@class CountUpObj
+---@field protected tbl table<string, int>
+---@overload fun(value: int | string | int[] | string[]): CountUpObj
+local CountUpObj = {}
+
+---@return CountUpObj
+function CountUpObj:reset() self.tbl = {} return self end
+---@param value int | string | int[] | string[]
+---@return CountUpObj
+function CountUpObj:add(value)
+    if type(value) == "table" then
+        for _, v in pairs(value) do
+            local k = tostring(v)
+            self.tbl[k] = (self.tbl[k] or 0) + 1
+        end
+    else
+        local k = tostring(value)
+        self.tbl[k] = (self.tbl[k] or 0) + 1
+    end
+    return self
+end
+---@param value int | int[]
+---@param digit? int
+---@return CountUpObj
+function CountUpObj:addHex(value, digit)
+    assert( (not digit) or digit > 0, "negative digit was given")
+    local f = digit and string.format("%%0%dX", digit) or "%X"
+    if type(value) == "table" then
+        for _, v in pairs(value) do
+            local k = string.format(f, v)
+            self.tbl[k] = (self.tbl[k] or 0) + 1
+        end
+    else
+        local k = string.format(f, value)
+        self.tbl[k] = (self.tbl[k] or 0) + 1
+    end
+    return self
+end
+---@param value string
+---@return int
+function CountUpObj:get(value)
+    return self.tbl[value] or 0
+end
+function CountUpObj:print()
+    for name, cnt in pairs(self.tbl) do
+        print(string.format("%s: %d", name, cnt))
+    end
+end
+
+---@param arr? int[] | string[]
+---@return CountUpObj
+local function countUp(arr)
+    local ret = setmetatable({tbl = {}}, {
+        __index = CountUpObj,
+        __call = function(self, value)
+            self:add(value)
+        end
+    })
+    if arr then ret:add(arr) end
+    return ret
+end
+CountUp = countUp
+
 ---配列の配列をすべてconcatする
 ---@generic T
 ---@param arrs T[][]
@@ -177,6 +240,7 @@ local _arrayLib = {
     seq = _seq,
     range = _range,
     pick = _pick,
+    countUp = countUp,
     insert_array = insert_array,
     slice = slice,
 }
