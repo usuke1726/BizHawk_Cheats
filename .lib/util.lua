@@ -29,7 +29,7 @@ _HEXP = print_hexstr
 ---@param z int
 ---@return int
 local function _fixFloatToInt(v, y, z)
-    assert(y > 0 and z > 0, "y or z is negative")
+    assert(y >= 0 and z >= 0, "y or z is negative")
     local sign = 1
     if v < 0 then v = -v sign = -1 end
     local Y, _v, _f = math.floor(v) & ( (1<<y)-1 ), math.fmod(v, 1.0), 0
@@ -53,7 +53,7 @@ end
 ---@param z int
 ---@return number
 local function _intToFixFloat(v, y, z)
-    assert(y > 0 and z > 0, "y or z is negative")
+    assert(y >= 0 and z >= 0, "y or z is negative")
     local sign = 1
     if (v >> (y+z)) ~= 0 then
         sign = -1
