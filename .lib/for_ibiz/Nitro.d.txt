@@ -131,6 +131,107 @@ local mesh_commands = {
     END_VTXS = "END_VTXS",
 }
 MESH_COMMANDS = mesh_commands
+
+local meshConv = {
+VTX_16 = {
+    f = FixFloatConverter(3, 12),
+    ---@param addr int
+    ---@return {x: number, y: number, z: number}
+    read = function(addr) end,
+    ---@param addr int
+    ---@param coord {x: number, y: number, z: number}
+    write = function(addr, coord) end,
+},
+VTX_10 = {
+    f = FixFloatConverter(3, 6),
+    ---@param addr int
+    ---@return {x: number, y: number, z: number}
+    read = function(addr) end,
+    ---@param addr int
+    ---@param coord {x: number, y: number, z: number}
+    write = function(addr, coord) end,
+},
+VTX_XY = {
+    f = FixFloatConverter(3, 12),
+    ---@param addr int
+    ---@return {x: number, y: number}
+    read = function(addr) end,
+    ---@param addr int
+    ---@param coord {x: number, y: number}
+    write = function(addr, coord) end,
+},
+VTX_XZ = {
+    f = FixFloatConverter(3, 12),
+    ---@param addr int
+    ---@return {x: number, z: number}
+    read = function(addr) end,
+    ---@param addr int
+    ---@param coord {x: number, z: number}
+    write = function(addr, coord) end,
+},
+VTX_YZ = {
+    f = FixFloatConverter(3, 12),
+    ---@param addr int
+    ---@return {y: number, z: number}
+    read = function(addr) end,
+    ---@param addr int
+    ---@param coord {y: number, z: number}
+    write = function(addr, coord) end,
+},
+VTX_DIFF = {
+    f = FixFloatConverter(0, 9),
+    ---@param addr int
+    ---@return {x: number, y: number, z: number}
+    read = function(addr) end,
+    ---@param addr int
+    ---@param coord {x: number, y: number, z: number}
+    write = function(addr, coord) end,
+},
+NORMAL = {
+    f = FixFloatConverter(0, 9),
+    ---@param addr int
+    ---@return {x: number, y: number, z: number}
+    read = function(addr) end,
+    ---@param addr int
+    ---@param coord {x: number, y: number, z: number}
+    write = function(addr, coord) end,
+},
+TEXCOORD = {
+    f = FixFloatConverter(11, 4),
+    ---@param addr int
+    ---@return {x: number, y: number}
+    read = function(addr) end,
+    ---@param addr int
+    ---@param coord {x: number, y: number}
+    write = function(addr, coord) end,
+},
+}
+
+local readAs = {
+    VTX_16 = meshConv.VTX_16.read,
+    VTX_10 = meshConv.VTX_10.read,
+    VTX_XY = meshConv.VTX_XY.read,
+    VTX_XZ = meshConv.VTX_XZ.read,
+    VTX_YZ = meshConv.VTX_YZ.read,
+    VTX_DIFF = meshConv.VTX_DIFF.read,
+    NORMAL = meshConv.NORMAL.read,
+    TEXCOORD = meshConv.TEXCOORD.read,
+}
+local writeAs = {
+    VTX_16 = meshConv.VTX_16.write,
+    VTX_10 = meshConv.VTX_10.write,
+    VTX_XY = meshConv.VTX_XY.write,
+    VTX_XZ = meshConv.VTX_XZ.write,
+    VTX_YZ = meshConv.VTX_YZ.write,
+    VTX_DIFF = meshConv.VTX_DIFF.write,
+    NORMAL = meshConv.NORMAL.write,
+    TEXCOORD = meshConv.TEXCOORD.write,
+}
+meshConv.readAs = readAs
+meshConv.writeAs = writeAs
+
+MESH_LIB = meshConv
+
 ---@class Bound3Dobj
 ---@field xmin number
 ---@field xmax number

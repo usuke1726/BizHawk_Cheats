@@ -372,6 +372,198 @@ local mesh_commands = {
     END_VTXS = "END_VTXS",
 }
 MESH_COMMANDS = mesh_commands
+local function readTriple10Bits(addr)
+    local v = r16(addr) | (r16(addr+2) << 16)
+    local v1 = v & 0x3ff v = v >> 10
+    local v2 = v & 0x3ff v = v >> 10
+    local v3 = v & 0x3ff v = v >> 10
+    return v1, v2, v3
+end
+local function combineTriple10Bits(v1, v2, v3)
+    return (v3 << 20) | (v2 << 10) | v1
+end
+local function mw32(addr, v)
+    w16(addr, v&0xffff)
+    w16(addr+2, v>>16)
+end
+
+local meshConv = {
+VTX_16 = {
+    f = FixFloatConverter(3, 12),
+    ---@param addr int
+    ---@return {x: number, y: number, z: number}
+    read = function(addr)
+        return {
+            x = intToFixFloat(r16(addr), 3, 12),
+            y = intToFixFloat(r16(addr+2), 3, 12),
+            z = intToFixFloat(r16(addr+4), 3, 12),
+        }
+    end,
+    ---@param addr int
+    ---@param coord {x: number, y: number, z: number}
+    write = function(addr, coord)
+        w16(addr+0, fixFloatToInt(coord.x, 3, 12))
+        w16(addr+2, fixFloatToInt(coord.y, 3, 12))
+        w16(addr+4, fixFloatToInt(coord.z, 3, 12))
+    end,
+},
+VTX_10 = {
+    f = FixFloatConverter(3, 6),
+    ---@param addr int
+    ---@return {x: number, y: number, z: number}
+    read = function(addr)
+        local x, y, z = readTriple10Bits(addr)
+        return {
+            x = intToFixFloat(x, 3, 6),
+            y = intToFixFloat(y, 3, 6),
+            z = intToFixFloat(z, 3, 6),
+        }
+    end,
+    ---@param addr int
+    ---@param coord {x: number, y: number, z: number}
+    write = function(addr, coord)
+        local x = fixFloatToInt(coord.x, 3, 6)
+        local y = fixFloatToInt(coord.y, 3, 6)
+        local z = fixFloatToInt(coord.z, 3, 6)
+        mw32(addr, combineTriple10Bits(x, y, z))
+    end,
+},
+VTX_XY = {
+    f = FixFloatConverter(3, 12),
+    ---@param addr int
+    ---@return {x: number, y: number}
+    read = function(addr)
+        return {
+            x = intToFixFloat(r16(addr), 3, 12),
+            y = intToFixFloat(r16(addr+2), 3, 12),
+        }
+    end,
+    ---@param addr int
+    ---@param coord {x: number, y: number}
+    write = function(addr, coord)
+        w16(addr+0, fixFloatToInt(coord.x, 3, 12))
+        w16(addr+2, fixFloatToInt(coord.y, 3, 12))
+    end,
+},
+VTX_XZ = {
+    f = FixFloatConverter(3, 12),
+    ---@param addr int
+    ---@return {x: number, z: number}
+    read = function(addr)
+        return {
+            x = intToFixFloat(r16(addr), 3, 12),
+            z = intToFixFloat(r16(addr+2), 3, 12),
+        }
+    end,
+    ---@param addr int
+    ---@param coord {x: number, z: number}
+    write = function(addr, coord)
+        w16(addr+0, fixFloatToInt(coord.x, 3, 12))
+        w16(addr+2, fixFloatToInt(coord.z, 3, 12))
+    end,
+},
+VTX_YZ = {
+    f = FixFloatConverter(3, 12),
+    ---@param addr int
+    ---@return {y: number, z: number}
+    read = function(addr)
+        return {
+            y = intToFixFloat(r16(addr), 3, 12),
+            z = intToFixFloat(r16(addr+2), 3, 12),
+        }
+    end,
+    ---@param addr int
+    ---@param coord {y: number, z: number}
+    write = function(addr, coord)
+        w16(addr+0, fixFloatToInt(coord.y, 3, 12))
+        w16(addr+2, fixFloatToInt(coord.z, 3, 12))
+    end,
+},
+VTX_DIFF = {
+    f = FixFloatConverter(0, 9),
+    ---@param addr int
+    ---@return {x: number, y: number, z: number}
+    read = function(addr)
+        local x, y, z = readTriple10Bits(addr)
+        return {
+            x = intToFixFloat(x, 0, 9) / 8.0,
+            y = intToFixFloat(y, 0, 9) / 8.0,
+            z = intToFixFloat(z, 0, 9) / 8.0,
+        }
+    end,
+    ---@param addr int
+    ---@param coord {x: number, y: number, z: number}
+    write = function(addr, coord)
+        local x = fixFloatToInt(math.fmod(coord.x * 8, 1.0), 0, 9)
+        local y = fixFloatToInt(math.fmod(coord.x * 8, 1.0), 0, 9)
+        local z = fixFloatToInt(math.fmod(coord.x * 8, 1.0), 0, 9)
+        mw32(addr, combineTriple10Bits(x, y, z))
+    end,
+},
+NORMAL = {
+    f = FixFloatConverter(0, 9),
+    ---@param addr int
+    ---@return {x: number, y: number, z: number}
+    read = function(addr)
+        local x, y, z = readTriple10Bits(addr)
+        return {
+            x = intToFixFloat(x, 0, 9),
+            y = intToFixFloat(y, 0, 9),
+            z = intToFixFloat(z, 0, 9),
+        }
+    end,
+    ---@param addr int
+    ---@param coord {x: number, y: number, z: number}
+    write = function(addr, coord)
+        local x = fixFloatToInt(coord.x, 0, 9)
+        local y = fixFloatToInt(coord.x, 0, 9)
+        local z = fixFloatToInt(coord.x, 0, 9)
+        mw32(addr, combineTriple10Bits(x, y, z))
+    end,
+},
+TEXCOORD = {
+    f = FixFloatConverter(11, 4),
+    ---@param addr int
+    ---@return {x: number, y: number}
+    read = function(addr)
+        return {
+            x = intToFixFloat(r16(addr), 11, 4),
+            y = intToFixFloat(r16(addr+2), 11, 4),
+        }
+    end,
+    ---@param addr int
+    ---@param coord {x: number, y: number}
+    write = function(addr, coord)
+        w16(addr+0, fixFloatToInt(coord.x, 11, 4))
+        w16(addr+2, fixFloatToInt(coord.y, 11, 4))
+    end,
+},
+}
+
+local readAs = {
+    VTX_16 = meshConv.VTX_16.read,
+    VTX_10 = meshConv.VTX_10.read,
+    VTX_XY = meshConv.VTX_XY.read,
+    VTX_XZ = meshConv.VTX_XZ.read,
+    VTX_YZ = meshConv.VTX_YZ.read,
+    VTX_DIFF = meshConv.VTX_DIFF.read,
+    NORMAL = meshConv.NORMAL.read,
+    TEXCOORD = meshConv.TEXCOORD.read,
+}
+local writeAs = {
+    VTX_16 = meshConv.VTX_16.write,
+    VTX_10 = meshConv.VTX_10.write,
+    VTX_XY = meshConv.VTX_XY.write,
+    VTX_XZ = meshConv.VTX_XZ.write,
+    VTX_YZ = meshConv.VTX_YZ.write,
+    VTX_DIFF = meshConv.VTX_DIFF.write,
+    NORMAL = meshConv.NORMAL.write,
+    TEXCOORD = meshConv.TEXCOORD.write,
+}
+meshConv.readAs = readAs
+meshConv.writeAs = writeAs
+
+MESH_LIB = meshConv
 
 local commands = {
 [0x0] = {0, mesh_commands.NOP},
