@@ -1101,3 +1101,1140 @@ lib.irume.start(function()
     end
 end)
 ```
+
+
+## video24 ゴンさん風
+
+```lua
+local function set_left_screen()
+
+w32(0x04000350, 0x99990099) -- 上画面の背景を赤くする
+-- ゴンさん化
+local res = Nitro.read_MDL0(0x02168B54, 0)
+local meshes = res.addrs_mesh
+local num = #meshes
+local v16 = MESH_LIB.VTX_16
+local vdif = MESH_LIB.VTX_DIFF
+printf("%d meshes", num)
+for _, mesh in pairs(pick(meshes, {
+range(1, 3)
+})) do
+local B = Nitro.Bound3D()
+local cnt = Array.countUp()
+Nitro.filter_mesh(mesh.begin, mesh.iend, function(addr, info)
+    if info.name == MESH_COMMANDS.VTX_16 then
+        assert(addr%2==0)
+        local pos = v16.read(addr)
+        B:push(pos.x, pos.y, pos.z)
+    end
+end)
+Nitro.filter_mesh(mesh.begin, mesh.iend, function(addr, info)
+    cnt:add(info.name)
+    if info.name == MESH_COMMANDS.VTX_16 then
+        assert(addr%2==0)
+        local pos = v16.read(addr)
+        local x = pos.x
+        if within(B:xinv(x), 0.4, 1.0) then
+            pos.x = x+3
+        end
+        -- pos.x = pos.x + 1
+        v16.write(addr, pos)
+    end
+end)
+-- cnt:print()
+end
+
+for _, mesh in pairs(pick(meshes, {
+range(9, 9)
+})) do
+local B = Nitro.Bound3D()
+Nitro.filter_mesh(mesh.begin, mesh.iend, function(addr, info)
+    if info.name == MESH_COMMANDS.VTX_16 then
+        assert(addr%2==0)
+        local pos = v16.read(addr)
+        B:push(pos.x, pos.y, pos.z)
+    end
+end)
+Nitro.filter_mesh(mesh.begin, mesh.iend, function(addr, info)
+    if info.name == MESH_COMMANDS.VTX_16 then
+        assert(addr%2==0)
+        local pos = v16.read(addr)
+        pos.x = 1-B:xinv(pos.x)
+        -- pos.x = pos.x + 0.1
+        -- pos.z = pos.z+0.1
+        -- pos.x = pos.x + 1
+        v16.write(addr, pos)
+    elseif info.name == MESH_COMMANDS.VTX_DIFF then
+        local pos = vdif.read(addr)
+        pos.x = pos.x - 0.01
+        -- vdif.write(addr, pos)
+    end
+end)
+end
+
+for _, mesh in pairs(pick(meshes, {
+range(13, 13)
+})) do
+Nitro.filter_mesh(mesh.begin, mesh.iend, function(addr, info)
+    if info.name == MESH_COMMANDS.VTX_16 then
+        assert(addr%2==0)
+        local pos = v16.read(addr)
+        pos.x = pos.x - 0.1
+        -- pos.z = pos.z+0.1
+        -- pos.x = pos.x + 1
+        v16.write(addr, pos)
+    elseif info.name == MESH_COMMANDS.VTX_DIFF then
+        local pos = vdif.read(addr)
+        pos.x = pos.x - 0.01
+        vdif.write(addr, pos)
+    end
+end)
+end
+
+for _, mesh in pairs(pick(meshes, {
+range(6, 6)
+})) do
+Nitro.filter_mesh(mesh.begin, mesh.iend, function(addr, info)
+    if info.name == MESH_COMMANDS.VTX_16 then
+        local pos = v16.read(addr)
+        pos.x = pos.x + 4.5
+        v16.write(addr, pos)
+    end
+end)
+end
+
+-- 黒目
+w32(0x0296E550, 0x0590)
+w32(0x0296E554, 0x1A48)
+w32(0x0296E558, 0x0140)
+w32(0x0296E564, 0x0590)
+w32(0x0296E568, 0x1A48)
+w32(0x0296E56C, 0xFFFFFEB0)
+-- w32(0x0296E550, 0x0600)
+-- w32(0x0296E554, 0x1448)
+-- w32(0x0296E558, 0x0160)
+-- w32(0x0296E564, 0x0600)
+-- w32(0x0296E568, 0x1448)
+-- w32(0x0296E56C, 0xFFFFFEB0)
+
+w32(0x0296E5D8, 0x3000)
+-- まゆ
+w32(0x0296E4EC, 0x0140)
+w32(0x0296E52C, 0x0140)
+w32(0x0296E504, -0x180)
+w32(0x0296E544, 0x0180)
+-- w32(0x0296E4E8, 0)
+-- w32(0x0296E528, 0)
+
+w32(0x0296E5C0, 0x0a20)
+w32(0x0296E5A8, 0x0a20)
+
+local update_time = (function()
+    return function()
+        w16(0x02129050, 0)
+        w16(0x02128768, 0)
+    end
+end)()
+SET_LOOP("update_time", update_time)
+
+w16(0x216E468, 1) -- 瞬きをさせない
+
+
+w32(0x0296E5A8, 0x2200)
+w32(0x0296E5C0, 0x2200)
+-- local res = Nitro.read_MDL0(0x02168B54, 0)
+-- local meshes = res.addrs_mesh
+-- local num = #meshes
+-- local v16 = MESH_LIB.VTX_16
+-- local vdif = MESH_LIB.VTX_DIFF
+
+for _, mesh in pairs(pick(meshes, {
+range(9, 9)
+})) do
+local B = Nitro.Bound3D()
+Nitro.filter_mesh(mesh.begin, mesh.iend, function(addr, info)
+    if info.name == MESH_COMMANDS.VTX_16 then
+        assert(addr%2==0)
+        local pos = v16.read(addr)
+        B:push(pos.x, pos.y, pos.z)
+    end
+end)
+Nitro.filter_mesh(mesh.begin, mesh.iend, function(addr, info)
+    if info.name == MESH_COMMANDS.VTX_16 then
+        assert(addr%2==0)
+        local pos = v16.read(addr)
+        -- if within(B:zinv(pos.z), 0,0.3) then
+        -- pos.z = pos.z+4.1
+        -- end
+        local dx = math.max(B:xinv(pos.x) *0.2 - 0.5, 0)
+        pos.z = B:zinv(pos.z)*0.1 - 0.05 - dx
+        pos.x = pos.x - 0.15
+
+        -- pos.x = pos.x + 0.1
+        -- pos.x = pos.x + 1
+        v16.write(addr, pos)
+    elseif info.name == MESH_COMMANDS.VTX_DIFF then
+        local pos = vdif.read(addr)
+        pos.x = pos.x + 0.01
+        -- vdif.write(addr, pos)
+    end
+end)
+end
+
+end
+
+
+local set_right_screen = (function()
+local _FONTS = {
+["貴"] = {
+"........",
+"....#...",
+"..#####.",
+"..#.#.#.",
+".#######",
+"..#...#.",
+"..#####.",
+".##...##",
+},
+["様"] = {
+"........",
+"..#.#.#.",
+".#######",
+"..#.###.",
+".#######",
+".###.#.#",
+"..#.###.",
+"..##.#.#",
+},
+["を"] = {
+"........",
+"....#...",
+"..#####.",
+"...#....",
+"..###.##",
+".#..##..",
+"...#.#..",
+"....####",
+},
+["殺"] = {
+"........",
+"..#.####",
+"...#.#.#",
+".##.#...",
+"...#.###",
+".#####.#",
+"..###.#.",
+".#.#.#.#",
+},
+["す"] = {
+"........",
+".....#..",
+".#######",
+"....##..",
+"...#.#..",
+"....##..",
+".....#..",
+"....#...",
+},
+["お"] = {
+"........",
+"...#....",
+".####.#.",
+"...#...#",
+"...####.",
+"..##...#",
+".#.#...#",
+"..##.##.",
+},
+["う"] = {
+"........",
+"..####..",
+"........",
+"..####..",
+".#....#.",
+"......#.",
+".....#..",
+"..###...",
+},
+["終"] = {
+"........",
+"..#..##.",
+".#..#.#.",
+"..#..#..",
+".#.##.##",
+"..#..#..",
+".###....",
+"..#..##.",
+},
+["や"] = {
+"........",
+"..#..#..",
+"..#.###.",
+".###...#",
+"...#..#.",
+"...#....",
+"....#...",
+"....#...",
+},
+["み"] = {
+"........",
+"..###...",
+"....#...",
+"...#..#.",
+"..#####.",
+".#.#..##",
+".##...#.",
+"....##..",
+},
+["わ"] = {
+"........",
+"...#....",
+"...#.##.",
+".####..#",
+"...#...#",
+"..##...#",
+".#.#...#",
+"...#.##.",
+},
+["も"] = {
+"........",
+"...#....",
+".######.",
+"..#.....",
+".######.",
+"..#....#",
+"..#....#",
+"...####.",
+},
+["っ"] = {
+"........",
+"........",
+"........",
+"...###..",
+".##...#.",
+"......#.",
+".....#..",
+"...##...",
+},
+["て"] = {
+"........",
+".#######",
+"....#...",
+"...#....",
+"...#....",
+"...#....",
+"...#....",
+"....###.",
+},
+["い"] = {
+"........",
+".#....#.",
+".#.....#",
+".#.....#",
+".#.....#",
+".#.....#",
+".#.#....",
+"..#.....",
+},
+}
+
+local function pos(x, y)
+    return lib.pos.Morton(x, y, 4, 0x20, 0x400) + 0x06600460
+end
+
+local function pos2(x, y)
+    return lib.pos.Morton(x, y, 4, 0x20, 0x400) + 0x06204000
+end
+
+local texts = {
+{"終わってもいい", 7},
+{"貴様を殺す", 5},
+{"もうおやすみ", 6},
+}
+local idx = 1
+local function bit(x, y)
+    local len = texts[idx][2]
+    local _x = x % 8
+    local _y = (y+(x//8)*27) % (8*len)
+    local _y2, _y3 = _y // 8, _y % 8
+    _x = 7-_x
+    local c = string.sub(texts[idx][1], _y2*3+1, _y2*3+3)
+    local _c = _FONTS[c]
+    if not _c then
+        error(string.format("NOT FOUND \"%s\"", c))
+    end
+    local c2 = string.sub(assert(_c[_x+1]), _y3+1, _y3+1)
+    return c2 == "#" and 0xf or 0x1
+end
+
+local enable_noise = true
+local function noise()
+    if not enable_noise then return 0xf end
+    return (rand(0,5)>=1 and 0xf or 0x1)
+end
+local function update(i)
+lib.image.filterObj_HalfByte()
+:width(256):height(192)
+:reverse()
+:addr(pos)
+:go(function(x, y, vs)
+    x = x - 4 + i//4
+    y = y - 9 + i
+    return bit(x, y) & noise()
+end)
+
+lib.image.filterObj_HalfByte()
+:width(256):height(192)
+:reverse()
+:addr(pos2)
+:go(function(x, y, vs)
+    x = x - 4 + i//4
+    y = y - 9 + i
+    return bit(x, y) & noise()
+end)
+end
+local r = RC(10)
+
+local t = 0
+return function()
+    t = t + 8
+    if r() then
+        local _idx = rand(1, #texts)
+        if idx ~= _idx then
+            idx = _idx
+        end
+    end
+    update(t)
+end
+end)()
+
+local ready_m = lib.at(0x0210b024)
+local ready = false
+local ready_mdl_m = lib.at(0x02168B54)
+local ready_mdl = false
+local mdl_change_cooltime = CntOnce(5)
+mdl_change_cooltime.active = false
+local time = 0
+
+local vb = 0x10
+local v1 = ValueUpdater(1, -vb, vb, VUO.addrand(-8, 8))
+:w32(0x0296E4A8)
+local v2 = ValueUpdater(1, -0xc00-vb, -0xc00+vb, VUO.addrand(-8, 8))
+:w32(0x0296E4AC)
+
+function loop()
+    if not ready_mdl then
+        if ready_mdl_m:r8() ~= 0 then
+            ready_mdl = true
+            mdl_change_cooltime.active = true
+        end
+    end
+    if mdl_change_cooltime() then
+        set_left_screen()
+        print("=== FIRE ===")
+    end
+    if not ready then
+        if ready_m:r32() == 0 then
+            return
+        end
+        print("== READY!! ==")
+        -- SET_LOOP("right", set_right_screen)
+        ready = true
+    else
+        time = time + 1
+        CLS()
+        printf("time: %f", time / 60)
+        v1() v2()
+    end
+end
+
+lib.irume.start(function()
+    local head = 0x03EC8A00
+    local as = {}
+    local prev = {}
+    local ps = {}
+    local tone = 0xe
+    for i = 0, 18 do
+        as[i] = head + 0x40 * i
+        prev[i] = 0
+        ps[i] = rand(-50, -46)*0x20
+    end
+    local _t = 0x2c
+    local p1 = 0x1f
+    local p2 = 0x18
+    local vol = 0x16
+    local r = RC(90)
+    local rl = RL(300)
+    return function()
+        rl()
+        for i, a in pairs(as) do
+            w16(a+vol, 0x8000)
+            if rl.fired and r() then
+                ps[i] = rand(-80, 160)*0x20
+            end
+            w16(a+p2, ps[i])
+            local t = r8(a + _t)
+            if prev[i] < t then
+                t = rand(0xf0, 0xff)
+                t = t * t
+            end
+            w8(a+_t, t)
+            prev[i] = t
+            w8(a+tone, 2)
+        end
+    end
+end)
+```
+
+<details open>
+<summary>(旧版)</summary>
+<div>
+
+```lua
+
+w32(0x04000350, 0x99990099) -- 上画面の背景を赤くする
+-- ゴンさん化
+local res = Nitro.read_MDL0(0x02168B54, 0)
+local meshes = res.addrs_mesh
+local num = #meshes
+local v16 = MESH_LIB.VTX_16
+local vdif = MESH_LIB.VTX_DIFF
+printf("%d meshes", num)
+for _, mesh in pairs(pick(meshes, {
+range(1, 3)
+})) do
+local B = Nitro.Bound3D()
+local cnt = Array.countUp()
+Nitro.filter_mesh(mesh.begin, mesh.iend, function(addr, info)
+    if info.name == MESH_COMMANDS.VTX_16 then
+        assert(addr%2==0)
+        local pos = v16.read(addr)
+        B:push(pos.x, pos.y, pos.z)
+    end
+end)
+Nitro.filter_mesh(mesh.begin, mesh.iend, function(addr, info)
+    cnt:add(info.name)
+    if info.name == MESH_COMMANDS.VTX_16 then
+        assert(addr%2==0)
+        local pos = v16.read(addr)
+        local x = pos.x
+        if within(B:xinv(x), 0.4, 1.0) then
+            pos.x = x+3
+        end
+        -- pos.x = pos.x + 1
+        v16.write(addr, pos)
+    end
+end)
+-- cnt:print()
+end
+
+for _, mesh in pairs(pick(meshes, {
+range(9, 9)
+})) do
+local B = Nitro.Bound3D()
+Nitro.filter_mesh(mesh.begin, mesh.iend, function(addr, info)
+    if info.name == MESH_COMMANDS.VTX_16 then
+        assert(addr%2==0)
+        local pos = v16.read(addr)
+        B:push(pos.x, pos.y, pos.z)
+    end
+end)
+Nitro.filter_mesh(mesh.begin, mesh.iend, function(addr, info)
+    if info.name == MESH_COMMANDS.VTX_16 then
+        assert(addr%2==0)
+        local pos = v16.read(addr)
+        pos.x = 1-B:xinv(pos.x)
+        -- pos.x = pos.x + 0.1
+        -- pos.z = pos.z+0.1
+        -- pos.x = pos.x + 1
+        v16.write(addr, pos)
+    elseif info.name == MESH_COMMANDS.VTX_DIFF then
+        local pos = vdif.read(addr)
+        pos.x = pos.x - 0.01
+        -- vdif.write(addr, pos)
+    end
+end)
+end
+
+for _, mesh in pairs(pick(meshes, {
+range(13, 13)
+})) do
+Nitro.filter_mesh(mesh.begin, mesh.iend, function(addr, info)
+    if info.name == MESH_COMMANDS.VTX_16 then
+        assert(addr%2==0)
+        local pos = v16.read(addr)
+        pos.x = pos.x - 0.1
+        -- pos.z = pos.z+0.1
+        -- pos.x = pos.x + 1
+        v16.write(addr, pos)
+    elseif info.name == MESH_COMMANDS.VTX_DIFF then
+        local pos = vdif.read(addr)
+        pos.x = pos.x - 0.01
+        vdif.write(addr, pos)
+    end
+end)
+end
+
+for _, mesh in pairs(pick(meshes, {
+range(6, 6)
+})) do
+Nitro.filter_mesh(mesh.begin, mesh.iend, function(addr, info)
+    if info.name == MESH_COMMANDS.VTX_16 then
+        local pos = v16.read(addr)
+        pos.x = pos.x + 4.5
+        v16.write(addr, pos)
+    end
+end)
+end
+
+-- 黒目
+w32(0x0296E550, 0x0590)
+w32(0x0296E554, 0x1A48)
+w32(0x0296E558, 0x0140)
+w32(0x0296E564, 0x0590)
+w32(0x0296E568, 0x1A48)
+w32(0x0296E56C, 0xFFFFFEB0)
+-- w32(0x0296E550, 0x0600)
+-- w32(0x0296E554, 0x1448)
+-- w32(0x0296E558, 0x0160)
+-- w32(0x0296E564, 0x0600)
+-- w32(0x0296E568, 0x1448)
+-- w32(0x0296E56C, 0xFFFFFEB0)
+
+w32(0x0296E5D8, 0x3000)
+-- まゆ
+w32(0x0296E4EC, 0x0140)
+w32(0x0296E52C, 0x0140)
+w32(0x0296E504, -0x180)
+w32(0x0296E544, 0x0180)
+-- w32(0x0296E4E8, 0)
+-- w32(0x0296E528, 0)
+
+w32(0x0296E5C0, 0x0a20)
+w32(0x0296E5A8, 0x0a20)
+
+local update_time = (function()
+    return function()
+        w16(0x02129050, 0)
+        w16(0x02128768, 0)
+    end
+end)()
+SET_LOOP("update_time", update_time)
+
+w16(0x216E468, 1) -- 瞬きをさせない
+
+
+
+w32(0x0296E5A8, 0x2200)
+w32(0x0296E5C0, 0x2200)
+-- local res = Nitro.read_MDL0(0x02168B54, 0)
+-- local meshes = res.addrs_mesh
+-- local num = #meshes
+-- local v16 = MESH_LIB.VTX_16
+-- local vdif = MESH_LIB.VTX_DIFF
+
+for _, mesh in pairs(pick(meshes, {
+range(9, 9)
+})) do
+local B = Nitro.Bound3D()
+Nitro.filter_mesh(mesh.begin, mesh.iend, function(addr, info)
+    if info.name == MESH_COMMANDS.VTX_16 then
+        assert(addr%2==0)
+        local pos = v16.read(addr)
+        B:push(pos.x, pos.y, pos.z)
+    end
+end)
+Nitro.filter_mesh(mesh.begin, mesh.iend, function(addr, info)
+    if info.name == MESH_COMMANDS.VTX_16 then
+        assert(addr%2==0)
+        local pos = v16.read(addr)
+        -- if within(B:zinv(pos.z), 0,0.3) then
+        -- pos.z = pos.z+4.1
+        -- end
+        local dx = math.max(B:xinv(pos.x) *0.2 - 0.5, 0)
+        pos.z = B:zinv(pos.z)*0.1 - 0.05 - dx
+        pos.x = pos.x - 0.15
+
+        -- pos.x = pos.x + 0.1
+        -- pos.x = pos.x + 1
+        v16.write(addr, pos)
+    elseif info.name == MESH_COMMANDS.VTX_DIFF then
+        local pos = vdif.read(addr)
+        pos.x = pos.x + 0.01
+        -- vdif.write(addr, pos)
+    end
+end)
+end
+
+
+
+local function set_right_screen()
+local _FONTS = {
+["終"] = {
+"........",
+"..#..##.",
+".#..#.#.",
+"..#..#..",
+".#.##.##",
+"..#..#..",
+".###....",
+"..#..##.",
+},
+["わ"] = {
+"........",
+"...#....",
+"...#.##.",
+".####..#",
+"...#...#",
+"..##...#",
+".#.#...#",
+"...#.##.",
+},
+["も"] = {
+"........",
+"...#....",
+".######.",
+"..#.....",
+".######.",
+"..#....#",
+"..#....#",
+"...####.",
+},
+["っ"] = {
+"........",
+"........",
+"........",
+"...###..",
+".##...#.",
+"......#.",
+".....#..",
+"...##...",
+},
+["て"] = {
+"........",
+".#######",
+"....#...",
+"...#....",
+"...#....",
+"...#....",
+"...#....",
+"....###.",
+},
+["い"] = {
+"........",
+".#....#.",
+".#.....#",
+".#.....#",
+".#.....#",
+".#.....#",
+".#.#....",
+"..#.....",
+},
+}
+
+local function pos(x, y)
+    return lib.pos.Morton(x, y, 4, 0x20, 0x400) + 0x06600460
+end
+
+local function pos2(x, y)
+    return lib.pos.Morton(x, y, 4, 0x20, 0x400) + 0x06204000
+end
+
+local function bit(x, y)
+    local _y = y % 56
+    local _y2, _y3 = _y // 8, _y % 8
+    local _x = x % 8
+    _x = 7-_x
+    local c = string.sub("終わってもいい", _y2*3+1, _y2*3+3)
+    local c2 = string.sub(assert(_FONTS[c][_x+1]), _y3+1, _y3+1)
+    return c2 == "#" and 0xf or 0x1
+end
+
+lib.image.filterObj_HalfByte()
+:width(256):height(192)
+:reverse()
+:addr(pos)
+:go(function(x, y, vs)
+    x = x - 4
+    y = y - 9
+    return bit(x, y)
+end)
+
+lib.image.filterObj_HalfByte()
+:width(256):height(192)
+:reverse()
+:addr(pos2)
+:go(function(x, y, vs)
+    x = x - 4
+    y = y - 9
+    return bit(x, y)
+end)
+
+end
+
+local ready_m = lib.at(0x0210b024)
+local ready = false
+function loop()
+    if not ready then
+        if ready_m:r32() == 0 then
+            return
+        end
+        print("== READY!! ==")
+        set_right_screen()
+        ready = true
+    end
+end
+
+-- イルームは同じなので省略
+```
+
+</div>
+</details>
+
+---
+
+## video24 カツラ風 & へんな眉毛
+
+```lua
+
+local res = Nitro.read_MDL0(0x02168B54, 0)
+local meshes = res.addrs_mesh
+local num = #meshes
+local v16 = MESH_LIB.VTX_16
+local vdif = MESH_LIB.VTX_DIFF
+
+for _, mesh in pairs(pick(meshes, {
+range(1, 3)
+})) do
+Nitro.filter_mesh(mesh.begin, mesh.iend, function(addr, info)
+    if info.name == MESH_COMMANDS.VTX_16 then
+        assert(addr%2==0)
+        local pos = v16.read(addr)
+        pos.x = pos.x /2+0.4
+        pos.z=pos.z/3
+        pos.y=pos.y+0.1
+        -- pos.z = pos.z+0.1
+        -- pos.x = pos.x + 1
+        v16.write(addr, pos)
+    elseif info.name == MESH_COMMANDS.VTX_DIFF then
+        local pos = vdif.read(addr)
+        pos.x = pos.x + 0.005
+        -- vdif.write(addr, pos)
+    end
+end)
+end
+for _, mesh in pairs(pick(meshes, {
+range(11, 11),
+range(13, 13),
+})) do
+Nitro.filter_mesh(mesh.begin, mesh.iend, function(addr, info)
+    if info.name == MESH_COMMANDS.VTX_16 then
+        assert(addr%2==0)
+        local pos = v16.read(addr)
+        pos.x = pos.x - 0.1
+        -- pos.z = pos.z+0.1
+        -- pos.x = pos.x + 1
+        v16.write(addr, pos)
+    elseif info.name == MESH_COMMANDS.VTX_DIFF then
+        local pos = vdif.read(addr)
+        pos.x = pos.x - 0.01
+        vdif.write(addr, pos)
+    end
+end)
+end
+w32(0x0296E4E8, 0)
+w32(0x0296E528, 0)
+
+w32(0x0296E5C0, 0x0a20)
+w32(0x0296E5A8, 0x0a20)
+
+-- 激チカ
+w32(0x0296E4BC, 0x0a00)
+w32(0x0296E4C0, 0xffffe800)
+
+
+local update_time = (function()
+    return function()
+        w16(0x02129050, 0)
+        w16(0x02128768, 0)
+w16(0x216E468, 1) -- 瞬きをさせない
+    end
+end)()
+SET_LOOP("update_time", update_time)
+
+
+local update_move = (function()
+local v1 = ValueUpdater(1, -0x600, 0x600, VUO.addrand(-0x8, 0x8, 0xa0))
+:w32(0x0296E4A8)
+local c = Cnt(2)
+return function()
+    if c() then return end
+    v1()
+end
+end)()
+
+SET_LOOP("move", update_move)
+
+
+lib.irume.start(function()
+    local head = 0x03EC8A00
+    local as = {}
+    local prev = {}
+    local ps = {}
+    local tone = 0xe
+    for i = 0, 18 do
+        as[i] = head + 0x40 * i
+        prev[i] = 0
+        ps[i] = 0x200
+    end
+    local _t = 0x2c
+    local p1 = 0x1f
+    local p2 = 0x18
+    local vol = 0x16
+    local r = RC(90)
+    local sin = ValueUpdater(90, -0x100, 0x100, "pingpong")
+    return function()
+        sin()
+        for i, a in pairs(as) do
+            w16(a+vol, 0x80)
+            w16(a+p2, sin.v)
+            w8(a+tone, 2)
+        end
+    end
+end)
+```
+
+## video24 アンニュイ顔
+
+```lua
+
+local res = Nitro.read_MDL0(0x02168B54, 0)
+local meshes = res.addrs_mesh
+local num = #meshes
+local v16 = MESH_LIB.VTX_16
+local vdif = MESH_LIB.VTX_DIFF
+
+for _, mesh in pairs(pick(meshes, {
+range(1, 3)
+})) do
+Nitro.filter_mesh(mesh.begin, mesh.iend, function(addr, info)
+    if info.name == MESH_COMMANDS.VTX_16 then
+        assert(addr%2==0)
+        local pos = v16.read(addr)
+        pos.x = pos.x /2-0
+        pos.z=pos.z
+        pos.y=pos.y+0.5
+        -- pos.z = pos.z+0.1
+        -- pos.x = pos.x + 1
+        v16.write(addr, pos)
+    elseif info.name == MESH_COMMANDS.VTX_DIFF then
+        local pos = vdif.read(addr)
+        pos.x = pos.x + 0.005
+        -- vdif.write(addr, pos)
+    end
+end)
+end
+for _, mesh in pairs(pick(meshes, {
+range(11, 11),
+range(13, 13),
+})) do
+Nitro.filter_mesh(mesh.begin, mesh.iend, function(addr, info)
+    if info.name == MESH_COMMANDS.VTX_16 then
+        assert(addr%2==0)
+        local pos = v16.read(addr)
+        pos.x = pos.x - 0.1
+        -- pos.z = pos.z+0.1
+        -- pos.x = pos.x + 1
+        v16.write(addr, pos)
+    elseif info.name == MESH_COMMANDS.VTX_DIFF then
+        local pos = vdif.read(addr)
+        pos.x = pos.x - 0.01
+        vdif.write(addr, pos)
+    end
+end)
+end
+w32(0x0296E4E8, 0)
+w32(0x0296E528, 0)
+
+w32(0x0296E5C0, 0x06b0)
+w32(0x0296E5A8, 0x06b0)
+-- w32(0x0296E5C0, 0x0a20)
+-- w32(0x0296E5A8, 0x0a20)
+
+-- 激チカ
+w32(0x0296E4BC, 0x0a00)
+w32(0x0296E4C0, 0xffffe800)
+
+-- メガネを消す
+w32(0x0296E5D8, 0x9000) -- 568で鼻に設置(これはボツにした)
+
+local update_time = (function()
+    return function()
+        w16(0x02129050, 0)
+        w16(0x02128768, 0)
+w16(0x216E468, 1) -- 瞬きをさせない
+    end
+end)()
+SET_LOOP("update_time", update_time)
+
+
+lib.irume.start(function()
+    local head = 0x03EC8A00
+    local as = {}
+    local prev = {}
+    local ps = {}
+    local tone = 0xe
+    for i = 0, 18 do
+        as[i] = head + 0x40 * i
+        prev[i] = 0
+        ps[i] = 0x200
+    end
+    local _t = 0x2c
+    local p1 = 0x1f
+    local p2 = 0x18
+    local vol = 0x16
+    local r = RC(90)
+    return function()
+        for i, a in pairs(as) do
+            w16(a+vol, 0x80)
+            ps[i] = (ps[i] - 0x4) % 0x300
+            w16(a+p2, ps[i]-0x300)
+            w8(a+tone, 2)
+        end
+    end
+end)
+```
+
+## video24 髪の毛を上下に & 従来のゆがませ
+
+```lua
+
+local function GO()
+local res = Nitro.read_MDL0(0x02168B54, 0)
+local meshes = res.addrs_mesh
+local num = #meshes
+local f = FixFloatConverter(3, 12)
+
+local hair = {}
+
+for _, mesh in pairs(pick(meshes, {
+range(3, 3)
+})) do
+local B = Nitro.Bound3D()
+Nitro.filter_mesh(mesh.begin, mesh.iend, function(addr, info)
+    if info.name == MESH_COMMANDS.VTX_16 then
+        assert(addr%2==0)
+        local d = addr - mesh.begin
+        if within(d, 0xd0, 0xdf) then
+            return
+        end
+        if within(d, 0x2d0, 0x2df) then
+            return
+        end
+        if within(d, 0x690, 0x69f) then
+            return
+        end
+        if within(d, 0xcd0, 0xcdf) then
+            return
+        end
+        -- if addr - mesh.begin < 0x080 then
+        --     return
+        -- end
+        -- if addr - mesh.begin < 0xd00 then
+        hair[addr] = r16(addr)
+    end
+end)
+end
+local v = ValueUpdater(40, 0, 0x40, "pingpong")
+-- 0.1
+
+local res = Nitro.read_JNT0(0x0216E434, 0)
+local vs = {}
+for _, a in pairs(res.addrs_tr) do
+    vs[a] = r32(a)
+end
+
+-- 激チカ
+local rl = RL(500)
+local hair_d = 0
+local hair_drc = Cnt(40)
+local hair_dr = RC(60)
+
+local face_c = Cnt(8)
+local face_cr = RC(5)
+SET_LOOP("main", function()
+    v()
+    local d = v.v / 0x100 - hair_d
+    for a, _v in pairs(hair) do
+        w16(a, f:toi(f:tof(_v) + d))
+    end
+
+    if not rl() then return end
+    if hair_dr() or hair_drc() then
+        hair_drc.i = 0
+        hair_d = rand(-2, 6)/10
+    end
+
+    if face_c() then
+        if face_cr() then
+            face_c:N(rand(7, 9))
+        end
+    for a, v in pairs(vs) do
+        w32(a, v+rand(-0x80, 0x80))
+    end
+    end
+w32(0x0296E4BC, 0x0a00)
+w32(0x0296E4C0, 0xffffe800)
+
+        w16(0x02129050, 0)
+        w16(0x02128768, 0)
+w16(0x216E468, 1) -- 瞬きをさせない
+end)
+
+w32(0x04000350, 0xffffffff) -- 上画面の背景を消す
+end
+
+local r = CntOnce(210)
+local time = 0
+function loop()
+    if r() then
+        print("GO!!")
+        GO()
+    end
+    time = time + 1
+    CLS()
+    printf("time: %f", time/60)
+end
+
+lib.irume.start(function()
+    local head = 0x03EC8A00
+    local as = {}
+    local prev = {}
+    local ps = {}
+    local tone = 0xe
+    for i = 0, 18 do
+        as[i] = head + 0x40 * i
+        prev[i] = 0
+        ps[i] = 0x200
+    end
+    local _t = 0x2c
+    local p1 = 0x1f
+    local p2 = 0x18
+    local vol = 0x16
+    local r = RC(90)
+    local ctone = 0x18
+    local ctone_r = RC(120)
+    local tones = {
+0x0, 0x2, 0x4, 0x5, 0x7, 0xb, 0xc, 0xd, 0xe, 0xf, 0x10, 0x11, 0x12, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19,
+    }
+    local rl = RL(600)
+    return function()
+        if rl() and ctone_r() then
+            ctone = tones[rand(1, #tones)]
+        end
+        for i, a in pairs(as) do
+            w8(a+tone, ctone)
+        end
+    end
+end)
+```

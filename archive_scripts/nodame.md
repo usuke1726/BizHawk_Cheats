@@ -2521,3 +2521,174 @@ function loop()
     update_face()
 end
 ```
+
+## video24 千秋静止
+
+
+```lua
+
+local addrs = {
+0x0228ABF0, -- 千秋指揮アニメーション
+}
+CLS()
+-- local ftr = FixFloatConverter(19, 12)
+
+local samp_x_addrs = {}
+local basis_mat = {}
+
+for _, addr in pairs(addrs) do
+local res = Nitro.read_JNT0(addr, "tmp.txt")
+local anim = res.addrs_anim
+for _, a in pairs(res.addrs_basis_mat) do
+    table.insert(basis_mat, a)
+end
+printf("%d anims", #anim)
+for i, a in pairs(anim) do
+    assert(a%2==0)
+    local track = assert(res.tracks[i][2])
+    local s = ""
+    local f = track.flags
+    if not f.no_translation_channels then
+        if f.translation_x_constant then
+            local xaddr = track.CurveX_Const.addr
+            printf("  - X Const 0x%08X", xaddr)
+        else
+            local xaddr = track.CurveX.sample_off + a
+            printf("  - X Sampl 0x%08X (width: %d)", xaddr, track.CurveX.width)
+            -- table.insert(samp_x_addrs, xaddr)
+        end
+        if not f.translation_y_constant then
+            local xaddr = track.CurveY.sample_off + a
+            -- printf("  - X Sampl 0x%08X (width: %d)", xaddr, track.CurveX.width)
+            table.insert(samp_x_addrs, xaddr)
+        end
+        if not f.translation_z_constant then
+            local xaddr = track.CurveZ.sample_off + a
+            -- printf("  - X Sampl 0x%08X (width: %d)", xaddr, track.CurveX.width)
+            -- table.insert(samp_x_addrs, xaddr)
+        end
+    end
+    if not f.no_rotation_channel then
+        if f.rotation_constant then
+            printf("ROTCONST")
+        else printf("ROTSAMP")
+        end
+    end
+    -- printf("track [%d][1]: %s", i, s)
+    -- printf("frames: %d", r16(a+4)) -- 61
+    -- w16(a + 4, 1021)
+    w16(a + 4, 1)
+    -- printf("tracks: %d", r16(a+6)) -- 32
+    w16(a + 6, 2)
+end
+printf("================\n")
+end
+local fx = FixFloatConverter(19, 12)
+local vn = 40
+local v = ValueUpdater(vn, 0, 0x10000, "parabola")
+local samp_x_vals = {}
+for _, a in pairs(samp_x_addrs) do
+    samp_x_vals[a] = fx:tof(r32(a))
+end
+local ok = false
+local key = DS.key.lis("A"):on("down", function() ok = true end)
+function loop()
+    -- for _, a in pairs(basis_mat) do
+    --     for i = 0, 20 do
+    --         -- w32(a+i*4, rand(0, 0xffffffff))
+    --         add32(a+i*4, rand(-1,0x1)*0x10000)
+    --     end
+    -- end
+    key()
+    if not ok then return end
+    v()
+    if v.i == 0 then
+        if rand(1,4) == 1 then
+            v.n = vn
+            v:minmax(0, 0x10000)
+        else
+            v.n = vn//2
+            v:minmax(0, 0x4000)
+        end
+    end
+    for _, a in pairs(samp_x_addrs) do
+        -- w32(a, rand(0,0xffffffff))
+        w32(a, fx:toi(samp_x_vals[a]+ v.v/0x1000))
+    end
+end
+
+```
+
+## video24 千秋カクカク回転
+
+```lua
+
+local addrs = {
+0x0228ABF0, -- 千秋指揮アニメーション
+}
+CLS()
+-- local ftr = FixFloatConverter(19, 12)
+
+local samp_x_addrs = {}
+local basis_mat = {}
+
+for _, addr in pairs(addrs) do
+local res = Nitro.read_JNT0(addr, "tmp.txt")
+local anim = res.addrs_anim
+-- for _, a in pairs(res.addrs_basis_mat) do
+--     table.insert(basis_mat, a)
+-- end
+for _, a in pairs(res.addrs_pivot_mat) do
+    table.insert(basis_mat, a)
+end
+for i, a in pairs(anim) do
+    assert(a%2==0)
+    w16(a + 4, 10)
+    w16(a + 6, 10)
+end
+end
+local fx = FixFloatConverter(19, 12)
+local vn = 40
+local v = ValueUpdater(vn, 0, 0x10000, "parabola")
+local samp_x_vals = {}
+for _, a in pairs(samp_x_addrs) do
+    samp_x_vals[a] = fx:tof(r32(a))
+end
+local ok = false
+local key = DS.key.lis("A"):on("down", function() ok = true end)
+function loop()
+    for _, a in pairs(basis_mat) do
+        for i = 0, 0x10 do
+            add32(a+i*4, rand(-1,0x1)*0x100)
+        end
+    end
+end
+
+lib.irume.start(function()
+    local head = 0x03eb8660
+    local as = {}
+    local poses = {}
+    local t = 0x20
+    local p1 = 0x13
+    local p2 = 0x06
+    local vol = 0x0b
+    local pps = {}
+    for i = 0, 15 do
+        as[i] = head + 0x40*i
+    end
+    local r = RC(120)
+    local m = lib.at(head)
+    local ps = {1,6,11,16,21}
+    local c = Cnt(10, #ps)
+    return function()
+        c()
+        for i, a in pairs(as) do
+            w8(a+vol, 0x44)
+            w8(a+vol+1, 0x44)
+            local __p = ps[c.i+1]
+            if __p < 0 then __p = 0x100+__p end
+            w16(a+p2, (__p<<8)|__p)
+        end
+    end
+end)
+```
