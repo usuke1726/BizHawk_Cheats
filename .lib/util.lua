@@ -81,7 +81,7 @@ end
 ---@param z int
 ---@return FixFloatConverterObj
 function FixFloatConverter(y, z)
-    assert(y > 0 and z > 0, "y or z is negative")
+    assert(y >= 0 and z >= 0, "y or z is negative")
     return setmetatable({y = y, z = z}, {__index = FixFloatConverterObj})
 end
 
