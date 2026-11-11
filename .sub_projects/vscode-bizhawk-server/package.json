@@ -176,7 +176,7 @@
     "@types/vscode": "^1.125.0",
     "@typescript-eslint/eslint-plugin": "^8.61.1",
     "@typescript-eslint/parser": "^8.61.1",
-    "eslint": "^9.39.4",
+    "eslint": "^10.14.0",
     "ts-loader": "^9.6.1",
     "typescript": "^6.0.3",
     "webpack": "^5.107.2",
