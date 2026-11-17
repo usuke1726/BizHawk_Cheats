@@ -30,15 +30,26 @@ loop = nil
 local loop_callbacks = {}
 local loop_callbacks_last_id = 0
 
+local is_calling = false
+
+---@type {id: int | string, callback: fun(), type: "set" | "delete"}[]
+local loop_callbacks_change_query = {}
+
 ---@param id int | string
 ---@param callback fun()
 local function _set_loop(id, callback)
+    if is_calling then
+        table.insert(loop_callbacks_change_query, {
+            id = id, callback = callback, type = "set"
+        })
+        return
+    end
     loop_callbacks[id] = callback
 end
 ---@param id int | string
 ---@param callback fun(): fun()
 local function _xset_loop(id, callback)
-    loop_callbacks[id] = callback()
+    _set_loop(id, callback())
 end
 SET_LOOP = _set_loop
 XSET_LOOP = _xset_loop
@@ -58,7 +69,7 @@ end
 ---@return int
 local function _add_loop(callback)
     local id = _find_id()
-    loop_callbacks[id] = callback
+    _set_loop(id, callback)
     return id
 end
 ADD_LOOP = _add_loop
@@ -66,12 +77,18 @@ ADD_LOOP = _add_loop
 ---@return int
 local function _xadd_loop(callback)
     local id = _find_id()
-    loop_callbacks[id] = callback()
+    _set_loop(id, callback())
     return id
 end
 XADD_LOOP = _xadd_loop
 ---@param id int | string
 local function _delete_loop(id)
+    if is_calling then
+        table.insert(loop_callbacks_change_query, {
+            id = id, callback = nil, type = "delete"
+        })
+        return
+    end
     loop_callbacks[id] = nil
 end
 DELETE_LOOP = _delete_loop
@@ -89,12 +106,22 @@ local function main()
         success, mes = pcall(loop)
         if not success then print(mes) loop = nil end
     end
+    is_calling = true
     for id, fun in pairs(loop_callbacks) do
         if fun then
             success, mes = pcall(fun)
             if not success then print(mes) loop_callbacks[id] = nil end
         end
     end
+    is_calling = false
+    for _, info in pairs(loop_callbacks_change_query) do
+        if info.type == "set" then
+            loop_callbacks[info.id] = info.callback
+        else
+            loop_callbacks[info.id] = nil
+        end
+    end
+    loop_callbacks_change_query = {}
 end
 
 local _ds = {
