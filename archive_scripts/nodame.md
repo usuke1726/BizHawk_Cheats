@@ -2692,3 +2692,58 @@ lib.irume.start(function()
     end
 end)
 ```
+
+## video26 常にショック顔 & 指揮あらぶり
+
+```lua
+
+local m1 = lib.at(0x02071E22)
+local m2 = lib.at(0x02071E3A)
+local c = Cnt(2)
+function loop()
+    w8(0x0206FA3B, 0) -- 音符をゴミに
+    w16(0x02071B76, 0x100)
+    w8(0x02071B79, 0x0)
+    -- m1:Tadd8(1, 1, 1, 0x20)
+    m1:Tadd8(1, -0x10, 1)
+    -- m2:Tadd8(1, -0x10, 1)
+    if c() then
+        w8(0x02071E0A, rand(0, 0x50))
+        -- w32(0x02071E08, math.max(r32(0x02071E08)-0x10000, 0))
+    end
+end
+
+
+lib.irume.start(function()
+    local head = 0x03eb8660
+    local as = {}
+    local poses = {}
+    local t = 0x20
+    local p1 = 0x13
+    local p2 = 0x06
+    local vol = 0x0b
+    local pps = {}
+    for i = 0, 15 do
+        as[i] = head + 0x40*i
+    end
+    local r = RC(120)
+    local m = lib.at(head)
+    local ps = {1,6,11,16,21}
+    local c = Cnt(10, #ps)
+    return function()
+        c()
+        for i, a in pairs(as) do
+            if not poses[i] or r() then
+                poses[i] = r32(a + 0x28)
+            end
+            w32(a + 0x28, poses[i])
+            w8(a+p1, rand(-5,5))
+            if within(i, 10, 15) then
+                w8(a+p1, rand(-15,-5))
+            end
+
+            m:with(a+t):Tadd8(1, rand(-5, -1), 1, 0x20)
+        end
+    end
+end)
+```

@@ -238,6 +238,69 @@ ROMのFNTは、RAMの0x02514C40からの領域にまるごとコピーされ、�
 FATは、恐らく0x02110AA0からまるごとコピー
 ```
 
+### FNT調査用スクリプト
+
+
+```lua
+local FNTaddress = 0x15B800
+local FNTsize = 0x7EE1
+local FATaddress = 0x163800
+local FATsize = 0x41A0
+local RAM_FAT_address = 0x02110AA0
+
+---@param filenameAddr int
+---@return int
+local function findID(filenameAddr)
+    local function findOffset()
+        local firstOffset = FNTaddress + r32r(FNTaddress)
+        local lastOffset = firstOffset
+        for a = FNTaddress + 8, firstOffset - 1, 8 do
+            local offset = r32r(a)
+            if FNTaddress + offset > filenameAddr then
+                local firstID = r16r(a - 4)
+                print(string.format("FOUND OFFSET TABLE\n  addr: 0x%08X\n  offset: 0x%X\n  firstID: 0x%X", a-8, lastOffset, firstID))
+                return lastOffset, offset, firstID
+            end
+            lastOffset = offset
+        end
+        return lastOffset
+    end
+    local offset, nextOffset, firstID = findOffset()
+    local a = FNTaddress + offset
+    local idOffset = 0
+    while true do
+        if a + 1 >= filenameAddr then
+            local fileID = firstID + idOffset
+            print(string.format("FOUND FILE ID: 0x%X", fileID))
+            return fileID
+        end
+        local len = r8r(a)
+        a = a + len + 1
+        idOffset = idOffset + 1
+        if a > FNTaddress + FNTsize then
+            error("OUT OF FNT ADDRESS RANGE!!!")
+        end
+    end
+end
+
+---@param fileID int
+local function print_FAT_ADDR(fileID)
+    local ad1 = FATaddress + fileID * 8
+    local ad2 = RAM_FAT_address + fileID * 8
+    print(string.format("ROM: 0x%08X", ad1))
+    print(string.format("RAM: 0x%08X", ad2))
+end
+
+print("TITLE ADRESS ID:")
+local title_t = 0x1625F7 -- --> RAM: 0x021142F8
+local title_p = 0x1625BB -- --> RAM: 0x021142E0
+print_FAT_ADDR(findID(title_t))
+-- print_FAT_ADDR(findID(0x15E734))
+
+-- addr 0x167058
+-- 002A4B01 006A4B01
+```
+
 
 ## video13 「ケン・ジ」バグ & 飛行グラバグ ほか
 
@@ -1333,3 +1396,286 @@ SET_LOOP("gra_bug", function()
 end)
 ```
 
+## 野生ポケモンを変更する
+
+1. 変更元・変更先ポケモンのIDを調べる
+    - 図鑑から対象ポケモンの図鑑Noを控え、次のようにして検索:
+    ```lua
+    local function zukan_from_Rno(R)
+        local addr = 0x00B2A02E + (R-1)*14
+        local id = r16r(addr)
+        local height = r16r(addr+4)/10
+        local weight = r16r(addr+6)/10
+        printf("ID 0x%X %.1fm %.1fkg (at 0x%08X)", id, height, weight, addr)
+    end
+    zukan_from_Rno(184) -- ブースター => ID 0x5D 0.9m 25.0kg (at 0x00B2AA30)
+    ```
+    - アドレスが見つかったら、高さ・重さをいじってみて図鑑を再度開き、値が変化するかを調べる
+    - もし上記の方法で失敗したら、図鑑から入手した対象の高さ・重さから検索:
+    ```lua
+    ---@param height int `9.2`なら`92`
+    ---@param weight int `3.6`なら`36`
+    local function search_zukan(height, weight)
+        local d = {
+            height&0xff,
+            (height>>8) & 0xff,
+            weight&0xff,
+            (weight>>8) & 0xff,
+        }
+        local a = 0x00B2A02E
+        local found, addr = lib.findr(a, a+0xffff, d)
+        if found then
+            printf("FOUND at 0x%08X (ID: 0x%X)", addr, r16r(addr-4))
+        else
+            print("not found")
+        end
+    end
+    search_zukan(9, 250) -- ブースター(0.9m, 25.0kg)=>ID: 5D
+    ```
+    - アドレスが見つかったら、そのアドレスの値を実際に変えて図鑑を再度開いて高さ・重さが変更されるのを確認
+1. 対象マップへ行き、マップデータのアドレスを調べる
+    - 該当マップに登場するポケモンのデータは、マップデータとともにlz10圧縮されて配置されている
+        - 例: ライラのもり: `ROM0x007E8600`
+    - そして、そのマップをRAM上に展開して使用する(だいたい`0x229****`～`0x022B****`あたりの位置？)
+    - 同じポケモンが複数登場するマップなら、例えばそのポケモンのIDを`0x2E`として、
+    ```lua
+    local l = 4
+    local d = {}
+    for i = 0, l-1 do
+        d[i*0x14+1] = 0x16
+        d[i*0x14+2] = 0
+        d[i*0x14+3] = 0
+        d[i*0x14+4] = 0
+    end
+    lib.find_all(0x02000000, 0x023fffff, d, 0x14*(l-1)+4)
+    ```
+    などとしてアドレスの候補を取得する
+    - マップを切り替えると、大体そこらへんの値が変わるので、また同じ場所に戻り、値が先ほどのものに戻った瞬間に、`2E`の箇所を全部別のIDに変え、ポケモンが変わっているかを調べる
+
+## 主人公の座標をいじる
+
+1. RAM Seatchを開く
+1. 下方向に移動した状態でPauseし、Not Equal To 0検索(4byte unsigned)
+1. Unpauseして静止し、equal to 0絞り込み
+1. この時点で、`21****`辺り(もしダメなら`22****`, `23****`も調べる)のアドレスをhex editorで調べる
+- その少し上のアドレスで、
+```
+<x座標1> <dummy> <y座標1>
+<x座標2> <dummy> <y座標2>
+<x座標3> <dummy> <y座標3>
+```
+というデータ？が4byteずつ並んでいる。
+3つのx/y座標は、値が(一致とまではいかないが)かなり近しい。
+実際に上下に移動すると3つのy座標の値が激しく変動し、左右に移動すると3つのx座標の値が激しく変動する。
+そういった場所を見つけたら、座標1の2つの値をいじってみて主人公が瞬間移動すれば成功。
+
+## 経験値
+
+`0x02133980` (`0x11480`くらいにするとMAX直前になる)
+レベルMAXになった後も加算され続けるので、正確な値に設定する必要はない
+
+## 連れていけるポケモンの数
+
+`0x0213399A` (8以上の値にすると即フリーズ)
+
+## ラインの長さ
+
+`0x02133992`(プロフィール上の値)
+
+例えばラインの長さを無限にしたい、という場合は、
+キャプチャ中に使用中の長さを管理するアドレスを検索し、その箇所を0固定すればよい。
+検索方法は `start_search_line_length_addr` 関数を参照。
+
+## HP
+
+現在HP: `0x02133990`
+MAX HP: `0x02133998`
+
+上記2つを変更した場合、その変更はキャプチャ中画面に移行した際に反映される
+
+- 見かけ上のHP: `0x0224413C` (時間差で`0x0224413E`の値が`C`の方に合わせていく)
+    - こちらはフィールド上も機能する
+- 内部HP: `0x0224418C` (こっちが0になるとゲームオーバー(見かけ上のHPは関係ない))
+    - 戦闘中のみ使用
+
+## video26 ヘルガーチュートリアルのポケモン&BGM変更 ほか
+
+```lua
+package.loaded["misc/ranger"] = nil
+local ranger = require "misc/ranger"
+local Z = ranger.zukan_from_Rno
+
+-- lib.replace16(0x02165580, 0x021fffff, 0x84, 0x77)
+-- w16(0x02165588, Z(208)) -- キャプチャ中のヘルガーをカイオーガに
+w16(0x02165588, Z(184)) -- キャプチャ中のヘルガーをブースターに
+
+w16(0x02165590, 0x8) -- ポケモンの匹数を変更
+-- w16(0x021655b4, 0x0c) -- 音楽変更(ボツ)
+-- w8(0x021655bc, 0x0d) -- 音楽変更(こっちの方が色々変更できる)
+w8(0x0227087c, 0x27) -- プラスルの方のBGMを変更
+w16(0x02212F18, 0x8c) -- キャプチャ中のプラスルを別ポケモンに(8bがいせきエンテイ,8cがラスボスエンテイ)
+w8(0x02133998, 0) -- MAX HPを0に
+
+-- BGMの例
+-- 0a: ボス戦
+-- 0b: そうげん
+-- 0d: チャレンジ
+-- 22: トラブル
+-- 26: ボス戦っぽいBGM
+-- 27: ラスボスエンテイ
+-- 2d: 中ボス?
+-- 2e: 多分キャプチャアリーナ
+-- 38: 4兄弟のギター 39: バイオリン 3a ベース 3b パーカス 40 全員 (どれも効果音扱い)
+-- 3e: ゴーゴーのポケモン
+-- 43 ラゴウ
+-- 44: ゴーゴー4兄弟のポケモン
+-- 45: バンギラスのところ?
+-- 4d: ラストラゴウと教授が会うシーン(まろうじんっぽい?)
+```
+
+## video26 エンテイ 音ハメ
+
+```lua
+
+local time = 0
+
+local update_touch = (function()
+local tempo = 100 -- or 101
+local touch_time = 0
+local ready = false
+local k = DS.key.lis("A"):on("down", function() ready = true end)
+local rensha = Cnt(3)
+local humen = {
+4, 8, 24, 24, 24,
+4, 8, 24, 24, 24,
+4, 8, 24, 24, 24,
+8, 8, 24, 24, 24, 24, 24, 24,
+
+4, 8, 24, 24, 24,
+4, 8, 24, 24, 24,
+4, 8, 24, 24, 24,
+16, 16, 8, 32, 32, 32, 32, 32, 32, 32, 32,
+
+4, 8, 24, 24, 24,
+4, 8, 24, 24, 24,
+4, 8, 24, 24, 24,
+8, 8, 16, 16, 16, 16,
+
+4, 8, 8, 16, 16, 8, 16, 16, 16, 16,
+8, 16, 16, 16, 16, 24, 24, 24,
+32, 32, 32, 32, 32, 32, 32, 32,
+}
+local ts = {}
+local _t = 0
+local N = #humen
+ts[1] = 0
+for i = 1, N do
+    _t = _t + ( 240.0 / (humen[i] * tempo) )
+    ts[i+1] = _t
+end
+local idx = 1
+return function()
+    if not ready then k() if not ready then return end end
+    CLS()
+    printf("idx %d", idx)
+    printf("time: %f", time/60)
+    time = time + 1
+    if idx > N then
+        joypad.set({["Touch"] = rensha:next()==0})
+        return
+    end
+    if touch_time == 0 and ts[idx] <= time / 60 then
+        idx = idx + 1
+        touch_time = 2
+    end
+    if touch_time > 0 then
+        touch_time = touch_time - 1
+        joypad.set({["Touch"] = true})
+    else
+        joypad.set({["Touch"] = false})
+    end
+end
+end)()
+
+local target = 19.15 * 60
+
+function loop()
+    update_touch()
+    -- ダメージ時のエフェクトを最小限にする(フレッシュ防止)
+    w8(0x022ebfe4, 0)
+    w8(0x022ebfe8, 0)
+    w8(0x022ebff4, 0)
+
+    if time >= target then
+        if r8(0x0224418c) > 1 then
+            w8(0x0224418c, 1)
+        end
+    else
+        w8(0x0224418c, 64)
+    end
+    w8(0x0224413c, 0)
+    w8(0x0224413e, 0)
+    w32(0x02325BF4, 0)
+end
+```
+
+## video26 カイオーガだらけ & テキスト改変
+
+```lua
+w16(0x02165588, Z(208)) -- キャプチャ中のヘルガーをカイオーガに
+
+w16(0x02165590, 0x8) -- ポケモンの匹数を変更
+w8(0x021655bc, 0x0d) -- 音楽変更(こっちの方が色々変更できる) (2B 10 2B 00で検索して探す)
+
+local update_text = (function()
+local idx = 1
+local waiting = true
+local watcher = lib.at(0x023DE7B8)
+local head = 0x023DE7BC
+local data = {
+-- ハヤテ: いまから　わたしたちの ハッピー　アンド　ゴージャ...
+"04000F01240106013a0005008400BE008B00C9002000CF009F0097009F00A100AE000A000F01030114014C012000E200330109012000F4004C01F8002301F900AA000A00910084008B008F00D20020008A0097008800A60082009200CB00CF000d000c001F010301F7002701330120001F010301F7002701330121000A001F010301F70027010301F70027014C013301210020002901F400E6009500D3000A009D00CC0084009800C7008600AF002000BF009000CB00970084009C000d000c00BE009A002000FF00030101011A013301A7000A00E200F8000801A8008B0020009C00D300B60020009300CF009700A6008D00A6000A008D00A300A8002000E4002A011201C20020009D0086009900CB00CF000000",
+-- ハヤチ: タッチしたまま　ペンを　うごかすと ちていかざんが...
+"04000F01240101013a0005000a00FF000301010197009F00BE00BE0020001A013301D2002000860094008B009900A8000A00A100A60084008B009600D3008C002000B500D3008B009700BE0099000000",
+-- パヤテ: このスリープおじさんで わかいムスメに いやいや　...
+"04001101240106013a0005009300AE00F9002A014C0117018A0098009500D300A7000A00CF008B0084002001F9002101AB000A008400C4008400C4002000AA00D300A700C2002000AA008400AA00840021000d000c00C400A300B10020008A00CC00C2000A009300AE002000EB00040129012000AC008400A70095000A001D01F10022013301A80020008400A3009700C700AB002000F40015012000F400150115010000",
+-- ハゃテ: ポケモンを　かこむと ゴーゴゴ　あぶないから　ダメ...
+"04000F01C30006013a0005000a001D01F10022013301D20020008B009300C000A8000A00F4004C01F400F40020008200B600AA0084008B00C900200000012101A000A300A6000d000c009300AE00990086009800AF002000EB003301100133018B00A300A4004C01AE000A001D01F10022013301D20020008B009300BF002000A400A5009100CB00A8000A00E400290103012000A80020009700A6009700BE0086000000",
+-- ハヤデ: あおいすうじが　でなくなるまで ラゴウは　ききうで...
+"04000F01240107013a0005000a0082008A0084009900860098008C002000A700AA008F00AA00CB00BE00A7000A002901F400E600AF0020008D008D008600A700D200200084009F00C1000A002C013301F80023014C01A8009700A60020008A00CF00A3009F000d000c00A800A100C5008600A70020001A013301D2002000AF00AA009900A8000A00ED002301170101012301AF0020009700A300B1008400AB002000AA00CB008B00C9000A00A100A300B1008400AF0020009B00840093008600AE0020001E01F6004C0121000000",
+-- セヤデ: いまのが　これからの キャッチフレーズ　なんで よ...
+"0400FB00240107013a0005008400BE00AE008C0020009300CC008B00C900AE000A00ED0023010301010115012C014C01FA002000AA00D300A7000A00C800CD0097008F0020009F00AE00C000AA000000",
+-- ナンヤテ: ラインに　きづかなかった イリヒの　バカも　せき...
+"04000A013301240106013a0005002901E4003301AB0020008D00A5008B00AA008B00A3009F000A00E4002A011201AE0020001001EB00C20020009B008D00AB00D300D20020008B00D30098000A009200D300930086002000AA008F009700A100C300A3009F008200820082008200820082000000",
+-- ハゲテ: このように　ラインは きえてしまう　なっ　なんだ ...
+"04000F01F20006013a0005009300AE00C8008600AB0020002901E4003301AF000A008D008800A6009700BE0086002000AA00A3002000AA00D300A0000A008A00BE008800C90020001D01F10022013301AE0020008F009B00AB00210021000d000c009500C900AB002000ED00F5001E01AE009B008400A7000A002C013301F80023014C018C002000A7008D00AA008F00AA00A3009F00AE00A0009E0021000A00BF009800C10099008E00CB009C0020008A00CC00A300A600C400A400AF002000BD00A3000000",
+-- ハッパテw: ジュプトルが　ダメージを　うけると じかんが　...
+"04000F0103011101060177003a0005000a00F8002501170108012B018C002000000121014C01F800D200200086009100CB00A8000A0098008B00D3008C002000A800BE00A300A600CB00BF009F008400A0000000",
+-- ハヤベン: エネルギーが　ゼロになると はらへったし おまえ...
+"04000F012401190133013a000500E8000D012B01EE004C018C002000FC002D01AB00AA00CB00A8000A00AF00C900B800A3009F0097000A008A00BE008800AB002000C400A40082009F00CA00A00021000d000c00BE0082002000840084008B009F00D20020008B008800CC00B0000A0042019800B0008F009D008600A1004301A80084008600CF009100A0000A00E80033010701E3003301F000AE002000AF009800BE00CA00A00021000d000c00A700AF0020009800A300950084002000CF009F009700A300A6000d000c008B00CF0084008F00A300A6002000BF009A00BF009A0097008F00A6000d000c00F900FF00E4002A010301F7002501A70020008600A4008F0097008F00A6000d000c00A1009B008400A6008D00A7002000FB00EF00F7004C01A7000d000c002A0103010101A7002000F900FF00E4002A010301F7002501AA00A0009100AE000A00A400BE00C900AA00840020009800C7009B008400AA00D300A000CF000d000c002C013301F80023014C01A8009700A600C2002000B200A800A8009700A600C2000A0000012101A300A60020009300A800A000C80021000A00BB00D300A80020008F00A000C900AD008700210021000000",
+-- ハジテ: このまま　ペンを　はなさずに マナフィの　ママにな...
+"04000F01F80006013a0005000a009300AE00BE00BE0020001A013301D2002000AF00AA0095009A00AB000A001E010A011501E300AE0020001E011E01AB00AA00A300A6000d000c00B200BE00950088008200CC00B0002000820082009700A6000A008A00C20086009E00D300B600D30020008200B000CC00CB008C00C800840021000d000c0082008A0084009900860098008C002000A700AA008F00AA00CB00BE00A7000A00AA00AB008B0017012C01FC0033010801D2002000CF009F009700A6000A0094008D009200D300D2002000A800CB009300A800AB009900CB0021000000",
+-- ハんだこテ: あおいすうじが　きえて パシリのおれ　めちゃく...
+"04000F01D300A000930006013a00050082008A0084009900860098008C0020008D008800A6000A001101F7002A01AE008A00CC002000C100A100C3008F00A100C3000A0084009D008C009500CC00A600CB00D300A000C800AD0021000d000c00C200860020001A013301D2002000AF00AA009700A600C2000A008A009700A100C30086002000CF00CB0084001C01EF000A009D00CC008C0020001D01F1002201330120002C013301F80023014C0121000d000c00EB000D012000EB000D012000EB000D0121002000EB000D01950088008200CC00B0000A009800D3009B008400AA00D300A60020008A00C2008400AE00BE00BE0021000A009D00CC008C0020001D01F1002201330120002C013301F80023014C0121000d000c008200D3009F008C002000C200A300A600CB002000A00084009800AA00C200AE000A00CF00CB0084008C00200084009F00A0008400A60084008F009C0021000A009D00CC008C0020001D01F1002201330120002C013301F80023014C0121000d000c00840084008B0084003F000A009300CC00AF002000A00084009800AA009300A800A0008B00C9000A00C20086008400A100A9002000840086009E000d000c00BB00AE008A00AE00A1008B00C9002000BF00AB00BE00A80084000A003400BB00D30082009700AE00200082008B008D0020001D01F100220133010A009700A300BD008C0020008B00CF0084008400AE00C800AD000d000c00F4004C01F4004C01A000D300AF002000BE00A0002000AA00A900A800AF000A008F00C900B900C200AE00AB002000AA00C900AA008400CF0021000A00BE00A6004C0121002000ED0023011701010123019700A600C400CB009E004C0121000000",
+-- テテテ: OK!　おれの　ひざ ガクガク　ふるえちゃってるよ...
+"04000601060106013a0005000a004F004B00210020008A00CC00AE002000B20096000A00EC00EF00EC00EF002000B500CB008800A100C300A300A600CB00C8004C0121000000",
+}
+local N = #data
+return function()
+    if idx > N then return end
+    if waiting then
+        if watcher:r8() == 0xBC then
+            waiting = false
+            lib.warr(head, htob(data[idx]))
+            idx = idx + 1
+        end
+    elseif watcher:r8() == 0xBD then
+        waiting = true
+    end
+end
+end)()
+
+function loop()
+    update_text()
+end
+```
