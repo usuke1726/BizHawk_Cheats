@@ -346,6 +346,10 @@ local function read_text(addr, end_addr, is_ram)
             ret = ret .. string.format("\\IMG[%X]", r16(i+2, domain))
             return 2
         end
+        if v == 0xff0d then
+            ret = ret .. string.format("\\POKECRY[%X]", r16(i+2, domain))
+            return 2
+        end
         if special_chars[v] then
             ret = ret .. special_chars[v]
         elseif within(v, 0x81, 0xd3) then
