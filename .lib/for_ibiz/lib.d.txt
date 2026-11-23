@@ -61,5 +61,6 @@ lib = {
     range = mem_range,
     romrange = romrange,
     pos = __pos_lib,
+    FAT = __FAT_lib,
     Nitro = Nitro,
 }

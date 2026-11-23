@@ -21,6 +21,7 @@ local recorder = require "recording"
 local image_lib = require "image"
 local asm_lib = require "asm"
 local actions_lib = require "actions"
+local FAT_lib = require "FAT"
 local Nitro_lib = require "Nitro/init"
 
 ---@type fun()?
@@ -180,5 +181,6 @@ return {
         Morton = util.pos_Morton,
         Raster = util.pos_Raster,
     },
+    FAT = FAT_lib,
     Nitro = Nitro_lib,
 }

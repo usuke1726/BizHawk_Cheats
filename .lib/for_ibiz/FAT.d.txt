@@ -1,0 +1,45 @@
+
+---@class FNTFile
+---@field is_dir bool
+---@field name string
+---@field id int
+---@field parent_dir_id int
+---@field file_fat_addr int
+---@field file_begin int
+---@field file_end int
+
+---@class FNTDirectory
+---@field id int
+---@field name string
+---@field parent_id int
+---@field is_root bool
+---@field files FNTFile[]
+
+
+---@param RAMFNTaddr? int
+---@param RAMFATaddr? int
+---@return FNTDirectory[]
+---@return FNTFile[]
+local function read_FNT(RAMFNTaddr, RAMFATaddr) end
+
+---@param filename string
+---@param data FNTDirectory[]
+---@return FNTFile?
+local function find_file(filename, data) end
+
+---@param target FNTFile | string
+---@param data FNTDirectory[]
+---@return string
+local function full_path(target, data) end
+
+---@param filename WriterQuery
+---@param RAMFNTaddr? int
+---@param RAMFATaddr? int
+local function dump_files(filename, RAMFNTaddr, RAMFATaddr) end
+
+local __FAT_lib = {
+    read_FNT = read_FNT,
+    find_file = find_file,
+    dump_files = dump_files,
+    full_path = full_path,
+}
