@@ -5,8 +5,9 @@
 local function output(filename) end
 
 ---@class Writer
----@field write fun(self: Writer, s: string)
----@field wl fun(self: Writer, s: string)
+---@field write fun(self: Writer, s: string, ...)
+---@field writeraw fun(self: Writer, s: string)
+---@field wl fun(self: Writer, s: string, ...)
 ---@field close fun(self: Writer)
 ---@field flush fun(self: Writer)
 

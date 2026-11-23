@@ -15,8 +15,9 @@ local function output(filename)
 end
 
 ---@class Writer
----@field write fun(self: Writer, s: string)
----@field wl fun(self: Writer, s: string)
+---@field write fun(self: Writer, s: string, ...)
+---@field writeraw fun(self: Writer, s: string)
+---@field wl fun(self: Writer, s: string, ...)
 ---@field close fun(self: Writer)
 ---@field flush fun(self: Writer)
 
@@ -25,6 +26,7 @@ end
 local function dummy_writer()
     return {
         write = function(self, s) end,
+        writeraw = function(self, s) end,
         wl = function(self, s) end,
         close = function(self) end,
         flush = function(self) end,
@@ -48,15 +50,17 @@ local function writer(filename)
     if t == "string" then
         local f = assert(io.open(output(filename), "w"), "ファイル " .. filename .. "のオープンに失敗しました")
         return {
-            write = function(self, s) f:write(s) end,
-            wl = function(self, s) f:write(s .. "\n") end,
+            write = function(self, s, ...) f:write(string.format(s, ...)) end,
+            writeraw = function(self, s) f:write(s) end,
+            wl = function(self, s, ...) f:write(string.format(s, ...) .. "\n") end,
             close = function(self) f:close() end,
             flush = function(self) f:flush() end,
         }
     elseif t == "boolean" or filename == nil then
         return {
-            write = function(self, s) console.write(s) end,
-            wl = function(self, s) print(s) end,
+            write = function(self, s, ...) console.write(string.format(s, ...)) end,
+            writeraw = function(self, s) console.write(s) end,
+            wl = function(self, s, ...) print(string.format(s, ...)) end,
             close = function(self) end,
             flush = function(self) end,
         }
