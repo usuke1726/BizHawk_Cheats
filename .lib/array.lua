@@ -9,6 +9,39 @@ local function copy(arr)
 end
 
 ---@generic T
+---@param arr T[]
+---@param func fun(value: T, key: int, arr: T[]): bool
+---@return T, int
+local function array_find(arr, func)
+    for key, value in pairs(arr) do
+        if func(value, key, arr) then
+            return value, key
+        end
+    end
+    return nil, 0
+end
+
+---@generic T
+---@param arr T[]
+---@param query T
+---@return int
+---@overload fun(arr: T[], query: fun(value: T, key: int, arr: T[]): bool): int
+local function indexOf(arr, query)
+    if type(query) == "function" then
+        for key, value in pairs(arr) do
+            if query(value, key, arr) then
+                return key
+            end
+        end
+    else
+        for key, value in pairs(arr) do
+            if query == value then return key end
+        end
+    end
+    return 0
+end
+
+---@generic T
 ---@generic U
 ---@param arr T[]
 ---@param func fun(value: T, key: int, arr: T[]): U
@@ -43,6 +76,18 @@ end
 local function sorted(arr, comp)
     local ret = table_copy(arr)
     table.sort(ret, comp)
+    return ret
+end
+
+---@generic T
+---@param arr T[]
+---@return T[]
+local function reverse(arr)
+    local n = #arr
+    local ret = {}
+    for i = 0, n-1 do
+        ret[i+1] = arr[n-i]
+    end
     return ret
 end
 
@@ -231,9 +276,12 @@ end
 
 local _arrayLib = {
     copy = copy,
+    find = array_find,
+    indexOf = indexOf,
     map = map,
     filter = filter,
     sorted = sorted,
+    reverse = reverse,
     rep = rep,
     flat = flat,
     concat = concat,

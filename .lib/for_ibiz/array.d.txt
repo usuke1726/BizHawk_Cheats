@@ -6,6 +6,19 @@
 local function copy(arr) end
 
 ---@generic T
+---@param arr T[]
+---@param func fun(value: T, key: int, arr: T[]): bool
+---@return T, int
+local function array_find(arr, func) end
+
+---@generic T
+---@param arr T[]
+---@param query T
+---@return int
+---@overload fun(arr: T[], query: fun(value: T, key: int, arr: T[]): bool): int
+local function indexOf(arr, query) end
+
+---@generic T
 ---@generic U
 ---@param arr T[]
 ---@param func fun(value: T, key: int, arr: T[]): U
@@ -24,6 +37,11 @@ local function filter(arr, func) end
 ---@param comp? fun(a: T, b: T): bool `a`が`b`より「小さい」か否かを返却
 ---@return T[]
 local function sorted(arr, comp) end
+
+---@generic T
+---@param arr T[]
+---@return T[]
+local function reverse(arr) end
 
 ---`arr`を`n`個にコピーして結合したものを返却する。
 ---@generic T
@@ -107,9 +125,12 @@ local function slice(arr, st, ed) end
 
 Array = {
     copy = copy,
+    find = array_find,
+    indexOf = indexOf,
     map = map,
     filter = filter,
     sorted = sorted,
+    reverse = reverse,
     rep = rep,
     flat = flat,
     concat = concat,
