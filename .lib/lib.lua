@@ -8,6 +8,11 @@
 ---@alias s16 int
 ---@alias s32 int
 
+__3DS_MODE = false
+if emu.getsystemid() == "3DS" then
+    __3DS_MODE = true
+end
+
 local pathlib = require "path"
 local mem = require "mem"
 local util = require "util"

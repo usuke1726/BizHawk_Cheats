@@ -2,6 +2,7 @@
 
 local _ROM_DOMAIN_NAME = "ROM"
 ROM_DOMAIN_NAME = _ROM_DOMAIN_NAME
+DOMAINS_3DS = {main = "FCRAM", vram = "VRAM", bus = "System Bus"}
 
 ---@param addr int
 ---@param domain string?

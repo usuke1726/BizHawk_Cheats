@@ -1,4 +1,9 @@
 
+local running_on_3ds = __3DS_MODE
+local _ROM_DOMAIN_NAME = "ROM"
+ROM_DOMAIN_NAME = _ROM_DOMAIN_NAME
+DOMAINS_3DS = {main = "FCRAM", vram = "VRAM", bus = "System Bus"}
+
 ---@param addr int
 local function get_domain(addr)
     -- DSに特化した超簡略的な処理。後々ちゃんとしたものに修正するかも。
@@ -7,6 +12,11 @@ local function get_domain(addr)
     else
         return "ARM9 System Bus"
     end
+end
+if running_on_3ds then
+    get_domain = function() return "FCRAM" end
+    _ROM_DOMAIN_NAME = "FCRAM"
+    ROM_DOMAIN_NAME = "FCRAM"
 end
 __get_domain = get_domain
 
@@ -87,9 +97,6 @@ end
 add8 = _add8
 add16 = _add16
 add32 = _add32
-
-local _ROM_DOMAIN_NAME = "ROM"
-ROM_DOMAIN_NAME = _ROM_DOMAIN_NAME
 
 ---ROM領域のアドレスから1バイト書き込む。
 ---@param addr int
