@@ -2623,3 +2623,346 @@ lib.irume.start(function()
 end)
 ```
 
+## video27 アフロ教授
+
+```lua
+local res = Nitro.read_MDL0(0x02168B54, 0)
+local meshes = res.addrs_mesh
+local v16 = MESH_LIB.VTX_16
+local vxy = MESH_LIB.VTX_XY
+local vyz = MESH_LIB.VTX_YZ
+local f16 = FixFloatConverter(3, 12)
+local vdif = MESH_LIB.VTX_DIFF
+
+for i, mesh in pairs(pick(meshes, {
+-- range(3, 12)
+range(6, 6)
+})) do
+
+local B = Nitro.Bound3D()
+local poses = {}
+local cnt = Array.countUp()
+
+Nitro.filter_mesh(mesh.begin, mesh.iend, function(addr, info)
+cnt:add(info.name)
+    if info.name == MESH_COMMANDS.VTX_16 then
+        assert(addr%2==0)
+        local pos = v16.read(addr)
+        pos.y = pos.y+0.1
+        v16.write(addr, pos)
+    elseif info.name == MESH_COMMANDS.VTX_XY then
+        local pos = vxy.read(addr)
+        pos.y = pos.y+0.1
+        vxy.write(addr, pos)
+    elseif info.name == MESH_COMMANDS.VTX_YZ then
+        local pos = vyz.read(addr)
+        pos.y = pos.y+0.1
+        vyz.write(addr, pos)
+    end
+end)
+end
+
+
+
+for i, mesh in pairs(pick(meshes, {
+-- range(3, 12)
+range(3, 3)
+})) do
+
+local B = Nitro.Bound3D()
+local poses = {}
+local cnt = Array.countUp()
+
+Nitro.filter_mesh(mesh.begin, mesh.iend, function(addr, info)
+cnt:add(info.name)
+    if info.name == MESH_COMMANDS.VTX_16 then
+        assert(addr%2==0)
+        local pos = v16.read(addr)
+        pos.z = pos.z*2
+        pos.x = pos.x*1.3+0.3
+        v16.write(addr, pos)
+    elseif info.name == MESH_COMMANDS.VTX_XY then
+        local pos = vxy.read(addr)
+        pos.x = pos.x*1.3+0.3
+        vxy.write(addr, pos)
+    elseif info.name == MESH_COMMANDS.VTX_YZ then
+        local pos = vyz.read(addr)
+        pos.z = pos.z*2
+        vyz.write(addr, pos)
+    end
+end)
+end
+
+local update_time = (function()
+    return function()
+        -- w16(0x02129050, 0)
+        w16(0x02128768, 0)
+    end
+end)()
+SET_LOOP("update_time", update_time)
+
+lib.irume.start(function()
+    local head = 0x03EC8A00
+    local as = {}
+    local bound = 0x200
+    local ps = {}
+    for i = 0, 16 do
+        as[i] = head + 0x40 * i
+        ps[i] = bound
+    end
+    local p = 0x18
+    local t = 0x2c
+    local r = RC(20)
+    local v = 0x16
+    local sin = Cnt(30)
+    local sin_r = RC(5)
+    return function()
+        if sin() and sin_r() then
+            sin:N(rand(20, 60))
+        end
+        local _sin = round(math.sin(2*math.pi*sin.i/sin.n) * 0x80 * 1)
+        for i, a in pairs(as) do
+            w16(a + p, _sin)
+        end
+    end
+end)
+
+-- 途中で荒ぶる
+local update_time = (function()
+    return function()
+        w16(0x02129050, rand(0, 0xffff))
+        w16(0x02128768, rand(0, 0xffff))
+    end
+end)()
+SET_LOOP("update_time", update_time)
+```
+
+## video27 平べったいサカナ教授
+
+```lua
+
+local res = Nitro.read_MDL0(0x02168B54, 0)
+local meshes = res.addrs_mesh
+local num = #meshes
+local v16 = MESH_LIB.VTX_16
+local f16 = FixFloatConverter(3, 12)
+local vdif = MESH_LIB.VTX_DIFF
+
+local types = {
+1,2,1,1,2,2,2,2,2,1
+}
+local updaters = {}
+
+for i, mesh in pairs(pick(meshes, {
+range(3, 12)
+})) do
+local B = Nitro.Bound3D()
+local poses = {}
+
+Nitro.filter_mesh(mesh.begin, mesh.iend, function(addr, info)
+    if info.name == MESH_COMMANDS.VTX_16 then
+        assert(addr%2==0)
+        local pos = v16.read(addr)
+        B:push(pos.x, pos.y, pos.z)
+        if assert(types[i]) == 1 then
+            table.insert(poses, {
+                x = {addr+0, pos.x},
+                y = {addr+4, pos.z},
+                z = {addr+2, pos.y},
+            })
+        else
+            table.insert(poses, {
+                x = {addr+4, pos.z},
+                y = {addr+2, pos.y},
+                z = {addr, pos.x},
+            })
+        end
+    end
+end)
+local _update
+if assert(types[i]) == 1 then
+_update = function(sin, cos)
+    for _, p in pairs(poses) do
+        local y = p.y[2]
+        local _y = y*0.25
+        w16(p.y[1], f16:toi(_y))
+        -- local _z = p.z[2]*0.1
+        -- w16(p.z[1], f16:toi(_z))
+    end
+end
+else
+_update = function(sin, cos)
+    for _, p in pairs(poses) do
+        local x = p.x[2]
+        local _x = x*0.25
+        w16(p.x[1], f16:toi(_x))
+        local _y = p.y[2]*0.1
+        w16(p.y[1], f16:toi(_y))
+    end
+end
+end
+
+table.insert(updaters, _update)
+
+end
+
+local c = Cnt(60)
+local r = RC(3)
+
+function loop()
+    if c() and r() then
+        c:N(math.max(round(c.n*0.9), 8))
+    end
+    local x = c.i*2*math.pi/c.n
+    local sin = math.sin(x)
+    local cos = math.cos(x)
+    for _, f in pairs(updaters) do f(sin, cos) end
+end
+
+
+lib.irume.start(function()
+    local head = 0x03EC8A00
+    local as = {}
+    local bound = 0x200
+    local ps = {}
+    for i = 0, 16 do
+        as[i] = head + 0x40 * i
+        ps[i] = bound
+    end
+    local p = 0x18
+    local t = 0x2c
+    local r = RC(20)
+    local v = 0x16
+    return function()
+        for i, a in pairs(as) do
+            ps[i] = (ps[i]-8) % (bound)
+            w16(a + p, ps[i])
+        end
+    end
+end)
+```
+
+## video27 ラストの変顔
+
+```lua
+
+local res = Nitro.read_MDL0(0x02168B54, 0)
+local meshes = res.addrs_mesh
+local v16 = MESH_LIB.VTX_16
+local vxy = MESH_LIB.VTX_XY
+local vyz = MESH_LIB.VTX_YZ
+local f16 = FixFloatConverter(3, 12)
+local vdif = MESH_LIB.VTX_DIFF
+
+for i, mesh in pairs(pick(meshes, {
+-- range(3, 12)
+range(6, 6)
+})) do
+
+local B = Nitro.Bound3D()
+local poses = {}
+local cnt = Array.countUp()
+
+Nitro.filter_mesh(mesh.begin, mesh.iend, function(addr, info)
+cnt:add(info.name)
+    if info.name == MESH_COMMANDS.VTX_16 then
+        assert(addr%2==0)
+        local pos = v16.read(addr)
+        pos.y = pos.y+0.1
+        v16.write(addr, pos)
+    elseif info.name == MESH_COMMANDS.VTX_XY then
+        local pos = vxy.read(addr)
+        pos.y = pos.y+0.1
+        vxy.write(addr, pos)
+    elseif info.name == MESH_COMMANDS.VTX_YZ then
+        local pos = vyz.read(addr)
+        pos.y = pos.y+0.1
+        vyz.write(addr, pos)
+    end
+end)
+end
+
+
+
+for i, mesh in pairs(pick(meshes, {
+-- range(3, 12)
+range(3, 3)
+})) do
+
+local B = Nitro.Bound3D()
+local poses = {}
+local cnt = Array.countUp()
+
+Nitro.filter_mesh(mesh.begin, mesh.iend, function(addr, info)
+cnt:add(info.name)
+    if info.name == MESH_COMMANDS.VTX_16 then
+        assert(addr%2==0)
+        local pos = v16.read(addr)
+        pos.z = pos.z*2
+        pos.y = pos.y+0.1
+        pos.x = pos.x*1.3-0.3
+        v16.write(addr, pos)
+    elseif info.name == MESH_COMMANDS.VTX_XY then
+        local pos = vxy.read(addr)
+        pos.x = pos.x*1.3-0.3
+        vxy.write(addr, pos)
+    elseif info.name == MESH_COMMANDS.VTX_YZ then
+        local pos = vyz.read(addr)
+        pos.z = pos.z*2
+        vyz.write(addr, pos)
+    end
+end)
+end
+
+w32(0x0296E4BC, 0x900)
+w32(0x0296E4C0, 0xFFFFF000)
+w32(0x0296E5D8, 0x0b68)
+w32(0x0296E614, 0x50)
+w32(0x0296E61C, 0x100)
+
+-- 黒目位置
+w32(0x0296E550, 0x0640)
+w32(0x0296E554, 0x0800)
+w32(0x0296E558, 0x02D0)
+
+w32(0x0296E568, 0x848)
+w32(0x0296E56C, 0xFFFFFD10)
+
+
+
+local update_time = (function()
+    return function()
+        w16(0x02129050, 0)
+        w16(0x02128768, 0)
+w16(0x216E468, 1) -- 瞬きをさせない
+    end
+end)()
+SET_LOOP("update_time", update_time)
+
+
+lib.irume.start(function()
+    local head = 0x03EC8A00
+    local as = {}
+    local bound = 0x200
+    local ps = {}
+    for i = 0, 16 do
+        as[i] = head + 0x40 * i
+        ps[i] = bound
+    end
+    local p = 0x18
+    local t = 0x2c
+    local r = RC(20)
+    local v = 0x16
+    local c = Cnt(13, 2)
+    local pitch = 0
+    local target = 0
+    return function()
+        target = (c:next()*2-1) * 0x80
+        pitch = ilerp(pitch, target, 0.5)
+        for i, a in pairs(as) do
+            w16(a + p, pitch)
+            w16(a + v, 0x200)
+        end
+    end
+end)
+```
